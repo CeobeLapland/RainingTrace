@@ -59,7 +59,9 @@ fun MapScreen(
             modifier = Modifier.fillMaxSize(),
         )
 
-        // 手动驱动 MapView 生命周期（MapLibre Native 无 Lifecycle 对象）
+        // 手动驱动 MapView 生命周期（MapLibre Native 无 Lifecycle 对象）。
+        // factory 执行时 lifecycle 可能已 RESUMED，observer 收不到历史事件，
+        // 必须立即按当前状态同步一次。
         DisposableEffect(lifecycleOwner) {
             val observer = LifecycleEventObserver { _, event ->
                 val mapView = mapViewRef.value ?: return@LifecycleEventObserver
@@ -72,6 +74,11 @@ fun MapScreen(
                 }
             }
             lifecycleOwner.lifecycle.addObserver(observer)
+            mapViewRef.value?.let { mapView ->
+                val state = lifecycleOwner.lifecycle.currentState
+                if (state.isAtLeast(Lifecycle.State.STARTED)) mapView.onStart()
+                if (state.isAtLeast(Lifecycle.State.RESUMED)) mapView.onResume()
+            }
             onDispose {
                 lifecycleOwner.lifecycle.removeObserver(observer)
             }

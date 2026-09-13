@@ -1,6 +1,7 @@
 package com.rainingtrace.platform.map
 
 import android.graphics.Color
+import android.util.Log
 import com.rainingtrace.domain.exploration.CellFogState
 import com.rainingtrace.domain.map.HexCellVisual
 import com.rainingtrace.domain.map.MapCamera
@@ -47,9 +48,15 @@ class MapLibreAdapter : MapRendererAdapter {
         attached = true
         this.map = mapLibreMap
         mapLibreMap.setStyle(Style.Builder().fromUri(STYLE_URI)) { loadedStyle ->
+            if (loadedStyle == null) {
+                Log.e(TAG, "style load FAILED uri=$STYLE_URI")
+                return@setStyle
+            }
+            Log.i(TAG, "style loaded ok uri=$STYLE_URI")
             this.style = loadedStyle
             installSourcesAndLayers(loadedStyle)
             mapLibreMap.addOnMapClickListener { latLng ->
+                Log.d(TAG, "map tap ${latLng.latitude},${latLng.longitude}")
                 tapListener?.invoke(
                     WorldCoordinate(latLng.latitude, latLng.longitude),
                 )
@@ -78,7 +85,13 @@ class MapLibreAdapter : MapRendererAdapter {
             pendingCells = cells
             return
         }
-        loaded.getSourceAs<GeoJsonSource>(CELLS_SOURCE)?.setGeoJson(toFeatureCollection(cells))
+        Log.d(TAG, "renderCells n=${cells.size} first=${cells.firstOrNull()?.fogState}")
+        val source = loaded.getSourceAs<GeoJsonSource>(CELLS_SOURCE)
+        if (source == null) {
+            Log.e(TAG, "cells source missing")
+            return
+        }
+        source.setGeoJson(toFeatureCollection(cells))
     }
 
     override fun renderPlayer(marker: PlayerMarkerVisual?) {
@@ -166,8 +179,11 @@ class MapLibreAdapter : MapRendererAdapter {
         )
 
     companion object {
-        // 第一阶段托管矢量瓦片（01_技术栈：允许原型使用），无需 API key
-        const val STYLE_URI = "https://demotiles.maplibre.org/style.json"
+        private const val TAG = "MapLibreAdapter"
+
+        // 第一阶段托管矢量瓦片（01_技术栈：允许原型使用），无需 API key。
+        // OpenFreeMap liberty：全球街道级矢量瓦片，校园缩放可用。
+        const val STYLE_URI = "https://tiles.openfreemap.org/styles/liberty"
 
         private const val CELLS_SOURCE = "rt-cells"
         private const val PLAYER_SOURCE = "rt-player"
