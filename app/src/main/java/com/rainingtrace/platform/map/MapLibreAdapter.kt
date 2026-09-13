@@ -17,10 +17,12 @@ import org.maplibre.android.style.expressions.Expression
 import org.maplibre.android.style.layers.CircleLayer
 import org.maplibre.android.style.layers.FillLayer
 import org.maplibre.android.style.layers.LineLayer
+import org.maplibre.android.style.layers.Property
 import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.sources.GeoJsonSource
 import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
+import org.maplibre.geojson.LineString
 import org.maplibre.geojson.Point
 import org.maplibre.geojson.Polygon
 
@@ -40,6 +42,10 @@ class MapLibreAdapter : MapRendererAdapter {
     private var pendingCells: List<HexCellVisual>? = null
     private var pendingPlayer: PlayerMarkerVisual? = null
     private var pendingPlaces: List<PlaceVisual>? = null
+    private var pendingTrack: List<WorldCoordinate>? = null
+
+    /** 图层期望可见性；style 就绪/换代后据此重放。 */
+    private val layerVisibility = mutableMapOf<MapLayer, Boolean>()
 
     private var tapListener: ((WorldCoordinate) -> Unit)? = null
 
@@ -139,6 +145,30 @@ class MapLibreAdapter : MapRendererAdapter {
         )
     }
 
+    override fun renderTrack(points: List<WorldCoordinate>) {
+        val loaded = style
+        if (loaded == null) {
+            pendingTrack = points
+            return
+        }
+        val source = loaded.safeSource(TRACKS_SOURCE)
+            ?: run { pendingTrack = points; return }
+        source.setGeoJson(
+            if (points.size < 2) {
+                EMPTY_FC
+            } else {
+                FeatureCollection.fromFeature(
+                    Feature.fromGeometry(LineString.fromLngLats(points.map { toPoint(it) })),
+                )
+            },
+        )
+    }
+
+    override fun setLayerVisible(layer: MapLayer, visible: Boolean) {
+        layerVisibility[layer] = visible
+        applyLayerVisibility(layer, visible)
+    }
+
     /**
      * MapLibre 的 Style 在异步换 style 期间调用 getSourceAs 会抛
      * IllegalStateException；此时数据已存入 pending，下一次 flush 会重放，
@@ -157,6 +187,7 @@ class MapLibreAdapter : MapRendererAdapter {
             MapLayer.CELLS -> renderCells(emptyList())
             MapLayer.PLAYER -> renderPlayer(null)
             MapLayer.PLACES -> renderPlaces(emptyList())
+            MapLayer.TRACK -> renderTrack(emptyList())
         }
     }
 
@@ -165,12 +196,32 @@ class MapLibreAdapter : MapRendererAdapter {
         pendingCells?.let { renderCells(it); pendingCells = null }
         pendingPlayer?.let { renderPlayer(it); pendingPlayer = null }
         pendingPlaces?.let { renderPlaces(it); pendingPlaces = null }
+        pendingTrack?.let { renderTrack(it); pendingTrack = null }
+        // style 换代后图层是新建的，按期望可见性重放一次。
+        layerVisibility.forEach { (layer, visible) -> applyLayerVisibility(layer, visible) }
+    }
+
+    private fun applyLayerVisibility(layer: MapLayer, visible: Boolean) {
+        val loaded = style ?: return
+        val value = if (visible) Property.VISIBLE else Property.NONE
+        layerIdsOf(layer).forEach { id ->
+            runCatching { loaded.getLayer(id)?.setProperties(PropertyFactory.visibility(value)) }
+        }
+    }
+
+    /** 一个领域图层可能对应多个原生层（如迷雾有 4 个 fill + 1 个 outline）。 */
+    private fun layerIdsOf(layer: MapLayer): List<String> = when (layer) {
+        MapLayer.CELLS -> CellFogState.entries.map { "fill_${it.name}" } + "cells_outline"
+        MapLayer.PLAYER -> listOf(PLAYER_LAYER)
+        MapLayer.PLACES -> listOf(PLACES_LAYER)
+        MapLayer.TRACK -> listOf(TRACK_LAYER)
     }
 
     private fun installSourcesAndLayers(loaded: Style) {
         loaded.addSource(GeoJsonSource(CELLS_SOURCE, EMPTY_FC))
         loaded.addSource(GeoJsonSource(PLAYER_SOURCE, EMPTY))
         loaded.addSource(GeoJsonSource(PLACES_SOURCE, EMPTY_FC))
+        loaded.addSource(GeoJsonSource(TRACKS_SOURCE, EMPTY_FC))
 
         // 每个迷雾状态一个 fill 层（filter 驱动），避免表达式版本差异风险。
         FOG_COLORS.forEach { (state, color) ->
@@ -193,6 +244,18 @@ class MapLibreAdapter : MapRendererAdapter {
                 )
             },
             "fill_${CellFogState.SPECIAL.name}",
+        )
+        loaded.addLayerAbove(
+            LineLayer(TRACK_LAYER, TRACKS_SOURCE).apply {
+                setProperties(
+                    PropertyFactory.lineColor(TRACK_COLOR),
+                    PropertyFactory.lineWidth(TRACK_WIDTH),
+                    PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+                    PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+                    PropertyFactory.lineOpacity(TRACK_OPACITY),
+                )
+            },
+            "cells_outline",
         )
         loaded.addLayer(
             CircleLayer(PLACES_LAYER, PLACES_SOURCE).apply {
@@ -248,12 +311,16 @@ class MapLibreAdapter : MapRendererAdapter {
         private const val CELLS_SOURCE = "rt-cells"
         private const val PLAYER_SOURCE = "rt-player"
         private const val PLACES_SOURCE = "rt-places"
+        private const val TRACKS_SOURCE = "rt-tracks"
         private const val PLAYER_LAYER = "rt-player-dot"
         private const val PLACES_LAYER = "rt-places-dot"
+        private const val TRACK_LAYER = "rt-track-line"
         private const val PROP_FOG = "fog"
         private const val PROP_PLACE_NAME = "placeName"
         private const val FILL_OPACITY = 0.45f
         private const val OUTLINE_WIDTH = 0.8f
+        private const val TRACK_WIDTH = 3.5f
+        private const val TRACK_OPACITY = 0.85f
         private const val PLAYER_RADIUS = 7f
         private const val PLAYER_STROKE = 2f
         private const val PLACE_RADIUS = 6f
@@ -263,6 +330,7 @@ class MapLibreAdapter : MapRendererAdapter {
         private val OUTLINE_COLOR = Color.parseColor("#33000000")
         private val PLAYER_COLOR = Color.parseColor("#D06B3A")
         private val PLACE_COLOR = Color.parseColor("#2F6FB2")
+        private val TRACK_COLOR = Color.parseColor("#3E8E70")
 
         private val FOG_COLORS: Map<CellFogState, Int> = mapOf(
             CellFogState.UNKNOWN to Color.parseColor("#5A6B7A"),

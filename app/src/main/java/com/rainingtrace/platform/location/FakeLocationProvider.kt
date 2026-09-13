@@ -1,6 +1,7 @@
 package com.rainingtrace.platform.location
 
 import com.rainingtrace.domain.map.LocationProvider
+import com.rainingtrace.domain.map.LocationSource
 import com.rainingtrace.domain.map.RawLocationFix
 import com.rainingtrace.domain.map.WorldCoordinate
 import kotlinx.coroutines.channels.BufferOverflow
@@ -37,6 +38,7 @@ class FakeLocationProvider(
             coordinate = coordinate,
             accuracyMeters = accuracyMeters,
             timestampEpochMs = clock.now().toEpochMilli(),
+            source = LocationSource.FAKE,
         )
         lastFix = fix
         _updates.tryEmit(fix)

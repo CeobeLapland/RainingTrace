@@ -1,39 +1,60 @@
 package com.rainingtrace.data.local
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
- * 探索状态：每行一个已知 cell。
+ * 探索状态（战争迷雾投影）：每行一个已知 cell。
+ * 主键带格子档位前缀（如 "gm:12:-7"），切换档位后各行互不混淆。
  */
 @Entity(tableName = "exploration_cells")
 data class ExplorationCellEntity(
-    @PrimaryKey val cellId: String,
+    @PrimaryKey val cellKey: String,
     val fogState: String,
     val updatedAtEpochMs: Long,
 )
 
 /**
- * 足迹事件：append-only。
+ * 稳定轨迹点（去噪后）：世界空间真相的唯一持久形态。
+ * 迷雾、今日轨迹线都从这里派生。
+ */
+@Entity(
+    tableName = "track_points",
+    indices = [Index(value = ["timestampEpochMs"])],
+)
+data class TrackPointEntity(
+    @PrimaryKey val id: String,
+    val timestampEpochMs: Long,
+    val lat: Double,
+    val lng: Double,
+    val accuracyMeters: Double,
+    val source: String,
+)
+
+/**
+ * 足迹事件：append-only；位置为连续坐标。
  */
 @Entity(tableName = "footprint_events")
 data class FootprintEventEntity(
     @PrimaryKey val id: String,
     val timestampEpochMs: Long,
-    val cellId: String,
+    val lat: Double,
+    val lng: Double,
     val eventType: String,
     val visibility: String,
     val payloadKeyValues: String = "",
 )
 
 /**
- * 记忆节点。
+ * 记忆节点；位置为连续坐标，不依附格子。
  */
 @Entity(tableName = "memories")
 data class MemoryEntity(
     @PrimaryKey val id: String,
     val createdAtEpochMs: Long,
-    val cellId: String,
+    val lat: Double,
+    val lng: Double,
     val text: String,
     val mood: String?,
     val tags: String,

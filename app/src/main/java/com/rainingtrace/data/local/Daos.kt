@@ -9,19 +9,42 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ExplorationDao {
-    @Query("SELECT * FROM exploration_cells")
-    fun observeAll(): Flow<List<ExplorationCellEntity>>
+    // :prefix 是档位前缀（如 "gm:"），SQL 侧拼 % 做前缀匹配。
+    @Query("SELECT * FROM exploration_cells WHERE cellKey LIKE :prefix || '%'")
+    fun observeLevel(prefix: String): Flow<List<ExplorationCellEntity>>
 
-    @Query("SELECT * FROM exploration_cells")
-    suspend fun getAll(): List<ExplorationCellEntity>
+    @Query("SELECT * FROM exploration_cells WHERE cellKey LIKE :prefix || '%'")
+    suspend fun levelCells(prefix: String): List<ExplorationCellEntity>
 
-    @Query("SELECT * FROM exploration_cells WHERE cellId IN (:cellIds)")
-    suspend fun byIds(cellIds: List<String>): List<ExplorationCellEntity>
+    @Query("SELECT * FROM exploration_cells WHERE cellKey IN (:cellKeys)")
+    suspend fun byKeys(cellKeys: List<String>): List<ExplorationCellEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(cells: List<ExplorationCellEntity>)
 
-    @Query("SELECT COUNT(*) FROM exploration_cells")
+    @Query("DELETE FROM exploration_cells WHERE cellKey LIKE :prefix || '%'")
+    suspend fun deleteLevel(prefix: String)
+
+    @Query("SELECT COUNT(*) FROM exploration_cells WHERE cellKey LIKE :prefix || '%'")
+    suspend fun countLevel(prefix: String): Int
+}
+
+@Dao
+interface TrackPointDao {
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insert(point: TrackPointEntity)
+
+    @Query(
+        "SELECT * FROM track_points " +
+            "WHERE timestampEpochMs BETWEEN :fromMs AND :toMs " +
+            "ORDER BY timestampEpochMs ASC",
+    )
+    suspend fun between(fromMs: Long, toMs: Long): List<TrackPointEntity>
+
+    @Query("SELECT * FROM track_points ORDER BY timestampEpochMs DESC LIMIT 1")
+    suspend fun latest(): TrackPointEntity?
+
+    @Query("SELECT COUNT(*) FROM track_points")
     suspend fun count(): Int
 }
 
@@ -45,9 +68,6 @@ interface FootprintDao {
 interface MemoryDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(memory: MemoryEntity)
-
-    @Query("SELECT * FROM memories WHERE cellId = :cellId ORDER BY createdAtEpochMs DESC")
-    suspend fun byCell(cellId: String): List<MemoryEntity>
 
     @Query("SELECT * FROM memories ORDER BY createdAtEpochMs DESC LIMIT :limit")
     suspend fun latest(limit: Int): List<MemoryEntity>

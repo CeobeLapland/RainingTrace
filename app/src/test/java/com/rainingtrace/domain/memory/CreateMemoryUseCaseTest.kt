@@ -11,7 +11,6 @@ import com.rainingtrace.domain.map.HexCellId
 import com.rainingtrace.domain.map.HexGrid
 import com.rainingtrace.domain.map.WorldCoordinate
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -21,15 +20,14 @@ import java.time.Instant
 
 class CreateMemoryUseCaseTest {
 
-    private val grid = HexGrid(WorldCoordinate(39.7326, 116.1712), cellSizeMeters = 80.0)
+    private val grid = HexGrid(WorldCoordinate(39.7326, 116.1712), cellSizeMeters = 40.0)
     private val clock = FakeWorldClock(Instant.parse("2026-09-13T08:00:00Z"))
 
     private class FakeMemoryRepository : MemoryRepository {
         val saved = mutableListOf<MemoryNode>()
         override suspend fun save(memory: MemoryNode) { saved.add(memory) }
-        override suspend fun byCell(cellId: HexCellId): List<MemoryNode> =
-            saved.filter { it.cellId == cellId }
-        override suspend fun latest(limit: Int): List<MemoryNode> = saved.takeLast(limit).reversed()
+        override suspend fun latest(limit: Int): List<MemoryNode> =
+            saved.takeLast(limit).reversed()
     }
 
     private class FakeExplorationRepository : ExplorationRepository {
@@ -51,7 +49,7 @@ class CreateMemoryUseCaseTest {
     }
 
     @Test
-    fun `create memory saves node and marks cell memorized`() = runTest {
+    fun `create memory saves node with coordinate and marks cell memorized`() = runTest {
         val memories = FakeMemoryRepository()
         val exploration = FakeExplorationRepository()
         val footprints = FakeFootprintRepository()
@@ -63,10 +61,12 @@ class CreateMemoryUseCaseTest {
 
         assertEquals(1, memories.saved.size)
         assertEquals("第一次在雨中来到湖边", memories.saved.first().text)
-        assertEquals(cell, node.cellId)
+        assertEquals(coord, node.coordinate)
         assertEquals(CellFogState.MEMORIZED, exploration.state.stateOf(cell))
         assertEquals(1, footprints.events.size)
         assertEquals(FootprintEventType.MEMORY_CREATED, footprints.events.first().eventType)
+        // 足迹位置也是连续坐标
+        assertEquals(coord, footprints.events.first().coordinate)
     }
 
     @Test

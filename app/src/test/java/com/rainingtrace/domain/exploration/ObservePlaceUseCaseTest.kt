@@ -7,13 +7,11 @@ import com.rainingtrace.domain.footprint.FootprintRepository
 import com.rainingtrace.domain.inventory.AddItemToInventoryUseCase
 import com.rainingtrace.domain.inventory.InventoryRepository
 import com.rainingtrace.domain.inventory.InventoryState
-import com.rainingtrace.domain.map.HexGrid
 import com.rainingtrace.domain.map.Place
 import com.rainingtrace.domain.map.PlaceActionType
 import com.rainingtrace.domain.map.PlaceType
 import com.rainingtrace.domain.map.WorldCoordinate
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -31,7 +29,6 @@ class ObservePlaceUseCaseTest {
         actions = setOf(PlaceActionType.OBSERVE),
     )
 
-    private val grid = HexGrid(WorldCoordinate(39.7326, 116.1712), cellSizeMeters = 80.0)
     private val clock = FakeWorldClock(Instant.parse("2026-09-13T08:00:00Z"))
 
     private class FakeInventoryRepository : InventoryRepository {
@@ -57,7 +54,6 @@ class ObservePlaceUseCaseTest {
         footprint: FakeFootprintRepository = FakeFootprintRepository(),
     ) = Triple(
         ObservePlaceUseCase(
-            grid = grid,
             clock = clock,
             inventoryRepository = inventory,
             addItem = AddItemToInventoryUseCase(clock),
@@ -79,6 +75,8 @@ class ObservePlaceUseCaseTest {
         assertEquals(1, footprint.events.size)
         assertEquals(FootprintEventType.PLACE_OBSERVED, footprint.events.first().eventType)
         assertEquals("place.lake", footprint.events.first().payload["placeId"])
+        // 位置是连续坐标，不再是格子
+        assertEquals(lake.coordinate, footprint.events.first().coordinate)
     }
 
     @Test
@@ -113,6 +111,23 @@ class ObservePlaceUseCaseTest {
         assertTrue(second is ObserveResult.Success)
         assertEquals(2, (second as ObserveResult.Success).newQuantity)
         assertEquals(2, inventory.state.quantityOf("res.observation_record"))
+    }
+
+    @Test
+    fun `cooldown survives use case recreation as it is persisted in footprints`() = runTest {
+        val inventory = FakeInventoryRepository()
+        val footprint = FakeFootprintRepository()
+        ObservePlaceUseCase(clock, inventory, AddItemToInventoryUseCase(clock), footprint)
+            .invoke(lake.coordinate, lake)
+
+        clock.advanceSeconds(30)
+        // 模拟重启：新 UseCase，但足迹仓储里的历史还在
+        val afterRestart = ObservePlaceUseCase(
+            clock, inventory, AddItemToInventoryUseCase(clock), footprint,
+        )
+        val result = afterRestart(lake.coordinate, lake)
+
+        assertEquals(ObserveRejectReason.ON_COOLDOWN, (result as ObserveResult.Rejected).reason)
     }
 
     @Test

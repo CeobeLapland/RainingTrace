@@ -2,6 +2,9 @@ package com.rainingtrace.domain.map
 
 import kotlinx.coroutines.flow.Flow
 
+/** 定位来源：真实 GPS / Fake 调试移动。同时用于轨迹点入库标记。 */
+enum class LocationSource { GPS, FAKE }
+
 /**
  * RT-LOC-001: 定位来源接口。
  *
@@ -12,6 +15,7 @@ data class RawLocationFix(
     val coordinate: WorldCoordinate,
     val accuracyMeters: Double,
     val timestampEpochMs: Long,
+    val source: LocationSource,
 )
 
 interface LocationProvider {

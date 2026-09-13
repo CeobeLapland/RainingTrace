@@ -8,13 +8,14 @@ import com.rainingtrace.data.repository.FakePlaceRepository
 import com.rainingtrace.data.repository.RoomExplorationRepository
 import com.rainingtrace.data.repository.RoomFootprintRepository
 import com.rainingtrace.data.repository.RoomInventoryRepository
+import com.rainingtrace.data.repository.RoomMemoryRepository
+import com.rainingtrace.data.repository.RoomTrackRepository
 import com.rainingtrace.domain.exploration.ExplorationRepository
-import com.rainingtrace.domain.exploration.MarkCellVisitedUseCase
 import com.rainingtrace.domain.exploration.ObservePlaceUseCase
-import com.rainingtrace.domain.exploration.RevealNearbyCellsUseCase
 import com.rainingtrace.domain.footprint.FootprintRepository
 import com.rainingtrace.domain.inventory.AddItemToInventoryUseCase
 import com.rainingtrace.domain.inventory.InventoryRepository
+import com.rainingtrace.domain.map.GridLevel
 import com.rainingtrace.domain.map.HexGrid
 import com.rainingtrace.domain.map.LocationProvider
 import com.rainingtrace.domain.map.MapRendererAdapter
@@ -23,7 +24,10 @@ import com.rainingtrace.domain.map.WorldCoordinate
 import com.rainingtrace.domain.ar.ArController
 import com.rainingtrace.domain.memory.CreateMemoryUseCase
 import com.rainingtrace.domain.memory.MemoryRepository
-import com.rainingtrace.data.repository.RoomMemoryRepository
+import com.rainingtrace.domain.track.RebuildFogFromTrackUseCase
+import com.rainingtrace.domain.track.RecordTrackPointUseCase
+import com.rainingtrace.domain.track.RevealFogFromPointUseCase
+import com.rainingtrace.domain.track.TrackRepository
 import com.rainingtrace.platform.ar.ArCoreController
 import com.rainingtrace.platform.camera.CameraXController
 import com.rainingtrace.platform.location.FakeLocationProvider
@@ -50,7 +54,10 @@ class AppContainer(context: Context) {
 
     val clock: WorldClock by lazy { SystemWorldClock() }
 
-    val grid: HexGrid by lazy { HexGrid(origin = worldOrigin, cellSizeMeters = 80.0) }
+    /** 当前格子档位（S3 起可在设置切换并重建迷雾）。 */
+    val gridLevel: GridLevel = GridLevel.DEFAULT
+
+    val grid: HexGrid by lazy { HexGrid(origin = worldOrigin, cellSizeMeters = gridLevel.cellSizeMeters) }
 
     /**
      * 是否使用 Fake 定位。UI 据此显示「点击地图 = 移动」调试提示。
@@ -58,8 +65,17 @@ class AppContainer(context: Context) {
      */
     val useFakeLocation: Boolean = true
 
-    val locationProvider: LocationProvider by lazy {
+    private val fakeLocationProvider: FakeLocationProvider by lazy {
         FakeLocationProvider(clock = clock, initial = worldOrigin)
+    }
+
+    val locationProvider: LocationProvider by lazy {
+        fakeLocationProvider
+    }
+
+    /** 调试用：Fake 模式下点击地图 = 移动；真实定位模式下为 null（S4 切换）。 */
+    val debugMapTap: ((WorldCoordinate) -> Unit)? = { coordinate ->
+        fakeLocationProvider.emit(coordinate)
     }
 
     val mapRenderer: MapRendererAdapter by lazy { MapLibreAdapter() }
@@ -67,7 +83,11 @@ class AppContainer(context: Context) {
     val placeRepository: PlaceRepository by lazy { FakePlaceRepository() }
 
     val explorationRepository: ExplorationRepository by lazy {
-        RoomExplorationRepository(database.explorationDao())
+        RoomExplorationRepository(database.explorationDao(), gridLevel)
+    }
+
+    val trackRepository: TrackRepository by lazy {
+        RoomTrackRepository(database.trackPointDao())
     }
 
     val footprintRepository: FootprintRepository by lazy {
@@ -80,13 +100,18 @@ class AppContainer(context: Context) {
 
     val addItem: AddItemToInventoryUseCase by lazy { AddItemToInventoryUseCase(clock) }
 
-    val revealNearbyCells: RevealNearbyCellsUseCase by lazy { RevealNearbyCellsUseCase(grid) }
+    val recordTrackPoint: RecordTrackPointUseCase by lazy {
+        RecordTrackPointUseCase(trackRepository, clock)
+    }
 
-    val markCellVisited: MarkCellVisitedUseCase by lazy { MarkCellVisitedUseCase() }
+    val revealFog: RevealFogFromPointUseCase by lazy { RevealFogFromPointUseCase(grid) }
+
+    val rebuildFog: RebuildFogFromTrackUseCase by lazy {
+        RebuildFogFromTrackUseCase(revealFog)
+    }
 
     val observePlace: ObservePlaceUseCase by lazy {
         ObservePlaceUseCase(
-            grid = grid,
             clock = clock,
             inventoryRepository = inventoryRepository,
             addItem = addItem,

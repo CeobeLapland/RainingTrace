@@ -122,4 +122,37 @@ class HexGridTest {
     fun `invalid stable string rejected`() {
         HexCellId.fromStableString("R3C-12-08")
     }
+
+    @Test
+    fun `cells within zero meters only contains the point cell`() {
+        val g = HexGrid(origin = lakeOrigin, cellSizeMeters = 40.0)
+        val cells = g.cellsWithinMeters(lakeOrigin, 0.0)
+        assertEquals(listOf(HexCellId(0, 0)), cells)
+    }
+
+    @Test
+    fun `visit radius contains center cell but not the 60m north cell on 40m grid`() {
+        val g = HexGrid(origin = lakeOrigin, cellSizeMeters = 40.0)
+        val cells = g.cellsWithinMeters(lakeOrigin, 30.0)
+        assertTrue(HexCellId(0, 0) in cells)
+        assertTrue(HexCellId(0, -1) !in cells) // 中心在正北 60m
+    }
+
+    @Test
+    fun `sight radius intersects all six neighbors on 40m grid`() {
+        // 邻格中心 √3*40 ≈ 69.3m，但格间缝隙只有 34.6m；60m 圆与六个邻格都相交，
+        // 而两环格最近点 80m，不相交。
+        val g = HexGrid(origin = lakeOrigin, cellSizeMeters = 40.0)
+        val cells = g.cellsWithinMeters(lakeOrigin, 60.0)
+        listOf(
+            HexCellId(1, 0), HexCellId(1, -1), HexCellId(0, -1),
+            HexCellId(-1, 0), HexCellId(-1, 1), HexCellId(0, 1),
+        ).forEach { assertTrue("$it should be inside sight", it in cells) }
+        assertTrue(HexCellId(0, -2) !in cells)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `negative meter radius rejected`() {
+        grid.cellsWithinMeters(lakeOrigin, -1.0)
+    }
 }

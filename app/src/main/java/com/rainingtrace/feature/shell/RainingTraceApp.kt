@@ -83,14 +83,17 @@ fun RainingTraceApp(container: AppContainer) {
             composable(Routes.WORLD) {
                 val mapViewModel: MapViewModel = viewModel {
                     MapViewModel(
+                        clock = container.clock,
                         grid = container.grid,
                         locationProvider = container.locationProvider,
                         mapRenderer = container.mapRenderer,
-                        revealNearbyCells = container.revealNearbyCells,
-                        markCellVisited = container.markCellVisited,
+                        recordTrackPoint = container.recordTrackPoint,
+                        revealFog = container.revealFog,
+                        trackRepository = container.trackRepository,
                         observePlace = container.observePlace,
                         placeRepository = container.placeRepository,
                         explorationRepository = container.explorationRepository,
+                        debugMapTap = container.debugMapTap,
                     )
                 }
                 MapScreen(

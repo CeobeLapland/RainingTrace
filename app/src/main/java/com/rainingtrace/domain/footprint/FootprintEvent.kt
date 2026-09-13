@@ -1,12 +1,12 @@
 package com.rainingtrace.domain.footprint
 
-import com.rainingtrace.domain.map.HexCellId
+import com.rainingtrace.domain.map.WorldCoordinate
 
 /**
  * RT-DOM-006: 足迹事件（append-only 历史）。
  *
- * 足迹不是原始 GPS dump（06_地图专项 §6）：
- * 记录的是"空间 bucket"（HexCellId），不是经纬度。
+ * 位置真相是连续坐标（战争迷雾架构：位置不吸附格子）；
+ * 它也不是原始 GPS dump——上游轨迹点已经过去噪（06_地图专项 §6）。
  */
 enum class FootprintEventType {
     CELL_REVEALED,
@@ -26,7 +26,7 @@ enum class TraceVisibility {
 data class FootprintEvent(
     val id: String,
     val timestampEpochMs: Long,
-    val cellId: HexCellId,
+    val coordinate: WorldCoordinate,
     val eventType: FootprintEventType,
     val payload: Map<String, String> = emptyMap(),
     val visibility: TraceVisibility = TraceVisibility.PRIVATE,

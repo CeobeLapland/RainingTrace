@@ -1,7 +1,9 @@
 package com.rainingtrace.domain.map
 
 import kotlin.math.abs
+import kotlin.math.ceil
 import kotlin.math.cos
+import kotlin.math.hypot
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
@@ -75,6 +77,80 @@ class HexGrid(
                 cy + cellSizeMeters * sin(rad),
             )
         }
+    }
+
+    /**
+     * 以某真实坐标为圆心、米制半径内的格子：判定**圆与六边形相交**
+     * （圆心到六边形多边形的最短距离 ≤ 半径），而不是格中心距离——
+     * 否则在 40m 格上 60m 视野会跨不过任何邻格。
+     *
+     * 战争迷雾用：视野是现实距离，格子只是表现。
+     */
+    fun cellsWithinMeters(
+        coordinate: WorldCoordinate,
+        radiusMeters: Double,
+    ): List<HexCellId> {
+        require(radiusMeters >= 0.0) { "radiusMeters must be >= 0, got $radiusMeters" }
+        val centerCell = cellOf(coordinate)
+        if (radiusMeters == 0.0) return listOf(centerCell)
+        val (px, py) = toMeters(coordinate)
+        // 候选环上界：外接圆直径 + 半径，按行距 1.5*size 换算，再多取一环保险。
+        val ringBound = ceil((radiusMeters + 2.0 * cellSizeMeters) / (1.5 * cellSizeMeters)).toInt() + 1
+        return cellsWithinRadius(centerCell, ringBound).filter { cell ->
+            cell == centerCell || distancePointToCell(px, py, cell) <= radiusMeters
+        }
+    }
+
+    /** 点（米制局部坐标）到某格六边形多边形的最短距离；点在格内为 0。 */
+    private fun distancePointToCell(px: Double, py: Double, cell: HexCellId): Double {
+        val verts = cellVerticesMeters(cell)
+        if (isInsideConvexPolygon(px, py, verts)) return 0.0
+        var best = Double.MAX_VALUE
+        for (i in verts.indices) {
+            val a = verts[i]
+            val b = verts[(i + 1) % verts.size]
+            best = minOf(best, distancePointToSegment(px, py, a.first, a.second, b.first, b.second))
+        }
+        return best
+    }
+
+    private fun cellVerticesMeters(cell: HexCellId): List<Pair<Double, Double>> {
+        val cx = cellSizeMeters * SQRT3 * (cell.axialQ + cell.axialR / 2.0)
+        val cy = cellSizeMeters * 1.5 * cell.axialR
+        return (0 until 6).map { i ->
+            val angleDeg = 60.0 * i - 30.0 // pointy-top
+            val rad = Math.toRadians(angleDeg)
+            (cx + cellSizeMeters * cos(rad)) to (cy + cellSizeMeters * sin(rad))
+        }
+    }
+
+    /** 顶点按 CCW 给出：点在每条边左侧即位于凸多边形内部。 */
+    private fun isInsideConvexPolygon(
+        px: Double,
+        py: Double,
+        verts: List<Pair<Double, Double>>,
+    ): Boolean = verts.indices.all { i ->
+        val a = verts[i]
+        val b = verts[(i + 1) % verts.size]
+        (b.first - a.first) * (py - a.second) - (b.second - a.second) * (px - a.first) >= 0.0
+    }
+
+    private fun distancePointToSegment(
+        px: Double,
+        py: Double,
+        ax: Double,
+        ay: Double,
+        bx: Double,
+        by: Double,
+    ): Double {
+        val dx = bx - ax
+        val dy = by - ay
+        val lengthSquared = dx * dx + dy * dy
+        val t = if (lengthSquared == 0.0) 0.0 else
+            (((px - ax) * dx + (py - ay) * dy) / lengthSquared).coerceIn(0.0, 1.0)
+        val closestX = ax + t * dx
+        val closestY = ay + t * dy
+        return hypot(px - closestX, py - closestY)
     }
 
     /** 相邻 6 格。 */

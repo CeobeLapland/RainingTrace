@@ -34,6 +34,7 @@ enum class MapLayer {
     CELLS,
     PLAYER,
     PLACES,
+    TRACK,
 }
 
 interface MapRendererAdapter {
@@ -41,5 +42,12 @@ interface MapRendererAdapter {
     fun renderCells(cells: List<HexCellVisual>)
     fun renderPlayer(marker: PlayerMarkerVisual?)
     fun renderPlaces(places: List<PlaceVisual>)
+
+    /** 今日/区间轨迹折线；少于 2 个点时清空。 */
+    fun renderTrack(points: List<WorldCoordinate>)
+
+    /** 图层显隐开关（地图浮层按钮）。 */
+    fun setLayerVisible(layer: MapLayer, visible: Boolean)
+
     fun clearLayer(layer: MapLayer)
 }
