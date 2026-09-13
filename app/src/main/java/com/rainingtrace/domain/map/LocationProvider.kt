@@ -1,0 +1,19 @@
+package com.rainingtrace.domain.map
+
+import kotlinx.coroutines.flow.Flow
+
+/**
+ * RT-LOC-001: 定位来源接口。
+ *
+ * 注意：LocationSample 不是游戏事件（06_地图专项 §4）。
+ * 这里只输出"原始修正值"，由上层过滤/映射后才产生游戏语义事件。
+ */
+data class RawLocationFix(
+    val coordinate: WorldCoordinate,
+    val accuracyMeters: Double,
+    val timestampEpochMs: Long,
+)
+
+interface LocationProvider {
+    val updates: Flow<RawLocationFix>
+}

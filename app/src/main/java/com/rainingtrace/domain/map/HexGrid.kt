@@ -3,6 +3,7 @@ package com.rainingtrace.domain.map
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
 /**
  * 六边形网格（P0：单一固定精度）。
@@ -57,6 +58,23 @@ class HexGrid(
         val x = cellSizeMeters * SQRT3 * (cell.axialQ + cell.axialR / 2.0)
         val y = cellSizeMeters * 1.5 * cell.axialR
         return toCoordinate(x, y)
+    }
+
+    /**
+     * 六边形的 6 个顶点（pointy-top，逆时针，首尾不重复）。
+     * 用于地图 overlay 渲染。
+     */
+    fun cellPolygon(cell: HexCellId): List<WorldCoordinate> {
+        val cx = cellSizeMeters * SQRT3 * (cell.axialQ + cell.axialR / 2.0)
+        val cy = cellSizeMeters * 1.5 * cell.axialR
+        return (0 until 6).map { i ->
+            val angleDeg = 60.0 * i - 30.0 // pointy-top
+            val rad = Math.toRadians(angleDeg)
+            toCoordinate(
+                cx + cellSizeMeters * cos(rad),
+                cy + cellSizeMeters * sin(rad),
+            )
+        }
     }
 
     /** 相邻 6 格。 */
