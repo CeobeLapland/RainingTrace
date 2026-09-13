@@ -20,9 +20,11 @@ import com.rainingtrace.domain.map.LocationProvider
 import com.rainingtrace.domain.map.MapRendererAdapter
 import com.rainingtrace.domain.map.PlaceRepository
 import com.rainingtrace.domain.map.WorldCoordinate
+import com.rainingtrace.domain.ar.ArController
 import com.rainingtrace.domain.memory.CreateMemoryUseCase
 import com.rainingtrace.domain.memory.MemoryRepository
 import com.rainingtrace.data.repository.RoomMemoryRepository
+import com.rainingtrace.platform.ar.ArCoreController
 import com.rainingtrace.platform.camera.CameraXController
 import com.rainingtrace.platform.location.FakeLocationProvider
 import com.rainingtrace.platform.map.MapLibreAdapter
@@ -101,6 +103,14 @@ class AppContainer(context: Context) {
             memoryRepository = memoryRepository,
             explorationRepository = explorationRepository,
             footprintRepository = footprintRepository,
+        )
+    }
+
+    val arController: ArController by lazy {
+        ArCoreController(
+            context = appContext,
+            locationProvider = locationProvider,
+            clock = clock,
         )
     }
 }

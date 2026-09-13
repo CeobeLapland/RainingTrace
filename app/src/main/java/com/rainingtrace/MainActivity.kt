@@ -38,7 +38,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Route { MAP, CAMERA, JOURNAL }
+private enum class Route { MAP, CAMERA, JOURNAL, AR }
 
 /**
  * MVP 轻量导航：单 Activity + 状态切换。
@@ -71,6 +71,7 @@ fun AppRoot(container: AppContainer) {
                 mapAdapter = container.mapRenderer,
                 onTakePhoto = { route = Route.CAMERA },
                 onOpenJournal = { route = Route.JOURNAL },
+                onOpenAr = { route = Route.AR },
                 modifier = contentModifier,
             )
 
@@ -98,6 +99,12 @@ fun AppRoot(container: AppContainer) {
                     modifier = contentModifier,
                 )
             }
+
+            Route.AR -> com.rainingtrace.feature.ar.ArScreen(
+                controller = container.arController as com.rainingtrace.platform.ar.ArCoreController,
+                onDone = { route = Route.MAP },
+                modifier = contentModifier,
+            )
 
             Route.JOURNAL -> {
                 val journalViewModel: JournalViewModel = viewModel {

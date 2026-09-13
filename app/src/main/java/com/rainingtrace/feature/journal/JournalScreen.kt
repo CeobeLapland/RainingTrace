@@ -90,17 +90,19 @@ private fun MemoryCard(memory: MemoryNode, modifier: Modifier = Modifier) {
                 Spacer(Modifier.height(6.dp))
                 Text(memory.text, style = MaterialTheme.typography.bodyMedium)
             }
+            if (memory.mediaRefs.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    memory.mediaRefs.take(3).forEach { uri ->
+                        LocalImageThumbnail(localUri = uri)
+                    }
+                }
+            }
             Spacer(Modifier.height(6.dp))
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                if (memory.mediaRefs.isNotEmpty()) {
-                    Text(
-                        text = "照片 ×${memory.mediaRefs.size}",
-                        style = MaterialTheme.typography.labelSmall,
-                    )
-                }
                 Text(
                     text = memory.cellId.toStableString(),
                     style = MaterialTheme.typography.labelSmall,

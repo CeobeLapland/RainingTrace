@@ -44,6 +44,7 @@ fun MapScreen(
     mapAdapter: MapRendererAdapter,
     onTakePhoto: () -> Unit,
     onOpenJournal: () -> Unit,
+    onOpenAr: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -156,6 +157,9 @@ fun MapScreen(
                 .padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
+            SmallFloatingActionButton(onClick = onOpenAr) {
+                Text("AR", style = MaterialTheme.typography.labelLarge)
+            }
             SmallFloatingActionButton(onClick = onOpenJournal) {
                 Text("记", style = MaterialTheme.typography.titleMedium)
             }
