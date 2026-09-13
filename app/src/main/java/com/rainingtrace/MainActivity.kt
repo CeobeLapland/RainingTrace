@@ -84,6 +84,10 @@ fun AppRoot(container: AppContainer) {
                     )
                 }
                 androidx.compose.runtime.LaunchedEffect(Unit) { cameraViewModel.reset() }
+                androidx.activity.compose.BackHandler {
+                    mapViewModel.refresh()
+                    route = Route.MAP
+                }
                 CameraScreen(
                     viewModel = cameraViewModel,
                     cameraController = container.cameraController,
@@ -100,6 +104,10 @@ fun AppRoot(container: AppContainer) {
                     JournalViewModel(memoryRepository = container.memoryRepository)
                 }
                 androidx.compose.runtime.LaunchedEffect(Unit) { journalViewModel.refresh() }
+                androidx.activity.compose.BackHandler {
+                    mapViewModel.refresh()
+                    route = Route.MAP
+                }
                 androidx.compose.foundation.layout.Box(modifier = contentModifier) {
                     JournalScreen(viewModel = journalViewModel)
                     androidx.compose.material3.TextButton(

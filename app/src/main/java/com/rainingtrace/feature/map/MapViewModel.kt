@@ -74,10 +74,17 @@ class MapViewModel(
         onLocationFix(coordinate)
     }
 
-    /** 从其他屏（如拍照建记忆）返回时刷新：重载持久化状态并重渲染。 */
+    /**
+     * 从其他屏返回时刷新：重载持久化状态并重渲染。
+     * 只允许在地图 attach 完成后调用（MapScreen 触发），
+     * 否则会写到已销毁的旧 style 上导致崩溃。
+     */
     fun refresh() {
         viewModelScope.launch {
             explorationState = explorationRepository.loadState()
+            _uiState.value = _uiState.value.copy(
+                revealedCount = explorationState.revealedCount(),
+            )
             playerCell?.let { cell ->
                 renderCellsAround(cell)
                 lastCoordinate?.let { refreshPlaces(it) }

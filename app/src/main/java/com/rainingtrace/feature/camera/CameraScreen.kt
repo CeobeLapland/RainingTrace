@@ -62,7 +62,11 @@ fun CameraScreen(
         )
     }
     var cameraUnavailable by remember { mutableStateOf(false) }
-    var previewView by remember { mutableStateOf<PreviewView?>(null) }
+    // PreviewView 在 remember 中创建一次，避免在 AndroidView.factory 里写状态
+    // 触发重组、进而取消绑定协程（LeftCompositionCancellationException）。
+    val previewView = remember {
+        PreviewView(context).apply { scaleType = PreviewView.ScaleType.FILL_CENTER }
+    }
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted -> hasPermission = granted }
@@ -73,14 +77,13 @@ fun CameraScreen(
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    // 权限就绪 + PreviewView 就绪 → 绑定 CameraX
-    LaunchedEffect(hasPermission, previewView) {
-        val view = previewView
-        if (hasPermission && view != null && !cameraUnavailable) {
+    // 权限就绪 → 绑定 CameraX（previewView 稳定，不再作为 key）
+    LaunchedEffect(hasPermission) {
+        if (hasPermission && !cameraUnavailable) {
             runCatching {
                 val provider = cameraController.initializeProvider()
                 val preview = Preview.Builder().build().also {
-                    it.surfaceProvider = view.surfaceProvider
+                    it.surfaceProvider = previewView.surfaceProvider
                 }
                 provider.unbindAll()
                 provider.bindToLifecycle(
@@ -120,12 +123,7 @@ fun CameraScreen(
                     .aspectRatio(3f / 4f),
             ) {
                 AndroidView(
-                    factory = { ctx ->
-                        PreviewView(ctx).apply {
-                            scaleType = PreviewView.ScaleType.FILL_CENTER
-                            previewView = this
-                        }
-                    },
+                    factory = { previewView },
                     modifier = Modifier.fillMaxSize(),
                 )
                 uiState.capturedPhotoUri?.let {

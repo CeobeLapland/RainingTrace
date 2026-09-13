@@ -48,6 +48,8 @@ class MapLibreAdapter : MapRendererAdapter {
 
     /** 由 feature 层在 MapView 就绪后调用。可重复 attach（页面切换后重建地图）。 */
     fun attach(mapLibreMap: MapLibreMap) {
+        // 同一张地图且 style 已就绪：不重复 setStyle（重复加载会使旧 style 失效）
+        if (map === mapLibreMap && style != null) return
         val generation = ++attachGeneration
         this.map = mapLibreMap
         this.style = null
@@ -100,12 +102,8 @@ class MapLibreAdapter : MapRendererAdapter {
             pendingCells = cells
             return
         }
-        Log.d(TAG, "renderCells n=${cells.size} first=${cells.firstOrNull()?.fogState}")
-        val source = loaded.getSourceAs<GeoJsonSource>(CELLS_SOURCE)
-        if (source == null) {
-            Log.e(TAG, "cells source missing")
-            return
-        }
+        val source = loaded.safeSource(CELLS_SOURCE)
+            ?: run { pendingCells = cells; return }
         source.setGeoJson(toFeatureCollection(cells))
     }
 
@@ -115,7 +113,9 @@ class MapLibreAdapter : MapRendererAdapter {
             pendingPlayer = marker
             return
         }
-        loaded.getSourceAs<GeoJsonSource>(PLAYER_SOURCE)?.setGeoJson(
+        val source = loaded.safeSource(PLAYER_SOURCE)
+            ?: run { pendingPlayer = marker; return }
+        source.setGeoJson(
             if (marker == null) EMPTY else Feature.fromGeometry(toPoint(marker.coordinate)),
         )
     }
@@ -126,7 +126,9 @@ class MapLibreAdapter : MapRendererAdapter {
             pendingPlaces = places
             return
         }
-        loaded.getSourceAs<GeoJsonSource>(PLACES_SOURCE)?.setGeoJson(
+        val source = loaded.safeSource(PLACES_SOURCE)
+            ?: run { pendingPlaces = places; return }
+        source.setGeoJson(
             FeatureCollection.fromFeatures(
                 places.map {
                     Feature.fromGeometry(toPoint(it.coordinate)).apply {
@@ -136,6 +138,19 @@ class MapLibreAdapter : MapRendererAdapter {
             ),
         )
     }
+
+    /**
+     * MapLibre 的 Style 在异步换 style 期间调用 getSourceAs 会抛
+     * IllegalStateException；此时数据已存入 pending，下一次 flush 会重放，
+     * 因此安全吞掉即可，不让渲染竞态崩溃进程。
+     */
+    private fun Style.safeSource(id: String): GeoJsonSource? =
+        try {
+            getSourceAs(id)
+        } catch (e: IllegalStateException) {
+            Log.d(TAG, "style transitioning, skip render for $id")
+            null
+        }
 
     override fun clearLayer(layer: MapLayer) {
         when (layer) {
