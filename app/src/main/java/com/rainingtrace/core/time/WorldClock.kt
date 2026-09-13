@@ -1,0 +1,37 @@
+package com.rainingtrace.core.time
+
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+
+/**
+ * RT-DOM-008: 世界时钟。
+ *
+ * 所有业务时间必须经此接口获取（见 05_领域模型 §10）。
+ * UseCase / domain 中禁止直接 `Instant.now()`。
+ */
+interface WorldClock {
+    fun now(): Instant
+
+    fun localDate(zone: ZoneId): LocalDate = now().atZone(zone).toLocalDate()
+}
+
+/** 生产实现：系统时间。 */
+class SystemWorldClock : WorldClock {
+    override fun now(): Instant = Instant.now()
+}
+
+/** 测试/Fake 实现：固定时刻，可手动推进。 */
+class FakeWorldClock(initial: Instant) : WorldClock {
+    private var current: Instant = initial
+
+    override fun now(): Instant = current
+
+    fun set(instant: Instant) {
+        current = instant
+    }
+
+    fun advanceSeconds(seconds: Long) {
+        current = current.plusSeconds(seconds)
+    }
+}
