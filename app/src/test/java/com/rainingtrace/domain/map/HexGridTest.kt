@@ -99,6 +99,20 @@ class HexGridTest {
     }
 
     @Test
+    fun `cell polygon has six distinct vertices around center`() {
+        val cell = HexCellId(2, -1)
+        val polygon = grid.cellPolygon(cell)
+        val center = grid.cellCenter(cell)
+        assertEquals(6, polygon.size)
+        assertEquals(6, polygon.distinct().size)
+        // 顶点到中心距离 ≈ cellSize（80m），允许等距圆柱近似误差
+        polygon.forEach { vertex ->
+            val d = center.distanceMetersTo(vertex)
+            assertTrue("vertex distance $d", d in 79.0..81.0)
+        }
+    }
+
+    @Test
     fun `stable string round-trips`() {
         val cell = HexCellId(-12, 8)
         assertEquals(cell, HexCellId.fromStableString(cell.toStableString()))
