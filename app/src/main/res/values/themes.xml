@@ -1,0 +1,4 @@
+<resources>
+    <!-- Compose 接管配色，原生主题只保留无 ActionBar 的窗口样式 -->
+    <style name="Theme.RainingTrace" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>
