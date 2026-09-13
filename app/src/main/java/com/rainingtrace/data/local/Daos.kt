@@ -12,6 +12,9 @@ interface ExplorationDao {
     @Query("SELECT * FROM exploration_cells")
     fun observeAll(): Flow<List<ExplorationCellEntity>>
 
+    @Query("SELECT * FROM exploration_cells")
+    suspend fun getAll(): List<ExplorationCellEntity>
+
     @Query("SELECT * FROM exploration_cells WHERE cellId IN (:cellIds)")
     suspend fun byIds(cellIds: List<String>): List<ExplorationCellEntity>
 
@@ -54,6 +57,9 @@ interface MemoryDao {
 interface InventoryDao {
     @Query("SELECT * FROM inventory_items")
     fun observeAll(): Flow<List<InventoryItemEntity>>
+
+    @Query("SELECT * FROM inventory_items")
+    suspend fun getAll(): List<InventoryItemEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(item: InventoryItemEntity)

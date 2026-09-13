@@ -48,7 +48,9 @@ fun MapRoute(
             mapRenderer = container.mapRenderer,
             revealNearbyCells = container.revealNearbyCells,
             markCellVisited = container.markCellVisited,
-            clock = container.clock,
+            observePlace = container.observePlace,
+            placeRepository = container.placeRepository,
+            explorationRepository = container.explorationRepository,
         )
     }
     MapScreen(

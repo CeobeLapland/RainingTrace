@@ -1,13 +1,19 @@
 package com.rainingtrace.feature.map
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -20,7 +26,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rainingtrace.domain.map.MapRendererAdapter
+import com.rainingtrace.domain.map.distanceMetersTo
 import com.rainingtrace.platform.map.MapLibreAdapter
+import kotlinx.coroutines.delay
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 
@@ -103,6 +111,54 @@ fun MapScreen(
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(10.dp),
             )
+        }
+
+        // 附近地点卡片：出现"可观察"动作入口
+        uiState.nearbyPlace?.let { place ->
+            Card(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(16.dp)
+                    .fillMaxWidth(),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column {
+                        Text(place.name, style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            "距离 ${place.coordinate.distanceMetersTo(uiState.lastFix ?: place.coordinate).toInt()} m",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                    Button(onClick = viewModel::onObserveClicked) {
+                        Text("观察")
+                    }
+                }
+            }
+        }
+
+        // Toast 反馈（3 秒自动消失）
+        uiState.toast?.let { message ->
+            Card(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 120.dp),
+            ) {
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                )
+            }
+            LaunchedEffect(message) {
+                delay(3000)
+                viewModel.consumeToast()
+            }
         }
     }
 }

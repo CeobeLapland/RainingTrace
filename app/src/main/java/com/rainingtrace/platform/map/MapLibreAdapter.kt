@@ -7,6 +7,7 @@ import com.rainingtrace.domain.map.HexCellVisual
 import com.rainingtrace.domain.map.MapCamera
 import com.rainingtrace.domain.map.MapLayer
 import com.rainingtrace.domain.map.MapRendererAdapter
+import com.rainingtrace.domain.map.PlaceVisual
 import com.rainingtrace.domain.map.PlayerMarkerVisual
 import com.rainingtrace.domain.map.WorldCoordinate
 import org.maplibre.android.geometry.LatLng
@@ -39,6 +40,7 @@ class MapLibreAdapter : MapRendererAdapter {
     private var pendingCamera: MapCamera? = null
     private var pendingCells: List<HexCellVisual>? = null
     private var pendingPlayer: PlayerMarkerVisual? = null
+    private var pendingPlaces: List<PlaceVisual>? = null
 
     private var tapListener: ((WorldCoordinate) -> Unit)? = null
 
@@ -105,10 +107,28 @@ class MapLibreAdapter : MapRendererAdapter {
         )
     }
 
+    override fun renderPlaces(places: List<PlaceVisual>) {
+        val loaded = style
+        if (loaded == null) {
+            pendingPlaces = places
+            return
+        }
+        loaded.getSourceAs<GeoJsonSource>(PLACES_SOURCE)?.setGeoJson(
+            FeatureCollection.fromFeatures(
+                places.map {
+                    Feature.fromGeometry(toPoint(it.coordinate)).apply {
+                        addStringProperty(PROP_PLACE_NAME, it.name)
+                    }
+                },
+            ),
+        )
+    }
+
     override fun clearLayer(layer: MapLayer) {
         when (layer) {
             MapLayer.CELLS -> renderCells(emptyList())
             MapLayer.PLAYER -> renderPlayer(null)
+            MapLayer.PLACES -> renderPlaces(emptyList())
         }
     }
 
@@ -116,11 +136,13 @@ class MapLibreAdapter : MapRendererAdapter {
         pendingCamera?.let { setCamera(it); pendingCamera = null }
         pendingCells?.let { renderCells(it); pendingCells = null }
         pendingPlayer?.let { renderPlayer(it); pendingPlayer = null }
+        pendingPlaces?.let { renderPlaces(it); pendingPlaces = null }
     }
 
     private fun installSourcesAndLayers(loaded: Style) {
         loaded.addSource(GeoJsonSource(CELLS_SOURCE, EMPTY_FC))
         loaded.addSource(GeoJsonSource(PLAYER_SOURCE, EMPTY))
+        loaded.addSource(GeoJsonSource(PLACES_SOURCE, EMPTY_FC))
 
         // 每个迷雾状态一个 fill 层（filter 驱动），避免表达式版本差异风险。
         FOG_COLORS.forEach { (state, color) ->
@@ -143,6 +165,16 @@ class MapLibreAdapter : MapRendererAdapter {
                 )
             },
             "fill_${CellFogState.SPECIAL.name}",
+        )
+        loaded.addLayer(
+            CircleLayer(PLACES_LAYER, PLACES_SOURCE).apply {
+                setProperties(
+                    PropertyFactory.circleColor(PLACE_COLOR),
+                    PropertyFactory.circleRadius(PLACE_RADIUS),
+                    PropertyFactory.circleStrokeColor(Color.WHITE),
+                    PropertyFactory.circleStrokeWidth(PLACE_STROKE),
+                )
+            },
         )
         loaded.addLayer(
             CircleLayer(PLAYER_LAYER, PLAYER_SOURCE).apply {
@@ -187,16 +219,22 @@ class MapLibreAdapter : MapRendererAdapter {
 
         private const val CELLS_SOURCE = "rt-cells"
         private const val PLAYER_SOURCE = "rt-player"
+        private const val PLACES_SOURCE = "rt-places"
         private const val PLAYER_LAYER = "rt-player-dot"
+        private const val PLACES_LAYER = "rt-places-dot"
         private const val PROP_FOG = "fog"
+        private const val PROP_PLACE_NAME = "placeName"
         private const val FILL_OPACITY = 0.45f
         private const val OUTLINE_WIDTH = 0.8f
         private const val PLAYER_RADIUS = 7f
         private const val PLAYER_STROKE = 2f
+        private const val PLACE_RADIUS = 6f
+        private const val PLACE_STROKE = 2f
         private const val CAMERA_ANIM_MS = 600
 
         private val OUTLINE_COLOR = Color.parseColor("#33000000")
         private val PLAYER_COLOR = Color.parseColor("#D06B3A")
+        private val PLACE_COLOR = Color.parseColor("#2F6FB2")
 
         private val FOG_COLORS: Map<CellFogState, Int> = mapOf(
             CellFogState.UNKNOWN to Color.parseColor("#5A6B7A"),

@@ -35,6 +35,15 @@ data class ExplorationState(
 
     fun revealedCount(): Int = cellStates.size
 
+    /** 从持久化数据恢复/合并：逐格取更高状态。 */
+    fun mergedWith(other: ExplorationState): ExplorationState {
+        var result = this
+        other.cellStates.forEach { (cell, state) ->
+            result = result.withState(cell, state)
+        }
+        return result
+    }
+
     /** 用新状态覆盖；仅当新状态等级 >= 旧状态时生效。 */
     fun withState(cell: HexCellId, newState: CellFogState): ExplorationState {
         val current = stateOf(cell)

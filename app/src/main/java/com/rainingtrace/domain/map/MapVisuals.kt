@@ -24,14 +24,22 @@ data class PlayerMarkerVisual(
     val coordinate: WorldCoordinate,
 )
 
+data class PlaceVisual(
+    val placeId: String,
+    val name: String,
+    val coordinate: WorldCoordinate,
+)
+
 enum class MapLayer {
     CELLS,
     PLAYER,
+    PLACES,
 }
 
 interface MapRendererAdapter {
     fun setCamera(camera: MapCamera)
     fun renderCells(cells: List<HexCellVisual>)
     fun renderPlayer(marker: PlayerMarkerVisual?)
+    fun renderPlaces(places: List<PlaceVisual>)
     fun clearLayer(layer: MapLayer)
 }
