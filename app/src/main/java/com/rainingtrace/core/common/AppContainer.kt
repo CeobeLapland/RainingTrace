@@ -52,6 +52,12 @@ class AppContainer(context: Context) {
 
     val grid: HexGrid by lazy { HexGrid(origin = worldOrigin, cellSizeMeters = 80.0) }
 
+    /**
+     * 是否使用 Fake 定位。UI 据此显示「点击地图 = 移动」调试提示。
+     * RT-BOOT-006 完成后由 DataStore 设置替换本常量。
+     */
+    val useFakeLocation: Boolean = true
+
     val locationProvider: LocationProvider by lazy {
         FakeLocationProvider(clock = clock, initial = worldOrigin)
     }

@@ -15,7 +15,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -86,7 +85,13 @@ fun ArScreen(
             controller.setDisplayRotation(displayRotation(context))
             controller.onResume()
         }
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            // 离开组合（含拍照/AR 模式切换）时释放相机与 GL 渲染，
+            // 同一 NavBackStackEntry 不会收到 ON_PAUSE，必须在这里补一次。
+            controller.onPause()
+            glView.onPause()
+        }
     }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -163,14 +168,6 @@ fun ArScreen(
             ArSessionState.SUPPORTED -> Unit
         }
 
-        TextButton(
-            onClick = onDone,
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(8.dp),
-        ) {
-            Text("← 返回", color = Color.White)
-        }
     }
 }
 

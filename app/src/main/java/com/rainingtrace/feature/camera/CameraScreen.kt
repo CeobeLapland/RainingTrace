@@ -24,10 +24,12 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,6 +41,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rainingtrace.domain.memory.Mood
 import com.rainingtrace.platform.camera.CameraXController
+import kotlinx.coroutines.launch
 
 /**
  * 随手拍 → 记忆编辑器（单屏完成，MVP 简化）。
@@ -77,25 +80,39 @@ fun CameraScreen(
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    // 权限就绪 → 绑定 CameraX（previewView 稳定，不再作为 key）
-    LaunchedEffect(hasPermission) {
-        if (hasPermission && !cameraUnavailable) {
-            runCatching {
-                val provider = cameraController.initializeProvider()
-                val preview = Preview.Builder().build().also {
-                    it.surfaceProvider = previewView.surfaceProvider
+    val scope = rememberCoroutineScope()
+
+    // 权限就绪 → 绑定 CameraX。
+    // 离开组合（含摄像 Tab 内切到 AR 模式）必须显式解绑：同一 NavBackStackEntry
+    // 仍处于 RESUMED，CameraX 不会因生命周期自动释放，会与 ARCore 抢相机。
+    DisposableEffect(hasPermission, cameraUnavailable, lifecycleOwner) {
+        var provider: androidx.camera.lifecycle.ProcessCameraProvider? = null
+        val job = if (hasPermission && !cameraUnavailable) {
+            scope.launch {
+                runCatching {
+                    val p = cameraController.initializeProvider()
+                    provider = p
+                    val preview = Preview.Builder().build().also {
+                        it.surfaceProvider = previewView.surfaceProvider
+                    }
+                    p.unbindAll()
+                    p.bindToLifecycle(
+                        lifecycleOwner,
+                        cameraController.cameraSelector,
+                        preview,
+                        cameraController.buildImageCapture(),
+                    )
+                }.onFailure {
+                    android.util.Log.e("CameraScreen", "bind failed", it)
+                    cameraUnavailable = true
                 }
-                provider.unbindAll()
-                provider.bindToLifecycle(
-                    lifecycleOwner,
-                    cameraController.cameraSelector,
-                    preview,
-                    cameraController.buildImageCapture(),
-                )
-            }.onFailure {
-                android.util.Log.e("CameraScreen", "bind failed", it)
-                cameraUnavailable = true
             }
+        } else {
+            null
+        }
+        onDispose {
+            job?.cancel()
+            provider?.unbindAll()
         }
     }
 

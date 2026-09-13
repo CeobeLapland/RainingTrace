@@ -7,11 +7,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -21,11 +21,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rainingtrace.domain.map.MapRendererAdapter
 import com.rainingtrace.domain.map.distanceMetersTo
@@ -42,9 +42,7 @@ import org.maplibre.android.maps.MapView
 fun MapScreen(
     viewModel: MapViewModel,
     mapAdapter: MapRendererAdapter,
-    onTakePhoto: () -> Unit,
-    onOpenJournal: () -> Unit,
-    onOpenAr: () -> Unit,
+    useFakeLocation: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -100,25 +98,29 @@ fun MapScreen(
             }
         }
 
-        Card(
+        // 从其他 Tab 返回：MapView 已重建，补一次状态重渲染。
+        DisposableEffect(lifecycleOwner, viewModel) {
+            val refreshObserver = LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME) viewModel.refresh()
+            }
+            lifecycleOwner.lifecycle.addObserver(refreshObserver)
+            onDispose { lifecycleOwner.lifecycle.removeObserver(refreshObserver) }
+        }
+
+        // 左上角手账浮片：探索计数常驻；Fake 定位提示仅 Fake 模式可见。
+        Column(
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Text(
-                text = buildString {
-                    append("已探索 ")
-                    append(uiState.revealedCount)
-                    append(" 格")
-                    uiState.playerCell?.let {
-                        append("\n所在格 ")
-                        append(it.toStableString())
-                    }
-                    append("\n点击地图 = 移动（Fake 定位）")
-                },
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(10.dp),
-            )
+            MapChip(text = "足迹 · 已探索 ${uiState.revealedCount} 格")
+            if (useFakeLocation) {
+                MapChip(
+                    text = "Fake 定位 · 点按地图移动",
+                    emphasized = true,
+                )
+            }
         }
 
         // 附近地点卡片：出现"可观察"动作入口
@@ -140,31 +142,13 @@ fun MapScreen(
                         Text(place.name, style = MaterialTheme.typography.titleMedium)
                         Text(
                             "距离 ${place.coordinate.distanceMetersTo(uiState.lastFix ?: place.coordinate).toInt()} m",
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodyMedium,
                         )
                     }
                     Button(onClick = viewModel::onObserveClicked) {
                         Text("观察")
                     }
                 }
-            }
-        }
-
-        // 右上角入口：随手拍 + 日记
-        Column(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            SmallFloatingActionButton(onClick = onOpenAr) {
-                Text("AR", style = MaterialTheme.typography.labelLarge)
-            }
-            SmallFloatingActionButton(onClick = onOpenJournal) {
-                Text("记", style = MaterialTheme.typography.titleMedium)
-            }
-            FloatingActionButton(onClick = onTakePhoto) {
-                Text("拍", style = MaterialTheme.typography.titleMedium)
             }
         }
 
@@ -186,5 +170,34 @@ fun MapScreen(
                 viewModel.consumeToast()
             }
         }
+    }
+}
+
+@Composable
+private fun MapChip(
+    text: String,
+    emphasized: Boolean = false,
+) {
+    val container = if (emphasized) {
+        MaterialTheme.colorScheme.tertiary.copy(alpha = 0.14f)
+    } else {
+        MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
+    }
+    val content = if (emphasized) {
+        MaterialTheme.colorScheme.tertiary
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
+    Surface(
+        color = container,
+        shape = RoundedCornerShape(percent = 50),
+        tonalElevation = 0.dp,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            color = content,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+        )
     }
 }

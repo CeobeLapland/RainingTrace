@@ -86,7 +86,9 @@ class MapViewModel(
                 revealedCount = explorationState.revealedCount(),
             )
             playerCell?.let { cell ->
+                // MapView 切 Tab 后会重建，玩家标记与地点都要补渲染。
                 renderCellsAround(cell)
+                mapRenderer.renderPlayer(PlayerMarkerVisual(grid.cellCenter(cell)))
                 lastCoordinate?.let { refreshPlaces(it) }
             }
         }
