@@ -26,6 +26,9 @@ class FakeLocationProvider(
 
     override val updates: Flow<RawLocationFix> = _updates
 
+    override val latest: RawLocationFix?
+        get() = lastFix
+
     var lastFix: RawLocationFix? = null
         private set
 

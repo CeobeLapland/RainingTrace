@@ -74,6 +74,17 @@ class MapViewModel(
         onLocationFix(coordinate)
     }
 
+    /** 从其他屏（如拍照建记忆）返回时刷新：重载持久化状态并重渲染。 */
+    fun refresh() {
+        viewModelScope.launch {
+            explorationState = explorationRepository.loadState()
+            playerCell?.let { cell ->
+                renderCellsAround(cell)
+                lastCoordinate?.let { refreshPlaces(it) }
+            }
+        }
+    }
+
     fun onObserveClicked() {
         val place = _uiState.value.nearbyPlace ?: return
         val coordinate = lastCoordinate ?: return

@@ -20,6 +20,10 @@ import com.rainingtrace.domain.map.LocationProvider
 import com.rainingtrace.domain.map.MapRendererAdapter
 import com.rainingtrace.domain.map.PlaceRepository
 import com.rainingtrace.domain.map.WorldCoordinate
+import com.rainingtrace.domain.memory.CreateMemoryUseCase
+import com.rainingtrace.domain.memory.MemoryRepository
+import com.rainingtrace.data.repository.RoomMemoryRepository
+import com.rainingtrace.platform.camera.CameraXController
 import com.rainingtrace.platform.location.FakeLocationProvider
 import com.rainingtrace.platform.map.MapLibreAdapter
 
@@ -32,6 +36,8 @@ import com.rainingtrace.platform.map.MapLibreAdapter
  * 依赖方向保持 feature → domain ← platform/data。
  */
 class AppContainer(context: Context) {
+
+    private val appContext: Context = context.applicationContext
 
     // 世界原点：北湖（参考坐标，真机试玩后校准）
     private val worldOrigin = WorldCoordinate(39.7326, 116.1712)
@@ -76,6 +82,24 @@ class AppContainer(context: Context) {
             clock = clock,
             inventoryRepository = inventoryRepository,
             addItem = addItem,
+            footprintRepository = footprintRepository,
+        )
+    }
+
+    val memoryRepository: MemoryRepository by lazy {
+        RoomMemoryRepository(database.memoryDao())
+    }
+
+    val cameraController: CameraXController by lazy {
+        CameraXController(context = appContext, clock = clock)
+    }
+
+    val createMemory: CreateMemoryUseCase by lazy {
+        CreateMemoryUseCase(
+            grid = grid,
+            clock = clock,
+            memoryRepository = memoryRepository,
+            explorationRepository = explorationRepository,
             footprintRepository = footprintRepository,
         )
     }

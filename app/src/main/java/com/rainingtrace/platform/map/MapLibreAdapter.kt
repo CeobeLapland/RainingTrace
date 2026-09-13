@@ -35,7 +35,6 @@ class MapLibreAdapter : MapRendererAdapter {
 
     private var map: MapLibreMap? = null
     private var style: Style? = null
-    private var attached = false
 
     private var pendingCamera: MapCamera? = null
     private var pendingCells: List<HexCellVisual>? = null
@@ -44,12 +43,19 @@ class MapLibreAdapter : MapRendererAdapter {
 
     private var tapListener: ((WorldCoordinate) -> Unit)? = null
 
-    /** 由 feature 层在 MapView 就绪后调用。 */
+    /** attach 代际：detach 后旧的异步 style 回调一律作废，避免写已销毁的 native 对象。 */
+    private var attachGeneration = 0
+
+    /** 由 feature 层在 MapView 就绪后调用。可重复 attach（页面切换后重建地图）。 */
     fun attach(mapLibreMap: MapLibreMap) {
-        if (attached) return
-        attached = true
+        val generation = ++attachGeneration
         this.map = mapLibreMap
+        this.style = null
         mapLibreMap.setStyle(Style.Builder().fromUri(STYLE_URI)) { loadedStyle ->
+            if (generation != attachGeneration) {
+                Log.d(TAG, "style callback from stale generation, ignored")
+                return@setStyle
+            }
             if (loadedStyle == null) {
                 Log.e(TAG, "style load FAILED uri=$STYLE_URI")
                 return@setStyle
@@ -66,6 +72,13 @@ class MapLibreAdapter : MapRendererAdapter {
             }
             flushPending()
         }
+    }
+
+    /** MapView 销毁时调用：丢弃缓存的 style/map，停止一切渲染写入。 */
+    fun detach() {
+        attachGeneration++
+        style = null
+        map = null
     }
 
     fun onMapTap(listener: (WorldCoordinate) -> Unit) {

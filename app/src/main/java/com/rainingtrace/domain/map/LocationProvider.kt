@@ -16,4 +16,7 @@ data class RawLocationFix(
 
 interface LocationProvider {
     val updates: Flow<RawLocationFix>
+
+    /** 最近一次有效定位（无则 null）。用于"此刻此地"快照，如拍照建记忆。 */
+    val latest: RawLocationFix?
 }

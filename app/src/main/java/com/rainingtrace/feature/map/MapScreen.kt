@@ -9,7 +9,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -40,6 +42,8 @@ import org.maplibre.android.maps.MapView
 fun MapScreen(
     viewModel: MapViewModel,
     mapAdapter: MapRendererAdapter,
+    onTakePhoto: () -> Unit,
+    onOpenJournal: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -63,7 +67,10 @@ fun MapScreen(
                 }
             },
             update = { /* MapView 自管理渲染；状态经 adapter 推送 */ },
-            onRelease = { mapView -> mapView.onDestroy() },
+            onRelease = { mapView ->
+                (mapAdapter as? MapLibreAdapter)?.detach()
+                mapView.onDestroy()
+            },
             modifier = Modifier.fillMaxSize(),
         )
 
@@ -139,6 +146,21 @@ fun MapScreen(
                         Text("观察")
                     }
                 }
+            }
+        }
+
+        // 右上角入口：随手拍 + 日记
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            SmallFloatingActionButton(onClick = onOpenJournal) {
+                Text("记", style = MaterialTheme.typography.titleMedium)
+            }
+            FloatingActionButton(onClick = onTakePhoto) {
+                Text("拍", style = MaterialTheme.typography.titleMedium)
             }
         }
 

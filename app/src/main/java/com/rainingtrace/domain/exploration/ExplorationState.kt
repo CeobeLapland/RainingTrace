@@ -23,6 +23,12 @@ enum class CellFogState {
 }
 
 /**
+ * 状态等级：枚举声明顺序即强弱顺序（UNKNOWN 最弱，SPECIAL 最强）。
+ * 用于"状态只升不降"规则；新增枚举值必须追加在末尾。
+ */
+val CellFogState.rank: Int get() = ordinal
+
+/**
  * 玩家视角的探索状态投影。
  *
  * 只保存"已知"的单元；UNKNOWN 通过缺省表达。
@@ -53,13 +59,4 @@ data class ExplorationState(
             this
         }
     }
-
-    private val CellFogState.rank: Int
-        get() = when (this) {
-            CellFogState.UNKNOWN -> 0
-            CellFogState.DISCOVERED -> 1
-            CellFogState.VISITED -> 2
-            CellFogState.MEMORIZED -> 3
-            CellFogState.SPECIAL -> 4
-        }
 }
