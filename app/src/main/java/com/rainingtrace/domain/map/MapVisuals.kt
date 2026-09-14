@@ -29,7 +29,24 @@ data class PlaceVisual(
     val placeId: String,
     val name: String,
     val coordinate: WorldCoordinate,
+    val placeType: PlaceType,
 )
+
+/**
+ * 地点呈现规格：颜色 + 标记字。
+ * 纯数据（ARGB Int），platform 画位图、feature 画缩略图共用，避免两处配色漂移。
+ */
+data class PlaceStyleSpec(val argbColor: Int, val glyph: String)
+
+fun placeStyle(type: PlaceType): PlaceStyleSpec = when (type) {
+    PlaceType.LAKE -> PlaceStyleSpec(0xFF2E6FA3.toInt(), "湖")
+    PlaceType.LIBRARY -> PlaceStyleSpec(0xFF7D5BA6.toInt(), "馆")
+    PlaceType.CANTEEN -> PlaceStyleSpec(0xFFC9903B.toInt(), "食")
+    PlaceType.DORM -> PlaceStyleSpec(0xFFD06B3A.toInt(), "宿")
+    PlaceType.GARDEN -> PlaceStyleSpec(0xFF3E8E70.toInt(), "苑")
+    PlaceType.PLAZA -> PlaceStyleSpec(0xFF5B8FB9.toInt(), "场")
+    PlaceType.OTHER -> PlaceStyleSpec(0xFF8A93A6.toInt(), "点")
+}
 
 /**
  * 相机视口的经纬度包围盒（SW 角 + NE 角）与缩放级别。

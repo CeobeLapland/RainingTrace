@@ -1,15 +1,24 @@
 package com.rainingtrace.platform.map
 
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.PointF
+import android.graphics.Typeface
 import android.util.Log
 import com.rainingtrace.domain.exploration.CellFogState
 import com.rainingtrace.domain.map.HexCellVisual
 import com.rainingtrace.domain.map.MapCamera
 import com.rainingtrace.domain.map.MapLayer
 import com.rainingtrace.domain.map.MapRendererAdapter
+import com.rainingtrace.domain.map.PlaceStyleSpec
+import com.rainingtrace.domain.map.PlaceType
 import com.rainingtrace.domain.map.PlaceVisual
 import com.rainingtrace.domain.map.PlayerMarkerVisual
 import com.rainingtrace.domain.map.WorldCoordinate
+import com.rainingtrace.domain.map.placeStyle
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.Style
@@ -49,6 +58,7 @@ class MapLibreAdapter : MapRendererAdapter {
     private val layerVisibility = mutableMapOf<MapLayer, Boolean>()
 
     private var tapListener: ((WorldCoordinate) -> Unit)? = null
+    private var placeTapListener: ((String) -> Unit)? = null
     private var viewportListener: ((com.rainingtrace.domain.map.MapViewport) -> Unit)? = null
     private var cameraIdleListener: MapLibreMap.OnCameraIdleListener? = null
 
@@ -83,10 +93,7 @@ class MapLibreAdapter : MapRendererAdapter {
             this.style = loadedStyle
             installSourcesAndLayers(loadedStyle)
             mapLibreMap.addOnMapClickListener { latLng ->
-                Log.d(TAG, "map tap ${latLng.latitude},${latLng.longitude}")
-                tapListener?.invoke(
-                    WorldCoordinate(latLng.latitude, latLng.longitude),
-                )
+                handleTap(mapLibreMap, latLng)
                 true
             }
             flushPending()
@@ -107,6 +114,31 @@ class MapLibreAdapter : MapRendererAdapter {
 
     fun onMapTap(listener: (WorldCoordinate) -> Unit) {
         tapListener = listener
+    }
+
+    /** 点击地点图标记回调地点 id；优先于 [onMapTap] 的背景移动。 */
+    fun onPlaceTap(listener: (String) -> Unit) {
+        placeTapListener = listener
+    }
+
+    /**
+     * 先命中地点标记（图标/地名层）→ 报地点 id；否则当作裸地图点击 → 报坐标。
+     */
+    private fun handleTap(mapLibreMap: MapLibreMap, latLng: LatLng) {
+        val screen = mapLibreMap.projection.toScreenLocation(latLng)
+        val features = runCatching {
+            mapLibreMap.queryRenderedFeatures(screen, PLACES_ICON_LAYER, PLACES_LABEL_LAYER)
+        }.getOrNull()
+        val placeId = features
+            ?.mapNotNull { f -> runCatching { f.getStringProperty(PROP_PLACE_ID) }.getOrNull() }
+            ?.firstOrNull { it.isNotBlank() }
+        if (!placeId.isNullOrBlank()) {
+            Log.d(TAG, "place tap $placeId")
+            placeTapListener?.invoke(placeId)
+            return
+        }
+        Log.d(TAG, "map tap ${latLng.latitude},${latLng.longitude}")
+        tapListener?.invoke(WorldCoordinate(latLng.latitude, latLng.longitude))
     }
 
     override fun onViewportChanged(listener: ((com.rainingtrace.domain.map.MapViewport) -> Unit)?) {
@@ -179,7 +211,9 @@ class MapLibreAdapter : MapRendererAdapter {
             FeatureCollection.fromFeatures(
                 places.map {
                     Feature.fromGeometry(toPoint(it.coordinate)).apply {
+                        addStringProperty(PROP_PLACE_ID, it.placeId)
                         addStringProperty(PROP_PLACE_NAME, it.name)
+                        addStringProperty(PROP_PLACE_TYPE, it.placeType.name)
                     }
                 },
             ),
@@ -255,7 +289,7 @@ class MapLibreAdapter : MapRendererAdapter {
     private fun layerIdsOf(layer: MapLayer): List<String> = when (layer) {
         MapLayer.CELLS -> CellFogState.entries.map { "fill_${it.name}" } + "cells_outline"
         MapLayer.PLAYER -> listOf(PLAYER_LAYER)
-        MapLayer.PLACES -> listOf(PLACES_LAYER, PLACES_LABEL_LAYER)
+        MapLayer.PLACES -> listOf(PLACES_ICON_LAYER, PLACES_LABEL_LAYER)
         MapLayer.TRACK -> listOf(TRACK_LAYER)
         // 迷雾开关只遮暗未知/见过格；到过格的苔绿/琥珀染色属于"已发现"，保持可见。
         MapLayer.FOG_MASK -> listOf(
@@ -269,6 +303,12 @@ class MapLibreAdapter : MapRendererAdapter {
         loaded.addSource(GeoJsonSource(PLAYER_SOURCE, EMPTY))
         loaded.addSource(GeoJsonSource(PLACES_SOURCE, EMPTY_FC))
         loaded.addSource(GeoJsonSource(TRACKS_SOURCE, EMPTY_FC))
+
+        // 注册每种地点类型的水滴位图（颜色+字），供图标层按类型 match 取图。
+        PlaceType.entries.forEach { type ->
+            val spec = placeStyle(type)
+            runCatching { loaded.addImage(placeImageName(type), placePinBitmap(spec)) }
+        }
 
         // 战争迷雾 = 铺满视口的六边形格填充：
         // UNKNOWN 深夜色浓雾，DISCOVERED 薄雾（见过没到过），
@@ -306,17 +346,28 @@ class MapLibreAdapter : MapRendererAdapter {
             },
             "cells_outline",
         )
+        // 地点图标层：按地点类型取水滴位图；随缩放变尺寸（icon-size 走 zoom step）。
+        val iconImageExpr = Expression.match(
+            Expression.get(PROP_PLACE_TYPE),
+            Expression.literal(placeImageName(PlaceType.OTHER)),
+            *PlaceType.entries.flatMap { type ->
+                listOf(
+                    Expression.literal(type.name),
+                    Expression.literal(placeImageName(type)),
+                )
+            }.toTypedArray(),
+        )
         loaded.addLayer(
-            CircleLayer(PLACES_LAYER, PLACES_SOURCE).apply {
+            SymbolLayer(PLACES_ICON_LAYER, PLACES_SOURCE).apply {
                 setProperties(
-                    PropertyFactory.circleColor(PLACE_COLOR),
-                    PropertyFactory.circleRadius(PLACE_RADIUS),
-                    PropertyFactory.circleStrokeColor(Color.WHITE),
-                    PropertyFactory.circleStrokeWidth(PLACE_STROKE),
+                    PropertyFactory.iconImage(iconImageExpr),
+                    PropertyFactory.iconSize(iconSizeExpr()),
+                    PropertyFactory.iconAnchor(Property.ICON_ANCHOR_BOTTOM),
+                    PropertyFactory.iconAllowOverlap(true),
                 )
             },
         )
-        // 地名层：字体栈复用底图样式（含 CJK），避免猜字体导致中文不显示。
+        // 地名层：字体栈复用底图样式（含 CJK），避免猜字体导致中文不显示；在图标下方。
         val fontStack = loaded.layers.asReversed()
             .filterIsInstance<SymbolLayer>()
             .firstNotNullOfOrNull { runCatching { it.textFont.value }.getOrNull() }
@@ -328,7 +379,8 @@ class MapLibreAdapter : MapRendererAdapter {
                     PropertyFactory.textColor(PLACE_LABEL_COLOR),
                     PropertyFactory.textHaloColor(Color.WHITE),
                     PropertyFactory.textHaloWidth(PLACE_LABEL_HALO),
-                    PropertyFactory.textOffset(arrayOf(0f, -1.4f)),
+                    PropertyFactory.textOffset(arrayOf(0f, PLACE_LABEL_OFFSET_Y)),
+                    PropertyFactory.textAnchor(Property.TEXT_ANCHOR_TOP),
                     PropertyFactory.textAllowOverlap(true),
                 )
                 if (fontStack != null) {
@@ -370,6 +422,55 @@ class MapLibreAdapter : MapRendererAdapter {
                 .build(),
         )
 
+    private fun placeImageName(type: PlaceType): String = "$PLACE_IMAGE_PREFIX${type.name}"
+
+    /** 图标尺寸随缩放放大：近看更大，远看更小（车道级到街区级）。 */
+    private fun iconSizeExpr(): Expression =
+        Expression.step(
+            Expression.zoom(),
+            Expression.literal(0.9f),
+            Expression.literal(16.0f),
+            Expression.literal(1.25f),
+            Expression.literal(19.0f),
+            Expression.literal(1.7f),
+        )
+
+    /**
+     * 画水滴图标位图：水滴形底 + 白描边 + 类型字。
+     * iconAnchor=bottom，使水滴尖端对准真实坐标（像地图 POI）。
+     */
+    private fun placePinBitmap(spec: PlaceStyleSpec): Bitmap {
+        val w = 72
+        val h = 94
+        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bmp)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        val path = Path().apply {
+            moveTo(w / 2f, 6f)
+            cubicTo(w * 0.96f, h * 0.32f, w * 0.92f, h * 0.80f, w / 2f, h * 0.97f)
+            cubicTo(w * 0.08f, h * 0.80f, w * 0.04f, h * 0.32f, w / 2f, 6f)
+            close()
+        }
+        // 白描边
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = 7f
+        paint.strokeJoin = Paint.Join.ROUND
+        paint.color = Color.WHITE
+        canvas.drawPath(path, paint)
+        // 水滴填充
+        paint.style = Paint.Style.FILL
+        paint.color = spec.argbColor
+        canvas.drawPath(path, paint)
+        // 类型字
+        paint.color = Color.WHITE
+        paint.typeface = Typeface.SANS_SERIF
+        paint.textSize = 40f
+        paint.textAlign = Paint.Align.CENTER
+        val baseline = h * 0.58f
+        canvas.drawText(spec.glyph, w / 2f, baseline, paint)
+        return bmp
+    }
+
     companion object {
         private const val TAG = "MapLibreAdapter"
 
@@ -382,20 +483,22 @@ class MapLibreAdapter : MapRendererAdapter {
         private const val PLACES_SOURCE = "rt-places"
         private const val TRACKS_SOURCE = "rt-tracks"
         private const val PLAYER_LAYER = "rt-player-dot"
-        private const val PLACES_LAYER = "rt-places-dot"
+        private const val PLACES_ICON_LAYER = "rt-places-icon"
         private const val PLACES_LABEL_LAYER = "rt-places-label"
         private const val TRACK_LAYER = "rt-track-line"
         private const val PROP_FOG = "fog"
+        private const val PROP_PLACE_ID = "placeId"
         private const val PROP_PLACE_NAME = "placeName"
+        private const val PROP_PLACE_TYPE = "placeType"
+        private const val PLACE_IMAGE_PREFIX = "rt-pin-"
+        private const val PLACE_LABEL_SIZE = 13f
+        private const val PLACE_LABEL_HALO = 1.6f
+        private const val PLACE_LABEL_OFFSET_Y = 4f
         private const val OUTLINE_WIDTH = 0.5f
         private const val TRACK_WIDTH = 3.5f
         private const val TRACK_OPACITY = 0.85f
         private const val PLAYER_RADIUS = 7f
         private const val PLAYER_STROKE = 2f
-        private const val PLACE_RADIUS = 6f
-        private const val PLACE_STROKE = 2f
-        private const val PLACE_LABEL_SIZE = 13f
-        private const val PLACE_LABEL_HALO = 1.6f
         private const val CAMERA_ANIM_MS = 600
 
         /** 最小缩放：再小视口内格子数量会失控；此级别约覆盖 1km 宽。 */
@@ -416,7 +519,6 @@ class MapLibreAdapter : MapRendererAdapter {
 
         private val OUTLINE_COLOR = Color.parseColor("#14000000")
         private val PLAYER_COLOR = Color.parseColor("#D06B3A")
-        private val PLACE_COLOR = Color.parseColor("#2F6FB2")
         private val PLACE_LABEL_COLOR = Color.parseColor("#2B3338")
         private val TRACK_COLOR = Color.parseColor("#3E8E70")
         private val FOG_DARK = Color.parseColor("#0D1620")

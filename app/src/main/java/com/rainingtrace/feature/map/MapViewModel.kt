@@ -40,7 +40,10 @@ enum class LocationPermission { UNKNOWN, GRANTED, DENIED }
 data class MapUiState(
     val revealedCount: Int = 0,
     val lastFix: WorldCoordinate? = null,
-    val nearbyPlace: Place? = null,
+    /** 已选中的地点（点图标/附近列表选中）→ 详情卡。 */
+    val selectedPlace: Place? = null,
+    /** 观察范围内的全部地点（按距离升序），驱动"附近多地点"列表。 */
+    val nearbyPlaces: List<Place> = emptyList(),
     val toast: String? = null,
     val showTrack: Boolean = true,
     val showFog: Boolean = true,
@@ -146,7 +149,7 @@ class MapViewModel(
     }
 
     fun onObserveClicked() {
-        val place = _uiState.value.nearbyPlace ?: return
+        val place = _uiState.value.selectedPlace ?: return
         val coordinate = lastCoordinate ?: return
         viewModelScope.launch {
             when (val result = observePlace(coordinate, place)) {
@@ -162,6 +165,26 @@ class MapViewModel(
                 )
             }
         }
+    }
+
+    /** 点地图地点图标：按 id 解析并选中（弹出详情卡）。 */
+    fun onPlaceTapped(placeId: String) {
+        viewModelScope.launch {
+            placeRepository.placeById(placeId)?.let { selectPlace(it) }
+        }
+    }
+
+    /** 选中地点（详情卡）；重复选同一地点则收起。 */
+    fun selectPlace(place: Place) {
+        _uiState.value = if (_uiState.value.selectedPlace?.id == place.id) {
+            _uiState.value.copy(selectedPlace = null)
+        } else {
+            _uiState.value.copy(selectedPlace = place)
+        }
+    }
+
+    fun clearSelection() {
+        _uiState.value = _uiState.value.copy(selectedPlace = null)
     }
 
     fun consumeToast() {
@@ -206,9 +229,9 @@ class MapViewModel(
 
     private suspend fun refreshPlaces(coordinate: WorldCoordinate) {
         val places = placeRepository.nearby(coordinate, PLACE_MARKER_RADIUS_METERS)
-        mapRenderer.renderPlaces(places.map { PlaceVisual(it.id, it.name, it.coordinate) })
+        mapRenderer.renderPlaces(places.map { PlaceVisual(it.id, it.name, it.coordinate, it.type) })
         _uiState.value = _uiState.value.copy(
-            nearbyPlace = places.firstOrNull {
+            nearbyPlaces = places.filter {
                 it.coordinate.distanceMetersTo(coordinate) <= PLACE_CARD_RADIUS_METERS
             },
         )

@@ -27,6 +27,7 @@ data class Place(
     val type: PlaceType,
     val coordinate: WorldCoordinate,
     val actions: Set<PlaceActionType>,
+    val description: String = "",
 ) {
     init {
         require(id.isNotBlank()) { "place id must not be blank" }

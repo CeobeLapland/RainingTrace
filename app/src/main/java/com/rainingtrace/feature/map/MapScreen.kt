@@ -10,10 +10,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -31,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -40,8 +43,13 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.rainingtrace.R
 import com.rainingtrace.domain.map.MapRendererAdapter
+import com.rainingtrace.domain.map.Place
+import com.rainingtrace.domain.map.PlaceActionType
+import com.rainingtrace.domain.map.PlaceType
 import com.rainingtrace.domain.map.distanceMetersTo
+import com.rainingtrace.domain.map.placeStyle
 import com.rainingtrace.platform.map.MapLibreAdapter
 import kotlinx.coroutines.delay
 import org.maplibre.android.maps.MapLibreMap
@@ -111,6 +119,9 @@ fun MapScreen(
                         adapter.attach(mapLibreMap)
                         adapter.onMapTap { coord ->
                             viewModel.onMapTapped(coord)
+                        }
+                        adapter.onPlaceTap { placeId ->
+                            viewModel.onPlaceTapped(placeId)
                         }
                         adapter.onViewportChanged { viewport ->
                             viewModel.onViewportChanged(viewport)
@@ -218,33 +229,32 @@ fun MapScreen(
             )
         }
 
-        // 附近地点卡片：出现"可观察"动作入口
-        uiState.nearbyPlace?.let { place ->
-            Card(
+        // 底部地点信息：
+        // 有选中地点 → 详情卡；否则观察范围内有地点 → 附近列表（多个可逐个选）。
+        val selected = uiState.selectedPlace
+        if (selected != null) {
+            PlaceDetailCard(
+                place = selected,
+                distanceMeters = selected.coordinate.distanceMetersTo(
+                    uiState.lastFix ?: selected.coordinate,
+                ),
+                onObserve = viewModel::onObserveClicked,
+                onClose = viewModel::clearSelection,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(16.dp)
-                    .fillMaxWidth(),
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column {
-                        Text(place.name, style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            "距离 ${place.coordinate.distanceMetersTo(uiState.lastFix ?: place.coordinate).toInt()} m",
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                    }
-                    Button(onClick = viewModel::onObserveClicked) {
-                        Text("观察")
-                    }
-                }
-            }
+                    .padding(16.dp),
+            )
+        } else if (uiState.nearbyPlaces.isNotEmpty()) {
+            NearbyPlacesCard(
+                places = uiState.nearbyPlaces,
+                distanceOf = { p ->
+                    p.coordinate.distanceMetersTo(uiState.lastFix ?: p.coordinate)
+                },
+                onSelect = viewModel::selectPlace,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(16.dp),
+            )
         }
 
         // Toast 反馈（3 秒自动消失）
@@ -347,4 +357,146 @@ private fun MapChip(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
         )
     }
+}
+
+/** 地点详情卡：缩略图占位 + 名称/类型/距离 + 说明 + 全部可执行动作。 */
+@Composable
+private fun PlaceDetailCard(
+    place: Place,
+    distanceMeters: Double,
+    onObserve: () -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(modifier = modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                PlaceThumb(type = place.type, size = 52.dp)
+                Spacer(Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(place.name, style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "${placeTypeLabel(place.type)} · 距离 ${distanceMeters.toInt()} m",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .clickable(onClick = onClose),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_close),
+                        contentDescription = "关闭",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+            if (place.description.isNotBlank()) {
+                Text(
+                    text = place.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 10.dp),
+                )
+            }
+            // 地点可做的动作不止一个：为每个动作渲染一个按钮。
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                place.actions.sortedBy { it.name }.forEach { action ->
+                    Button(onClick = onObserve) {
+                        Text(actionLabel(action))
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** 附近地点列表：进入多个地点范围时逐个列出，点击任一项查看详情。 */
+@Composable
+private fun NearbyPlacesCard(
+    places: List<Place>,
+    distanceOf: (Place) -> Double,
+    onSelect: (Place) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(modifier = modifier.fillMaxWidth()) {
+        Column {
+            Text(
+                text = "附近地点",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp),
+            )
+            places.forEach { place ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable(onClick = { onSelect(place) })
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    PlaceThumb(type = place.type, size = 36.dp)
+                    Spacer(Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(place.name, style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            "${placeTypeLabel(place.type)} · ${distanceOf(place).toInt()} m",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Icon(
+                        painter = painterResource(R.drawable.ic_chevron_right),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** 地点缩略图占位：用类型色圆角 + 标记字，后续可替换为照片。 */
+@Composable
+private fun PlaceThumb(type: PlaceType, size: androidx.compose.ui.unit.Dp) {
+    val spec = placeStyle(type)
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(RoundedCornerShape(14.dp))
+            .background(color = Color(spec.argbColor), shape = RoundedCornerShape(14.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = spec.glyph,
+            style = MaterialTheme.typography.titleMedium,
+            color = Color.White,
+        )
+    }
+}
+
+private fun placeTypeLabel(type: PlaceType): String = when (type) {
+    PlaceType.LAKE -> "湖泊"
+    PlaceType.LIBRARY -> "图书馆"
+    PlaceType.CANTEEN -> "食堂"
+    PlaceType.DORM -> "宿舍"
+    PlaceType.GARDEN -> "花园"
+    PlaceType.PLAZA -> "广场"
+    PlaceType.OTHER -> "地点"
+}
+
+private fun actionLabel(action: PlaceActionType): String = when (action) {
+    PlaceActionType.OBSERVE -> "观察"
 }
