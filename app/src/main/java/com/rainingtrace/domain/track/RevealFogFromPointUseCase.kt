@@ -2,7 +2,7 @@ package com.rainingtrace.domain.track
 
 import com.rainingtrace.domain.exploration.CellFogState
 import com.rainingtrace.domain.exploration.ExplorationState
-import com.rainingtrace.domain.map.HexGrid
+import com.rainingtrace.domain.map.GridManager
 import com.rainingtrace.domain.map.WorldCoordinate
 
 /**
@@ -13,14 +13,16 @@ import com.rainingtrace.domain.map.WorldCoordinate
  * - 状态只升不降（MEMORIZED/SPECIAL 不会被覆盖，见 ExplorationState.withState）。
  *
  * 六边形只是表现网格；输入是连续坐标，半径与格子尺寸无关。
+ * 网格实时取 [GridManager] 当前档位，因此切换档位后无需重建用例。
  */
 class RevealFogFromPointUseCase(
-    private val grid: HexGrid,
+    private val gridManager: GridManager,
 ) {
     operator fun invoke(
         state: ExplorationState,
         coordinate: WorldCoordinate,
     ): ExplorationState {
+        val grid = gridManager.grid
         val sighted = grid.cellsWithinMeters(coordinate, SIGHT_RADIUS_METERS)
         val afterSight = sighted.fold(state) { acc, cell ->
             acc.withState(cell, CellFogState.DISCOVERED)

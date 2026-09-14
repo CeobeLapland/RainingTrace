@@ -68,6 +68,9 @@ fun MapScreen(
                         adapter.onMapTap { coord ->
                             viewModel.onMapTapped(coord)
                         }
+                        adapter.onViewportChanged { viewport ->
+                            viewModel.onViewportChanged(viewport)
+                        }
                         adapter.setCamera(viewModel.initialCamera())
                     }
                 }
@@ -130,14 +133,27 @@ fun MapScreen(
             }
         }
 
-        // 右侧图层开关：今日轨迹（迷雾开关在 S2 加入）
-        LayerToggleButton(
-            active = uiState.showTrack,
-            onClick = { viewModel.setShowTrack(!uiState.showTrack) },
+        // 右侧图层开关：迷雾、今日轨迹
+        Column(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .padding(end = 12.dp),
-        )
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            LayerToggleButton(
+                iconRes = com.rainingtrace.R.drawable.ic_fog,
+                label = "迷雾",
+                active = uiState.showFog,
+                onClick = { viewModel.setShowFog(!uiState.showFog) },
+            )
+            LayerToggleButton(
+                iconRes = com.rainingtrace.R.drawable.ic_track,
+                label = "轨迹",
+                active = uiState.showTrack,
+                onClick = { viewModel.setShowTrack(!uiState.showTrack) },
+            )
+        }
 
         // 附近地点卡片：出现"可观察"动作入口
         uiState.nearbyPlace?.let { place ->
@@ -191,6 +207,8 @@ fun MapScreen(
 
 @Composable
 private fun LayerToggleButton(
+    iconRes: Int,
+    label: String,
     active: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -215,8 +233,8 @@ private fun LayerToggleButton(
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                painter = painterResource(com.rainingtrace.R.drawable.ic_track),
-                contentDescription = "今日轨迹",
+                painter = painterResource(iconRes),
+                contentDescription = label,
                 tint = if (active) {
                     MaterialTheme.colorScheme.onSecondary
                 } else {
@@ -226,7 +244,7 @@ private fun LayerToggleButton(
             )
         }
         Text(
-            text = "轨迹",
+            text = label,
             style = MaterialTheme.typography.labelMedium,
             color = if (active) {
                 MaterialTheme.colorScheme.secondary

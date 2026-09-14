@@ -24,6 +24,7 @@ class RecordTrackPointUseCaseTest {
             points.maxByOrNull { it.timestampEpochMs }
         override suspend fun between(fromEpochMs: Long, toEpochMs: Long): List<TrackPoint> =
             points.filter { it.timestampEpochMs in fromEpochMs..toEpochMs }
+        override suspend fun all(): List<TrackPoint> = points
     }
 
     private fun fix(

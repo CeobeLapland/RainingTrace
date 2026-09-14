@@ -19,6 +19,7 @@ import org.maplibre.android.style.layers.FillLayer
 import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.Property
 import org.maplibre.android.style.layers.PropertyFactory
+import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.sources.GeoJsonSource
 import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
@@ -48,6 +49,8 @@ class MapLibreAdapter : MapRendererAdapter {
     private val layerVisibility = mutableMapOf<MapLayer, Boolean>()
 
     private var tapListener: ((WorldCoordinate) -> Unit)? = null
+    private var viewportListener: ((com.rainingtrace.domain.map.MapViewport) -> Unit)? = null
+    private var cameraIdleListener: MapLibreMap.OnCameraIdleListener? = null
 
     /** attach 代际：detach 后旧的异步 style 回调一律作废，避免写已销毁的 native 对象。 */
     private var attachGeneration = 0
@@ -57,8 +60,16 @@ class MapLibreAdapter : MapRendererAdapter {
         // 同一张地图且 style 已就绪：不重复 setStyle（重复加载会使旧 style 失效）
         if (map === mapLibreMap && style != null) return
         val generation = ++attachGeneration
+        // 旧地图的监听先摘掉
+        cameraIdleListener?.let { map?.removeOnCameraIdleListener(it) }
         this.map = mapLibreMap
         this.style = null
+        val listener = MapLibreMap.OnCameraIdleListener { emitViewport(mapLibreMap) }
+        cameraIdleListener = listener
+        mapLibreMap.addOnCameraIdleListener(listener)
+        // 最小缩放：防止缩太远导致视口格数爆炸；世界边界限制相机中心（城市尺度）。
+        mapLibreMap.setMinZoomPreference(MIN_ZOOM)
+        mapLibreMap.setLatLngBoundsForCameraTarget(WORLD_BOUNDS)
         mapLibreMap.setStyle(Style.Builder().fromUri(STYLE_URI)) { loadedStyle ->
             if (generation != attachGeneration) {
                 Log.d(TAG, "style callback from stale generation, ignored")
@@ -79,18 +90,48 @@ class MapLibreAdapter : MapRendererAdapter {
                 true
             }
             flushPending()
+            // style 就绪时补发一次视口（初始相机的 idle 可能已错过）
+            emitViewport(mapLibreMap)
         }
     }
 
     /** MapView 销毁时调用：丢弃缓存的 style/map，停止一切渲染写入。 */
     fun detach() {
         attachGeneration++
+        cameraIdleListener?.let { map?.removeOnCameraIdleListener(it) }
+        cameraIdleListener = null
+        viewportListener = null
         style = null
         map = null
     }
 
     fun onMapTap(listener: (WorldCoordinate) -> Unit) {
         tapListener = listener
+    }
+
+    override fun onViewportChanged(listener: ((com.rainingtrace.domain.map.MapViewport) -> Unit)?) {
+        viewportListener = listener
+    }
+
+    private fun emitViewport(mapLibreMap: MapLibreMap) {
+        // style 刚加载、相机尚未出首帧时 visibleRegion 可能是垃圾值（如纬度 -101），
+        // 在 native style 回调里抛异常会 abort 进程，必须先校验。
+        val bounds = runCatching { mapLibreMap.projection.visibleRegion.latLngBounds }
+            .getOrNull() ?: return
+        if (bounds.latitudeSouth !in -85.0..85.0 || bounds.latitudeNorth !in -85.0..85.0) return
+        if (bounds.longitudeWest !in -180.0..180.0 || bounds.longitudeEast !in -180.0..180.0) return
+        if (bounds.latitudeNorth <= bounds.latitudeSouth ||
+            bounds.longitudeEast <= bounds.longitudeWest
+        ) {
+            return
+        }
+        viewportListener?.invoke(
+            com.rainingtrace.domain.map.MapViewport(
+                southWest = WorldCoordinate(bounds.latitudeSouth, bounds.longitudeWest),
+                northEast = WorldCoordinate(bounds.latitudeNorth, bounds.longitudeEast),
+                zoom = mapLibreMap.cameraPosition.zoom,
+            ),
+        )
     }
 
     override fun setCamera(camera: MapCamera) {
@@ -188,6 +229,7 @@ class MapLibreAdapter : MapRendererAdapter {
             MapLayer.PLAYER -> renderPlayer(null)
             MapLayer.PLACES -> renderPlaces(emptyList())
             MapLayer.TRACK -> renderTrack(emptyList())
+            MapLayer.FOG_MASK -> Unit // FOG 是 UNKNOWN/DISCOVERED 格填充，随 renderCells 刷新
         }
     }
 
@@ -209,12 +251,17 @@ class MapLibreAdapter : MapRendererAdapter {
         }
     }
 
-    /** 一个领域图层可能对应多个原生层（如迷雾有 4 个 fill + 1 个 outline）。 */
+    /** 一个领域图层可能对应多个原生层。 */
     private fun layerIdsOf(layer: MapLayer): List<String> = when (layer) {
         MapLayer.CELLS -> CellFogState.entries.map { "fill_${it.name}" } + "cells_outline"
         MapLayer.PLAYER -> listOf(PLAYER_LAYER)
-        MapLayer.PLACES -> listOf(PLACES_LAYER)
+        MapLayer.PLACES -> listOf(PLACES_LAYER, PLACES_LABEL_LAYER)
         MapLayer.TRACK -> listOf(TRACK_LAYER)
+        // 迷雾开关只遮暗未知/见过格；到过格的苔绿/琥珀染色属于"已发现"，保持可见。
+        MapLayer.FOG_MASK -> listOf(
+            "fill_${CellFogState.UNKNOWN.name}",
+            "fill_${CellFogState.DISCOVERED.name}",
+        )
     }
 
     private fun installSourcesAndLayers(loaded: Style) {
@@ -223,13 +270,15 @@ class MapLibreAdapter : MapRendererAdapter {
         loaded.addSource(GeoJsonSource(PLACES_SOURCE, EMPTY_FC))
         loaded.addSource(GeoJsonSource(TRACKS_SOURCE, EMPTY_FC))
 
-        // 每个迷雾状态一个 fill 层（filter 驱动），避免表达式版本差异风险。
-        FOG_COLORS.forEach { (state, color) ->
+        // 战争迷雾 = 铺满视口的六边形格填充：
+        // UNKNOWN 深夜色浓雾，DISCOVERED 薄雾（见过没到过），
+        // VISITED/MEMORIZED/SPECIAL 极淡状态染色（到过）。
+        CELL_FOG_STYLE.forEach { (state, style) ->
             loaded.addLayer(
                 FillLayer("fill_${state.name}", CELLS_SOURCE).apply {
                     setProperties(
-                        PropertyFactory.fillColor(color),
-                        PropertyFactory.fillOpacity(FILL_OPACITY),
+                        PropertyFactory.fillColor(style.color),
+                        PropertyFactory.fillOpacity(style.opacity),
                         PropertyFactory.fillAntialias(true),
                     )
                     setFilter(Expression.eq(Expression.get(PROP_FOG), Expression.literal(state.name)))
@@ -265,6 +314,26 @@ class MapLibreAdapter : MapRendererAdapter {
                     PropertyFactory.circleStrokeColor(Color.WHITE),
                     PropertyFactory.circleStrokeWidth(PLACE_STROKE),
                 )
+            },
+        )
+        // 地名层：字体栈复用底图样式（含 CJK），避免猜字体导致中文不显示。
+        val fontStack = loaded.layers.asReversed()
+            .filterIsInstance<SymbolLayer>()
+            .firstNotNullOfOrNull { runCatching { it.textFont.value }.getOrNull() }
+        loaded.addLayer(
+            SymbolLayer(PLACES_LABEL_LAYER, PLACES_SOURCE).apply {
+                setProperties(
+                    PropertyFactory.textField(Expression.get(PROP_PLACE_NAME)),
+                    PropertyFactory.textSize(PLACE_LABEL_SIZE),
+                    PropertyFactory.textColor(PLACE_LABEL_COLOR),
+                    PropertyFactory.textHaloColor(Color.WHITE),
+                    PropertyFactory.textHaloWidth(PLACE_LABEL_HALO),
+                    PropertyFactory.textOffset(arrayOf(0f, -1.4f)),
+                    PropertyFactory.textAllowOverlap(true),
+                )
+                if (fontStack != null) {
+                    setProperties(PropertyFactory.textFont(fontStack))
+                }
             },
         )
         loaded.addLayer(
@@ -314,30 +383,53 @@ class MapLibreAdapter : MapRendererAdapter {
         private const val TRACKS_SOURCE = "rt-tracks"
         private const val PLAYER_LAYER = "rt-player-dot"
         private const val PLACES_LAYER = "rt-places-dot"
+        private const val PLACES_LABEL_LAYER = "rt-places-label"
         private const val TRACK_LAYER = "rt-track-line"
         private const val PROP_FOG = "fog"
         private const val PROP_PLACE_NAME = "placeName"
-        private const val FILL_OPACITY = 0.45f
-        private const val OUTLINE_WIDTH = 0.8f
+        private const val OUTLINE_WIDTH = 0.5f
         private const val TRACK_WIDTH = 3.5f
         private const val TRACK_OPACITY = 0.85f
         private const val PLAYER_RADIUS = 7f
         private const val PLAYER_STROKE = 2f
         private const val PLACE_RADIUS = 6f
         private const val PLACE_STROKE = 2f
+        private const val PLACE_LABEL_SIZE = 13f
+        private const val PLACE_LABEL_HALO = 1.6f
         private const val CAMERA_ANIM_MS = 600
 
-        private val OUTLINE_COLOR = Color.parseColor("#33000000")
+        /** 最小缩放：再小视口内格子数量会失控；此级别约覆盖 1km 宽。 */
+        private const val MIN_ZOOM = 14.0
+
+        /**
+         * 相机中心活动边界（约 25×30km，覆盖一个区/小城）。
+         * 以北湖为中心：纬 ±0.2°、经 ±0.26°（按 40°N 余弦修正，各向等米宽）。
+         */
+        private val WORLD_BOUNDS: org.maplibre.android.geometry.LatLngBounds =
+            org.maplibre.android.geometry.LatLngBounds.Builder()
+                .include(LatLng(WORLD_ORIGIN_LAT + 0.2, WORLD_ORIGIN_LNG - 0.26))
+                .include(LatLng(WORLD_ORIGIN_LAT - 0.2, WORLD_ORIGIN_LNG + 0.26))
+                .build()
+
+        private const val WORLD_ORIGIN_LAT = 39.7326
+        private const val WORLD_ORIGIN_LNG = 116.1712
+
+        private val OUTLINE_COLOR = Color.parseColor("#14000000")
         private val PLAYER_COLOR = Color.parseColor("#D06B3A")
         private val PLACE_COLOR = Color.parseColor("#2F6FB2")
+        private val PLACE_LABEL_COLOR = Color.parseColor("#2B3338")
         private val TRACK_COLOR = Color.parseColor("#3E8E70")
+        private val FOG_DARK = Color.parseColor("#0D1620")
 
-        private val FOG_COLORS: Map<CellFogState, Int> = mapOf(
-            CellFogState.UNKNOWN to Color.parseColor("#5A6B7A"),
-            CellFogState.DISCOVERED to Color.parseColor("#8FB8A8"),
-            CellFogState.VISITED to Color.parseColor("#4E9B7A"),
-            CellFogState.MEMORIZED to Color.parseColor("#E0B84E"),
-            CellFogState.SPECIAL to Color.parseColor("#9B59B6"),
+        private data class CellFogStyle(val color: Int, val opacity: Float)
+
+        /** 三级迷雾：未探索深夜浓雾 / 见过薄雾 / 到过极淡染色。 */
+        private val CELL_FOG_STYLE: Map<CellFogState, CellFogStyle> = mapOf(
+            CellFogState.UNKNOWN to CellFogStyle(FOG_DARK, 0.82f),
+            CellFogState.DISCOVERED to CellFogStyle(FOG_DARK, 0.42f),
+            CellFogState.VISITED to CellFogStyle(Color.parseColor("#4E9B7A"), 0.10f),
+            CellFogState.MEMORIZED to CellFogStyle(Color.parseColor("#C9903B"), 0.14f),
+            CellFogState.SPECIAL to CellFogStyle(Color.parseColor("#7D5BA6"), 0.14f),
         )
 
         private val EMPTY: Feature = Feature.fromGeometry(Point.fromLngLat(0.0, 0.0))

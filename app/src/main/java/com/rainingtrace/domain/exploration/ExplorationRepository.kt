@@ -10,4 +10,7 @@ interface ExplorationRepository {
     suspend fun loadState(): ExplorationState
 
     suspend fun saveStates(states: Map<HexCellId, CellFogState>)
+
+    /** 清空当前格子档位的全部迷雾（切换档位后重建前调用）。 */
+    suspend fun clearLevel()
 }

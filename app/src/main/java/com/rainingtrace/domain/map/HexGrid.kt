@@ -3,6 +3,7 @@ package com.rainingtrace.domain.map
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.cos
+import kotlin.math.floor
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 import kotlin.math.sin
@@ -114,6 +115,10 @@ class HexGrid(
         return best
     }
 
+    private fun cellCenterMeters(cell: HexCellId): Pair<Double, Double> =
+        cellSizeMeters * SQRT3 * (cell.axialQ + cell.axialR / 2.0) to
+            cellSizeMeters * 1.5 * cell.axialR
+
     private fun cellVerticesMeters(cell: HexCellId): List<Pair<Double, Double>> {
         val cx = cellSizeMeters * SQRT3 * (cell.axialQ + cell.axialR / 2.0)
         val cy = cellSizeMeters * 1.5 * cell.axialR
@@ -151,6 +156,60 @@ class HexGrid(
         val closestX = ax + t * dx
         val closestY = ay + t * dy
         return hypot(px - closestX, py - closestY)
+    }
+
+    /**
+     * 枚举与经纬度矩形相交的全部格子（迷雾分块掩罩用）。
+     *
+     * 做法：矩形四角投影到米制平面，外扩一格，换算成浮点 axial 范围，
+     * 候选量为 O(矩形面积/格面积)，再逐格做"中心或顶点在矩形内"精筛。
+     */
+    fun cellsInRect(
+        minLat: Double,
+        minLng: Double,
+        maxLat: Double,
+        maxLng: Double,
+    ): List<HexCellId> {
+        val cornersMeters = listOf(
+            toMeters(WorldCoordinate(minLat, minLng)),
+            toMeters(WorldCoordinate(minLat, maxLng)),
+            toMeters(WorldCoordinate(maxLat, minLng)),
+            toMeters(WorldCoordinate(maxLat, maxLng)),
+        )
+        val minX = cornersMeters.minOf { it.first } - cellSizeMeters
+        val maxX = cornersMeters.maxOf { it.first } + cellSizeMeters
+        val minY = cornersMeters.minOf { it.second } - cellSizeMeters
+        val maxY = cornersMeters.maxOf { it.second } + cellSizeMeters
+
+        // 逆投影像素→axial（见 cellOf 的正向公式）
+        fun axialOf(x: Double, y: Double): Pair<Double, Double> =
+            (SQRT3 / 3.0 * x - 1.0 / 3.0 * y) / cellSizeMeters to
+                (2.0 / 3.0 * y) / cellSizeMeters
+
+        val (q0, _) = axialOf(minX, (minY + maxY) / 2.0)
+        val (q1, _) = axialOf(maxX, (minY + maxY) / 2.0)
+        val (_, r0) = axialOf((minX + maxX) / 2.0, minY)
+        val (_, r1) = axialOf((minX + maxX) / 2.0, maxY)
+
+        val qMin = floor(minOf(q0, q1)).toInt() - 1
+        val qMax = ceil(maxOf(q0, q1)).toInt() + 1
+        val rMin = floor(minOf(r0, r1)).toInt() - 1
+        val rMax = ceil(maxOf(r0, r1)).toInt() + 1
+
+        val result = ArrayList<HexCellId>()
+        for (q in qMin..qMax) {
+            for (r in rMin..rMax) {
+                val cell = HexCellId(q, r)
+                val center = cellCenterMeters(cell)
+                val verts = cellVerticesMeters(cell)
+                val centerInside = center.first in minX..maxX && center.second in minY..maxY
+                val vertexInside = verts.any { (x, y) ->
+                    x in minX..maxX && y in minY..maxY
+                }
+                if (centerInside || vertexInside) result.add(cell)
+            }
+        }
+        return result
     }
 
     /** 相邻 6 格。 */

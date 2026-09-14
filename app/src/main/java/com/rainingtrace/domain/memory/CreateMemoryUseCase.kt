@@ -6,7 +6,7 @@ import com.rainingtrace.domain.exploration.ExplorationRepository
 import com.rainingtrace.domain.footprint.FootprintEvent
 import com.rainingtrace.domain.footprint.FootprintEventType
 import com.rainingtrace.domain.footprint.FootprintRepository
-import com.rainingtrace.domain.map.HexGrid
+import com.rainingtrace.domain.map.GridManager
 import java.util.UUID
 
 /**
@@ -18,7 +18,7 @@ import java.util.UUID
  * - 写 FootprintEvent(MEMORY_CREATED)，append-only
  */
 class CreateMemoryUseCase(
-    private val grid: HexGrid,
+    private val gridManager: GridManager,
     private val clock: WorldClock,
     private val memoryRepository: MemoryRepository,
     private val explorationRepository: ExplorationRepository,
@@ -38,7 +38,7 @@ class CreateMemoryUseCase(
         memoryRepository.save(memory)
 
         // 坐标所在格升级为 MEMORIZED（不降级已有 SPECIAL）
-        val cell = grid.cellOf(draft.coordinate)
+        val cell = gridManager.grid.cellOf(draft.coordinate)
         val state = explorationRepository.loadState()
         val updated = state.withState(cell, CellFogState.MEMORIZED)
         explorationRepository.saveStates(updated.cellStates)

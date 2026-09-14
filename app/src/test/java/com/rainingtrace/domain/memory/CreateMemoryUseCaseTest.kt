@@ -1,4 +1,4 @@
-package com.rainingtrace.domain.memory
+﻿package com.rainingtrace.domain.memory
 
 import com.rainingtrace.core.time.FakeWorldClock
 import com.rainingtrace.domain.exploration.CellFogState
@@ -7,8 +7,9 @@ import com.rainingtrace.domain.exploration.ExplorationState
 import com.rainingtrace.domain.footprint.FootprintEvent
 import com.rainingtrace.domain.footprint.FootprintEventType
 import com.rainingtrace.domain.footprint.FootprintRepository
+import com.rainingtrace.domain.map.GridLevel
+import com.rainingtrace.domain.map.GridManager
 import com.rainingtrace.domain.map.HexCellId
-import com.rainingtrace.domain.map.HexGrid
 import com.rainingtrace.domain.map.WorldCoordinate
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
@@ -20,7 +21,9 @@ import java.time.Instant
 
 class CreateMemoryUseCaseTest {
 
-    private val grid = HexGrid(WorldCoordinate(39.7326, 116.1712), cellSizeMeters = 40.0)
+    private val origin = WorldCoordinate(39.7326, 116.1712)
+    private val gridManager = GridManager(GridLevel.M, origin)
+    private val grid = gridManager.grid
     private val clock = FakeWorldClock(Instant.parse("2026-09-13T08:00:00Z"))
 
     private class FakeMemoryRepository : MemoryRepository {
@@ -39,6 +42,7 @@ class CreateMemoryUseCaseTest {
             states.forEach { (c, st) -> s = s.withState(c, st) }
             state = s
         }
+        override suspend fun clearLevel() {}
     }
 
     private class FakeFootprintRepository : FootprintRepository {
@@ -53,7 +57,7 @@ class CreateMemoryUseCaseTest {
         val memories = FakeMemoryRepository()
         val exploration = FakeExplorationRepository()
         val footprints = FakeFootprintRepository()
-        val useCase = CreateMemoryUseCase(grid, clock, memories, exploration, footprints)
+        val useCase = CreateMemoryUseCase(gridManager, clock, memories, exploration, footprints)
 
         val coord = WorldCoordinate(39.7326, 116.1712)
         val cell = grid.cellOf(coord)
@@ -72,8 +76,7 @@ class CreateMemoryUseCaseTest {
     @Test
     fun `memory with photo stores media ref`() = runTest {
         val memories = FakeMemoryRepository()
-        val useCase = CreateMemoryUseCase(
-            grid, clock, memories, FakeExplorationRepository(), FakeFootprintRepository(),
+        val useCase = CreateMemoryUseCase(gridManager, clock, memories, FakeExplorationRepository(), FakeFootprintRepository(),
         )
         val coord = WorldCoordinate(39.7326, 116.1712)
         val node = useCase(
@@ -93,8 +96,7 @@ class CreateMemoryUseCaseTest {
         val cell = grid.cellOf(coord)
         exploration.saveStates(mapOf(cell to CellFogState.SPECIAL))
 
-        val useCase = CreateMemoryUseCase(
-            grid, clock, FakeMemoryRepository(), exploration, FakeFootprintRepository(),
+        val useCase = CreateMemoryUseCase(gridManager, clock, FakeMemoryRepository(), exploration, FakeFootprintRepository(),
         )
         useCase(MemoryDraft(coordinate = coord, text = "hi"))
 

@@ -155,4 +155,38 @@ class HexGridTest {
     fun `negative meter radius rejected`() {
         grid.cellsWithinMeters(lakeOrigin, -1.0)
     }
+
+    @Test
+    fun `cells in rect contains origin cell and covers the rectangle`() {
+        val g = HexGrid(origin = lakeOrigin, cellSizeMeters = 40.0)
+        // 以北湖为中心、约 200m x 200m 的矩形（纬度 0.001°≈111m）
+        val cells = g.cellsInRect(
+            minLat = lakeOrigin.latDegrees - 0.001,
+            minLng = lakeOrigin.lngDegrees - 0.0013,
+            maxLat = lakeOrigin.latDegrees + 0.001,
+            maxLng = lakeOrigin.lngDegrees + 0.0013,
+        )
+        assertTrue(cells.contains(HexCellId(0, 0)))
+        // 200m 跨度在 40m 格上每维至少 3~4 格，总数应为十几格量级
+        assertTrue("got ${cells.size}", cells.size in 12..40)
+        // 无重复
+        assertEquals(cells.size, cells.distinct().size)
+        // 每个返回的格中心或顶点确实与矩形相交（粗验：中心距矩形不远）
+        cells.forEach { cell ->
+            val center = g.cellCenter(cell)
+            assertTrue(center.latDegrees in lakeOrigin.latDegrees - 0.003..lakeOrigin.latDegrees + 0.003)
+        }
+    }
+
+    @Test
+    fun `far away cells not included in tiny rect`() {
+        val g = HexGrid(origin = lakeOrigin, cellSizeMeters = 40.0)
+        val cells = g.cellsInRect(
+            minLat = lakeOrigin.latDegrees + 0.01, // 约 1.1km 北
+            minLng = lakeOrigin.lngDegrees - 0.001,
+            maxLat = lakeOrigin.latDegrees + 0.012,
+            maxLng = lakeOrigin.lngDegrees + 0.001,
+        )
+        assertTrue(HexCellId(0, 0) !in cells)
+    }
 }

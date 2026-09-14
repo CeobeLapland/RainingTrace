@@ -10,12 +10,13 @@ import com.rainingtrace.data.repository.RoomFootprintRepository
 import com.rainingtrace.data.repository.RoomInventoryRepository
 import com.rainingtrace.data.repository.RoomMemoryRepository
 import com.rainingtrace.data.repository.RoomTrackRepository
+import com.rainingtrace.data.settings.DataStoreSettingsRepository
 import com.rainingtrace.domain.exploration.ExplorationRepository
 import com.rainingtrace.domain.exploration.ObservePlaceUseCase
 import com.rainingtrace.domain.footprint.FootprintRepository
 import com.rainingtrace.domain.inventory.AddItemToInventoryUseCase
 import com.rainingtrace.domain.inventory.InventoryRepository
-import com.rainingtrace.domain.map.GridLevel
+import com.rainingtrace.domain.map.GridManager
 import com.rainingtrace.domain.map.HexGrid
 import com.rainingtrace.domain.map.LocationProvider
 import com.rainingtrace.domain.map.MapRendererAdapter
@@ -24,6 +25,8 @@ import com.rainingtrace.domain.map.WorldCoordinate
 import com.rainingtrace.domain.ar.ArController
 import com.rainingtrace.domain.memory.CreateMemoryUseCase
 import com.rainingtrace.domain.memory.MemoryRepository
+import com.rainingtrace.domain.settings.AppSettingsRepository
+import com.rainingtrace.domain.track.ChangeGridLevelUseCase
 import com.rainingtrace.domain.track.RebuildFogFromTrackUseCase
 import com.rainingtrace.domain.track.RecordTrackPointUseCase
 import com.rainingtrace.domain.track.RevealFogFromPointUseCase
@@ -32,6 +35,7 @@ import com.rainingtrace.platform.ar.ArCoreController
 import com.rainingtrace.platform.camera.CameraXController
 import com.rainingtrace.platform.location.FakeLocationProvider
 import com.rainingtrace.platform.map.MapLibreAdapter
+import kotlinx.coroutines.runBlocking
 
 /**
  * RT-BOOT-003: 手写 DI（AppContainer）。
@@ -54,14 +58,22 @@ class AppContainer(context: Context) {
 
     val clock: WorldClock by lazy { SystemWorldClock() }
 
-    /** 当前格子档位（S3 起可在设置切换并重建迷雾）。 */
-    val gridLevel: GridLevel = GridLevel.DEFAULT
+    val settingsRepository: AppSettingsRepository by lazy {
+        DataStoreSettingsRepository(appContext)
+    }
 
-    val grid: HexGrid by lazy { HexGrid(origin = worldOrigin, cellSizeMeters = gridLevel.cellSizeMeters) }
+    /** 格子档位与当前网格；启动时从偏好恢复。 */
+    val gridManager: GridManager = GridManager(
+        initialLevel = runBlocking { settingsRepository.currentGridLevel() },
+        origin = worldOrigin,
+    )
+
+    /** 供仍需直接取网格的只读便捷属性（实时跟随档位）。 */
+    val grid: HexGrid get() = gridManager.grid
 
     /**
      * 是否使用 Fake 定位。UI 据此显示「点击地图 = 移动」调试提示。
-     * RT-BOOT-006 完成后由 DataStore 设置替换本常量。
+     * RT-BOOT-006 完成后与定位模式设置打通（S4）。
      */
     val useFakeLocation: Boolean = true
 
@@ -83,7 +95,7 @@ class AppContainer(context: Context) {
     val placeRepository: PlaceRepository by lazy { FakePlaceRepository() }
 
     val explorationRepository: ExplorationRepository by lazy {
-        RoomExplorationRepository(database.explorationDao(), gridLevel)
+        RoomExplorationRepository(database.explorationDao(), gridManager)
     }
 
     val trackRepository: TrackRepository by lazy {
@@ -104,10 +116,20 @@ class AppContainer(context: Context) {
         RecordTrackPointUseCase(trackRepository, clock)
     }
 
-    val revealFog: RevealFogFromPointUseCase by lazy { RevealFogFromPointUseCase(grid) }
+    val revealFog: RevealFogFromPointUseCase by lazy { RevealFogFromPointUseCase(gridManager) }
 
     val rebuildFog: RebuildFogFromTrackUseCase by lazy {
         RebuildFogFromTrackUseCase(revealFog)
+    }
+
+    val changeGridLevel: ChangeGridLevelUseCase by lazy {
+        ChangeGridLevelUseCase(
+            gridManager = gridManager,
+            settings = settingsRepository,
+            explorationRepository = explorationRepository,
+            trackRepository = trackRepository,
+            rebuild = rebuildFog,
+        )
     }
 
     val observePlace: ObservePlaceUseCase by lazy {
@@ -129,7 +151,7 @@ class AppContainer(context: Context) {
 
     val createMemory: CreateMemoryUseCase by lazy {
         CreateMemoryUseCase(
-            grid = grid,
+            gridManager = gridManager,
             clock = clock,
             memoryRepository = memoryRepository,
             explorationRepository = explorationRepository,

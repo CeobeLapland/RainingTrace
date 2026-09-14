@@ -1,6 +1,7 @@
 package com.rainingtrace.domain.map
 
 import com.rainingtrace.domain.exploration.CellFogState
+import kotlin.math.cos
 
 /**
  * 地图渲染的领域侧视图模型（06_地图专项 §8）。
@@ -30,11 +31,55 @@ data class PlaceVisual(
     val coordinate: WorldCoordinate,
 )
 
+/**
+ * 相机视口的经纬度包围盒（SW 角 + NE 角）与缩放级别。
+ * 迷雾按视口渲染：只铺满当前屏幕外扩区域的格子，数据量与世界大小无关。
+ */
+data class MapViewport(
+    val southWest: WorldCoordinate,
+    val northEast: WorldCoordinate,
+    val zoom: Double,
+) {
+    fun contains(c: WorldCoordinate): Boolean =
+        c.latDegrees in southWest.latDegrees..northEast.latDegrees &&
+            c.lngDegrees in southWest.lngDegrees..northEast.lngDegrees
+
+    /** 顶点中任一点落在包围盒内，即认为多边形与视口相交（格远小于视口，够用）。 */
+    fun intersectsPolygon(vertices: List<WorldCoordinate>): Boolean =
+        vertices.any(::contains)
+
+    /**
+     * 按比例外扩包围盒（雾遮罩要比屏幕大一圈，拖动时不露边）。
+     * 经度跨度按中纬度余弦修正，保持各方向近似等米宽。
+     */
+    fun expanded(factor: Double): MapViewport {
+        val midLat = (southWest.latDegrees + northEast.latDegrees) / 2.0
+        val halfLat = (northEast.latDegrees - southWest.latDegrees) / 2.0 * factor
+        val halfLng = (northEast.lngDegrees - southWest.lngDegrees) / 2.0 *
+            factor / cos(Math.toRadians(midLat)).coerceAtLeast(0.2)
+        val midLng = (southWest.lngDegrees + northEast.lngDegrees) / 2.0
+        return MapViewport(
+            southWest = WorldCoordinate(midLat - halfLat, midLng - halfLng),
+            northEast = WorldCoordinate(midLat + halfLat, midLng + halfLng),
+            zoom = zoom,
+        )
+    }
+
+    /** 外扩矩形外环（顺时针四个角，首尾不重复）。 */
+    fun rectangleRing(): List<WorldCoordinate> = listOf(
+        WorldCoordinate(southWest.latDegrees, southWest.lngDegrees),
+        WorldCoordinate(southWest.latDegrees, northEast.lngDegrees),
+        WorldCoordinate(northEast.latDegrees, northEast.lngDegrees),
+        WorldCoordinate(northEast.latDegrees, southWest.lngDegrees),
+    )
+}
+
 enum class MapLayer {
     CELLS,
     PLAYER,
     PLACES,
     TRACK,
+    FOG_MASK,
 }
 
 interface MapRendererAdapter {
@@ -45,6 +90,9 @@ interface MapRendererAdapter {
 
     /** 今日/区间轨迹折线；少于 2 个点时清空。 */
     fun renderTrack(points: List<WorldCoordinate>)
+
+    /** 相机停止移动时回调最新视口（驱动按视口渲染）。 */
+    fun onViewportChanged(listener: ((MapViewport) -> Unit)?)
 
     /** 图层显隐开关（地图浮层按钮）。 */
     fun setLayerVisible(layer: MapLayer, visible: Boolean)

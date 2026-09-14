@@ -43,6 +43,7 @@ import com.rainingtrace.feature.map.MapScreen
 import com.rainingtrace.feature.map.MapViewModel
 import com.rainingtrace.feature.messages.MessagesScreen
 import com.rainingtrace.feature.profile.MeScreen
+import com.rainingtrace.feature.settings.SettingsRoute
 import com.rainingtrace.platform.ar.ArCoreController
 
 /**
@@ -84,7 +85,7 @@ fun RainingTraceApp(container: AppContainer) {
                 val mapViewModel: MapViewModel = viewModel {
                     MapViewModel(
                         clock = container.clock,
-                        grid = container.grid,
+                        gridManager = container.gridManager,
                         locationProvider = container.locationProvider,
                         mapRenderer = container.mapRenderer,
                         recordTrackPoint = container.recordTrackPoint,
@@ -120,11 +121,21 @@ fun RainingTraceApp(container: AppContainer) {
             }
 
             composable(Routes.ME) {
-                MeScreen(onOpenJournal = { navController.navigate(Routes.JOURNAL) })
+                MeScreen(
+                    onOpenJournal = { navController.navigate(Routes.JOURNAL) },
+                    onOpenSettings = { navController.navigate(Routes.SETTINGS) },
+                )
             }
 
             composable(Routes.JOURNAL) {
                 JournalRoute(
+                    container = container,
+                    onBack = { navController.popBackStack() },
+                )
+            }
+
+            composable(Routes.SETTINGS) {
+                SettingsRoute(
                     container = container,
                     onBack = { navController.popBackStack() },
                 )

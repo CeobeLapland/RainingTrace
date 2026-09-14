@@ -21,7 +21,7 @@ import com.rainingtrace.domain.footprint.TraceVisibility
 import com.rainingtrace.domain.inventory.InventoryItem
 import com.rainingtrace.domain.inventory.InventoryRepository
 import com.rainingtrace.domain.inventory.InventoryState
-import com.rainingtrace.domain.map.GridLevel
+import com.rainingtrace.domain.map.GridManager
 import com.rainingtrace.domain.map.HexCellId
 import com.rainingtrace.domain.map.LocationSource
 import com.rainingtrace.domain.map.WorldCoordinate
@@ -56,14 +56,16 @@ private fun String.decodePayload(): Map<String, String> =
  */
 class RoomExplorationRepository(
     private val dao: ExplorationDao,
-    private val level: GridLevel,
+    private val gridManager: GridManager,
 ) : ExplorationRepository {
 
+    private val level get() = gridManager.level
+
     override fun observeState(): Flow<ExplorationState> =
-        dao.observeLevel(level.cellKeyPrefix).map { rows -> rows.toExplorationState() }
+        dao.observeLevel(gridManager.level.cellKeyPrefix).map { rows -> rows.toExplorationState() }
 
     override suspend fun loadState(): ExplorationState =
-        dao.levelCells(level.cellKeyPrefix).toExplorationState()
+        dao.levelCells(gridManager.level.cellKeyPrefix).toExplorationState()
 
     override suspend fun saveStates(states: Map<HexCellId, CellFogState>) {
         if (states.isEmpty()) return
@@ -82,7 +84,7 @@ class RoomExplorationRepository(
     }
 
     /** 切换档位重建时清空本档位全部迷雾行（迷雾是轨迹点的可重建投影）。 */
-    suspend fun clearLevel() = dao.deleteLevel(level.cellKeyPrefix)
+    override suspend fun clearLevel() = dao.deleteLevel(level.cellKeyPrefix)
 
     private fun List<ExplorationCellEntity>.toExplorationState(): ExplorationState =
         ExplorationState(
@@ -124,6 +126,8 @@ class RoomTrackRepository(
 
     override suspend fun between(fromEpochMs: Long, toEpochMs: Long): List<TrackPoint> =
         dao.between(fromEpochMs, toEpochMs).map { it.toDomain() }
+
+    override suspend fun all(): List<TrackPoint> = dao.all().map { it.toDomain() }
 }
 
 private fun TrackPointEntity.toDomain(): TrackPoint = TrackPoint(

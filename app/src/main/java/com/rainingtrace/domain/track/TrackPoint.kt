@@ -27,4 +27,7 @@ interface TrackRepository {
 
     /** 时间区间内的点，时间升序。 */
     suspend fun between(fromEpochMs: Long, toEpochMs: Long): List<TrackPoint>
+
+    /** 全部轨迹点（时间升序）；切换迷雾档位时用于整体重建。 */
+    suspend fun all(): List<TrackPoint>
 }

@@ -1,9 +1,10 @@
-package com.rainingtrace.domain.track
+﻿package com.rainingtrace.domain.track
 
 import com.rainingtrace.domain.exploration.CellFogState
 import com.rainingtrace.domain.exploration.ExplorationState
+import com.rainingtrace.domain.map.GridLevel
+import com.rainingtrace.domain.map.GridManager
 import com.rainingtrace.domain.map.HexCellId
-import com.rainingtrace.domain.map.HexGrid
 import com.rainingtrace.domain.map.LocationSource
 import com.rainingtrace.domain.map.WorldCoordinate
 import org.junit.Assert.assertEquals
@@ -12,8 +13,9 @@ import org.junit.Test
 class RevealFogFromPointUseCaseTest {
 
     private val origin = WorldCoordinate(39.7326, 116.1712)
-    private val grid = HexGrid(origin, cellSizeMeters = 40.0)
-    private val reveal = RevealFogFromPointUseCase(grid)
+    private val gridManager = GridManager(GridLevel.M, origin)
+    private val grid = gridManager.grid
+    private val reveal = RevealFogFromPointUseCase(gridManager)
 
     @Test
     fun `origin cell visited at origin`() {
@@ -59,7 +61,7 @@ class RevealFogFromPointUseCaseTest {
 class RebuildFogFromTrackUseCaseTest {
 
     private val origin = WorldCoordinate(39.7326, 116.1712)
-    private val grid = HexGrid(origin, cellSizeMeters = 40.0)
+    private val gridManager = GridManager(GridLevel.M, origin)
 
     private fun point(latOffsetMeters: Double, ts: Long) = TrackPoint(
         id = "p$ts",
@@ -71,7 +73,7 @@ class RebuildFogFromTrackUseCaseTest {
 
     @Test
     fun `rebuild from same points is idempotent`() {
-        val reveal = RevealFogFromPointUseCase(grid)
+        val reveal = RevealFogFromPointUseCase(gridManager)
         val rebuild = RebuildFogFromTrackUseCase(reveal)
         val points = listOf(point(0.0, 1L), point(40.0, 2L), point(90.0, 3L))
 
@@ -84,7 +86,7 @@ class RebuildFogFromTrackUseCaseTest {
 
     @Test
     fun `empty track produces empty fog`() {
-        val rebuild = RebuildFogFromTrackUseCase(RevealFogFromPointUseCase(grid))
+        val rebuild = RebuildFogFromTrackUseCase(RevealFogFromPointUseCase(gridManager))
         assertEquals(0, rebuild(emptyList()).revealedCount())
     }
 }

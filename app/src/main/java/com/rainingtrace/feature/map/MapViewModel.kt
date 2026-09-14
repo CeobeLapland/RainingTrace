@@ -9,12 +9,14 @@ import com.rainingtrace.domain.exploration.ExplorationState
 import com.rainingtrace.domain.exploration.ObservePlaceUseCase
 import com.rainingtrace.domain.exploration.ObserveRejectReason
 import com.rainingtrace.domain.exploration.ObserveResult
+import com.rainingtrace.domain.map.HexCellId
 import com.rainingtrace.domain.map.HexCellVisual
-import com.rainingtrace.domain.map.HexGrid
+import com.rainingtrace.domain.map.GridManager
 import com.rainingtrace.domain.map.LocationProvider
 import com.rainingtrace.domain.map.MapCamera
 import com.rainingtrace.domain.map.MapLayer
 import com.rainingtrace.domain.map.MapRendererAdapter
+import com.rainingtrace.domain.map.MapViewport
 import com.rainingtrace.domain.map.Place
 import com.rainingtrace.domain.map.PlaceRepository
 import com.rainingtrace.domain.map.PlaceVisual
@@ -37,17 +39,19 @@ data class MapUiState(
     val nearbyPlace: Place? = null,
     val toast: String? = null,
     val showTrack: Boolean = true,
+    val showFog: Boolean = true,
 )
 
 /**
  * 地图屏单向数据流（战争迷雾架构）：
  *
  * 位置流 → 去噪落轨迹点（空间真相）→ 米制半径开雾（投影）→ 持久化 → 渲染；
- * 今日轨迹从轨迹点表查询；附近地点与观察动作不变（连续坐标、不吸附格子）。
+ * 迷雾/格染色只渲染与相机视口相交的格（未知格铺浓雾）；
+ * 今日轨迹从轨迹点表查询；地点是连续坐标，不写格子状态。
  */
 class MapViewModel(
     private val clock: WorldClock,
-    private val grid: HexGrid,
+    private val gridManager: GridManager,
     private val locationProvider: LocationProvider,
     private val mapRenderer: MapRendererAdapter,
     private val recordTrackPoint: RecordTrackPointUseCase,
@@ -65,13 +69,14 @@ class MapViewModel(
 
     private var explorationState = ExplorationState()
     private var lastCoordinate: WorldCoordinate? = null
+    private var viewport: MapViewport? = null
 
     init {
         viewModelScope.launch {
             explorationState = explorationRepository.loadState()
-            renderAllKnownCells()
-            refreshTodayTrack()
             mapRenderer.setLayerVisible(MapLayer.TRACK, _uiState.value.showTrack)
+            mapRenderer.setLayerVisible(MapLayer.FOG_MASK, _uiState.value.showFog)
+            refreshTodayTrack()
             locationProvider.updates.collect { fix ->
                 onLocationFix(fix)
             }
@@ -83,6 +88,12 @@ class MapViewModel(
         debugMapTap?.invoke(coordinate)
     }
 
+    /** 相机停止移动：按新视口重渲染迷雾。 */
+    fun onViewportChanged(viewport: MapViewport) {
+        this.viewport = viewport
+        renderViewport()
+    }
+
     /**
      * 从其他屏/Tab 返回：MapView 已重建，重载持久化状态并补渲染。
      */
@@ -92,19 +103,25 @@ class MapViewModel(
             _uiState.value = _uiState.value.copy(
                 revealedCount = explorationState.revealedCount(),
             )
-            renderAllKnownCells()
+            renderViewport()
             lastCoordinate?.let { coordinate ->
                 mapRenderer.renderPlayer(PlayerMarkerVisual(coordinate))
                 refreshPlaces(coordinate)
             }
             refreshTodayTrack()
             mapRenderer.setLayerVisible(MapLayer.TRACK, _uiState.value.showTrack)
+            mapRenderer.setLayerVisible(MapLayer.FOG_MASK, _uiState.value.showFog)
         }
     }
 
     fun setShowTrack(visible: Boolean) {
         _uiState.value = _uiState.value.copy(showTrack = visible)
         mapRenderer.setLayerVisible(MapLayer.TRACK, visible)
+    }
+
+    fun setShowFog(visible: Boolean) {
+        _uiState.value = _uiState.value.copy(showFog = visible)
+        mapRenderer.setLayerVisible(MapLayer.FOG_MASK, visible)
     }
 
     fun onObserveClicked() {
@@ -131,7 +148,7 @@ class MapViewModel(
     }
 
     fun initialCamera(): MapCamera =
-        MapCamera(center = grid.origin, zoom = DEFAULT_ZOOM)
+        MapCamera(center = gridManager.grid.origin, zoom = DEFAULT_ZOOM)
 
     private suspend fun onLocationFix(fix: com.rainingtrace.domain.map.RawLocationFix) {
         // 去噪闸门：只有稳定点才成为轨迹、才开雾。被拒的漂移点不移动玩家。
@@ -143,7 +160,7 @@ class MapViewModel(
 
         explorationState = revealFog(explorationState, coordinate)
         explorationRepository.saveStates(explorationState.cellStates)
-        renderAllKnownCells()
+        renderViewport()
         mapRenderer.renderPlayer(PlayerMarkerVisual(coordinate))
         refreshTodayTrack()
         refreshPlaces(coordinate)
@@ -168,19 +185,36 @@ class MapViewModel(
 
     private suspend fun refreshPlaces(coordinate: WorldCoordinate) {
         val places = placeRepository.nearby(coordinate, PLACE_MARKER_RADIUS_METERS)
-        renderPlaceMarkers(places)
-        // 已发现的地点格标为 SPECIAL（紫色），成为世界图的一部分
-        places.forEach { place ->
-            explorationState = explorationState.withState(
-                grid.cellOf(place.coordinate),
-                CellFogState.SPECIAL,
-            )
-        }
-        renderAllKnownCells()
-        explorationRepository.saveStates(explorationState.cellStates)
+        mapRenderer.renderPlaces(places.map { PlaceVisual(it.id, it.name, it.coordinate) })
         _uiState.value = _uiState.value.copy(
             nearbyPlace = places.firstOrNull {
                 it.coordinate.distanceMetersTo(coordinate) <= PLACE_CARD_RADIUS_METERS
+            },
+        )
+    }
+
+    /**
+     * 视口驱动渲染（分块掩膜）：
+     * 枚举与外扩视口相交的**全部**格——未知格渲染浓雾，已知格按状态渲染
+     * 薄雾/染色。格数随视口走，与世界大小无关（最小缩放由 MapLibre 端限制）。
+     */
+    private fun renderViewport() {
+        val vp = viewport ?: return
+        val grid = gridManager.grid
+        val outer = vp.expanded(FOG_EXPAND_FACTOR)
+        val covering = grid.cellsInRect(
+            minLat = outer.southWest.latDegrees,
+            minLng = outer.southWest.lngDegrees,
+            maxLat = outer.northEast.latDegrees,
+            maxLng = outer.northEast.lngDegrees,
+        )
+        mapRenderer.renderCells(
+            covering.map { cell ->
+                HexCellVisual(
+                    cellId = cell,
+                    polygon = grid.cellPolygon(cell),
+                    fogState = explorationState.stateOf(cell),
+                )
             },
         )
     }
@@ -189,26 +223,11 @@ class MapViewModel(
         _uiState.value = _uiState.value.copy(toast = message)
     }
 
-    private fun renderAllKnownCells() {
-        // S1：全量推送已知格（校园尺度量级可接受）；S2 改为相机视口驱动。
-        val visuals = explorationState.cellStates.map { (cell, fog) ->
-            HexCellVisual(
-                cellId = cell,
-                polygon = grid.cellPolygon(cell),
-                fogState = fog,
-            )
-        }
-        mapRenderer.renderCells(visuals)
-    }
-
-    private fun renderPlaceMarkers(places: List<Place>) {
-        mapRenderer.renderPlaces(places.map { PlaceVisual(it.id, it.name, it.coordinate) })
-    }
-
     companion object {
         const val DEFAULT_ZOOM = 16.5
         const val PLACE_MARKER_RADIUS_METERS = 600.0
         const val PLACE_CARD_RADIUS_METERS = 150.0
+        private const val FOG_EXPAND_FACTOR = 1.35
         private val TRACK_ZONE: ZoneId = ZoneId.of("Asia/Shanghai")
     }
 }

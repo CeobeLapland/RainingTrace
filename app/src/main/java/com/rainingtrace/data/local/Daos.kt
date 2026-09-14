@@ -41,6 +41,9 @@ interface TrackPointDao {
     )
     suspend fun between(fromMs: Long, toMs: Long): List<TrackPointEntity>
 
+    @Query("SELECT * FROM track_points ORDER BY timestampEpochMs ASC")
+    suspend fun all(): List<TrackPointEntity>
+
     @Query("SELECT * FROM track_points ORDER BY timestampEpochMs DESC LIMIT 1")
     suspend fun latest(): TrackPointEntity?
 
