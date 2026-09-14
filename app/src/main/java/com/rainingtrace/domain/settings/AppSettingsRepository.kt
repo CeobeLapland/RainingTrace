@@ -11,4 +11,8 @@ interface AppSettingsRepository {
     val gridLevel: Flow<GridLevel>
     suspend fun currentGridLevel(): GridLevel
     suspend fun setGridLevel(level: GridLevel)
+
+    val locationMode: Flow<LocationMode>
+    suspend fun currentLocationMode(): LocationMode
+    suspend fun setLocationMode(mode: LocationMode)
 }

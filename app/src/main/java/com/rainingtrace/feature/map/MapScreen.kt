@@ -1,5 +1,9 @@
 package com.rainingtrace.feature.map
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -27,8 +31,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -44,17 +50,53 @@ import org.maplibre.android.maps.MapView
 /**
  * 地图屏：AndroidView 包装 MapView，业务只通过 [MapRendererAdapter] 交互。
  * MapView 类型不允许越过本文件进入 domain（06_地图专项 §8）。
+ *
+ * GPS 模式首次进入自动请求定位权限；拒绝后显示可点的授权提示；Fake 模式不请求权限。
  */
 @Composable
 fun MapScreen(
     viewModel: MapViewModel,
     mapAdapter: MapRendererAdapter,
-    useFakeLocation: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
     val mapViewRef = remember { mutableStateOf<MapView?>(null) }
+    val context = LocalContext.current
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+    ) { result ->
+        val granted = result[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            result[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        viewModel.onPermissionResult(granted)
+    }
+
+    fun hasLocationPermission(): Boolean =
+        ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_FINE_LOCATION,
+        ) == PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(
+                context, Manifest.permission.ACCESS_COARSE_LOCATION,
+            ) == PackageManager.PERMISSION_GRANTED
+
+    // GPS 模式 + 还没处理过权限：已授权直接同步，未授权弹一次系统请求
+    LaunchedEffect(uiState.locationMode, uiState.locationPermission) {
+        if (uiState.locationMode == com.rainingtrace.domain.settings.LocationMode.GPS &&
+            uiState.locationPermission == LocationPermission.UNKNOWN
+        ) {
+            if (hasLocationPermission()) {
+                viewModel.onPermissionResult(true)
+            } else {
+                permissionLauncher.launch(
+                    arrayOf(
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                    ),
+                )
+            }
+        }
+    }
 
     Box(modifier = modifier.fillMaxSize()) {
         AndroidView(
@@ -117,7 +159,7 @@ fun MapScreen(
             onDispose { lifecycleOwner.lifecycle.removeObserver(refreshObserver) }
         }
 
-        // 左上角手账浮片：探索计数常驻；Fake 定位提示仅 Fake 模式可见。
+        // 左上角手账浮片：探索计数常驻；定位模式/权限提示。
         Column(
             modifier = Modifier
                 .align(Alignment.TopStart)
@@ -125,11 +167,29 @@ fun MapScreen(
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             MapChip(text = "足迹 · 已探索 ${uiState.revealedCount} 格")
-            if (useFakeLocation) {
-                MapChip(
-                    text = "Fake 定位 · 点按地图移动",
-                    emphasized = true,
-                )
+            when (uiState.locationMode) {
+                com.rainingtrace.domain.settings.LocationMode.FAKE ->
+                    MapChip(text = "Fake 定位 · 点按地图移动", emphasized = true)
+
+                com.rainingtrace.domain.settings.LocationMode.GPS -> when (uiState.locationPermission) {
+                    LocationPermission.DENIED ->
+                        MapChip(
+                            text = "未授权定位 · 点此重试",
+                            emphasized = true,
+                            onClick = {
+                                permissionLauncher.launch(
+                                    arrayOf(
+                                        Manifest.permission.ACCESS_FINE_LOCATION,
+                                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                                    ),
+                                )
+                            },
+                        )
+                    LocationPermission.GRANTED ->
+                        MapChip(text = "GPS 定位中")
+                    LocationPermission.UNKNOWN ->
+                        MapChip(text = "正在请求定位…")
+                }
             }
         }
 
@@ -259,6 +319,7 @@ private fun LayerToggleButton(
 private fun MapChip(
     text: String,
     emphasized: Boolean = false,
+    onClick: (() -> Unit)? = null,
 ) {
     val container = if (emphasized) {
         MaterialTheme.colorScheme.tertiary.copy(alpha = 0.14f)
@@ -274,6 +335,7 @@ private fun MapChip(
         color = container,
         shape = RoundedCornerShape(percent = 50),
         tonalElevation = 0.dp,
+        modifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier,
     ) {
         Text(
             text = text,

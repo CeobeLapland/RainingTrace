@@ -35,6 +35,10 @@ import com.rainingtrace.platform.ar.ArCoreController
 import com.rainingtrace.platform.camera.CameraXController
 import com.rainingtrace.platform.location.FakeLocationProvider
 import com.rainingtrace.platform.map.MapLibreAdapter
+import com.rainingtrace.platform.location.AndroidLocationProvider
+import com.rainingtrace.platform.location.SwitchableLocationProvider
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -45,7 +49,10 @@ import kotlinx.coroutines.runBlocking
  *
  * 依赖方向保持 feature → domain ← platform/data。
  */
-class AppContainer(context: Context) {
+class AppContainer(
+    context: Context,
+    private val applicationScope: CoroutineScope,
+) {
 
     private val appContext: Context = context.applicationContext
 
@@ -68,26 +75,40 @@ class AppContainer(context: Context) {
         origin = worldOrigin,
     )
 
+    /** 启动时恢复的定位模式（Fake 默认，点击地图调试）。 */
+    val initialLocationMode: com.rainingtrace.domain.settings.LocationMode =
+        runBlocking { settingsRepository.locationMode.first() }
+
     /** 供仍需直接取网格的只读便捷属性（实时跟随档位）。 */
     val grid: HexGrid get() = gridManager.grid
-
-    /**
-     * 是否使用 Fake 定位。UI 据此显示「点击地图 = 移动」调试提示。
-     * RT-BOOT-006 完成后与定位模式设置打通（S4）。
-     */
-    val useFakeLocation: Boolean = true
 
     private val fakeLocationProvider: FakeLocationProvider by lazy {
         FakeLocationProvider(clock = clock, initial = worldOrigin)
     }
 
-    val locationProvider: LocationProvider by lazy {
-        fakeLocationProvider
+    private val androidLocationProvider: AndroidLocationProvider by lazy {
+        AndroidLocationProvider(appContext, clock)
     }
 
-    /** 调试用：Fake 模式下点击地图 = 移动；真实定位模式下为 null（S4 切换）。 */
-    val debugMapTap: ((WorldCoordinate) -> Unit)? = { coordinate ->
-        fakeLocationProvider.emit(coordinate)
+    val locationProvider: SwitchableLocationProvider by lazy {
+        SwitchableLocationProvider(
+            fake = fakeLocationProvider,
+            android = androidLocationProvider,
+            initialMode = initialLocationMode,
+            parentScope = applicationScope,
+            modeFlow = settingsRepository.locationMode,
+        )
+    }
+
+    /** 供 feature 判断当前定位模式（权限流、Fake 提示等）。 */
+    val locationModeFlow get() = settingsRepository.locationMode
+
+    /** 定位权限状态变化后重新尝试拉起 GPS 采集。 */
+    fun refreshLocation() = locationProvider.refresh()
+
+    /** 调试用：仅 Fake 模式点击地图有效。 */
+    val debugMapTap: (WorldCoordinate) -> Unit = { coordinate ->
+        locationProvider.emitDebugMove(coordinate)
     }
 
     val mapRenderer: MapRendererAdapter by lazy { MapLibreAdapter() }

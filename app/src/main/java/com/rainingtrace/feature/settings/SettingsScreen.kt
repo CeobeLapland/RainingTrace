@@ -34,6 +34,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rainingtrace.R
 import com.rainingtrace.core.common.AppContainer
 import com.rainingtrace.domain.map.GridLevel
+import com.rainingtrace.domain.settings.LocationMode
 
 @Composable
 fun SettingsRoute(
@@ -47,6 +48,7 @@ fun SettingsRoute(
         SettingsViewModel(container.settingsRepository, container.changeGridLevel)
     }
     val gridLevel by viewModel.gridLevel.collectAsStateWithLifecycle()
+    val locationMode by viewModel.locationMode.collectAsStateWithLifecycle()
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -99,6 +101,27 @@ fun SettingsRoute(
                         onClick = { viewModel.selectGridLevel(level) },
                     )
                 }
+
+                SectionLabel("定位方式")
+                Text(
+                    text = "GPS：用真实位置开雾与记录轨迹（仅前台、仅本机）；Fake：点击地图移动，用于调试。",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 20.dp),
+                )
+                Spacer(Modifier.height(8.dp))
+                OptionRow(
+                    title = "GPS 真实定位",
+                    hint = "走到哪雾开到哪",
+                    selected = locationMode == LocationMode.GPS,
+                    onClick = { viewModel.selectLocationMode(LocationMode.GPS) },
+                )
+                OptionRow(
+                    title = "Fake 点击移动",
+                    hint = "调试用，不申请定位权限",
+                    selected = locationMode == LocationMode.FAKE,
+                    onClick = { viewModel.selectLocationMode(LocationMode.FAKE) },
+                )
             }
         }
     }
@@ -155,4 +178,41 @@ private fun levelHint(level: GridLevel): String = when (level) {
     GridLevel.M -> "推荐，校园尺度"
     GridLevel.L -> "更粗，开图更快"
     GridLevel.XL -> "概览，适合大范围探索"
+}
+
+@Composable
+private fun OptionRow(
+    title: String,
+    hint: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RadioButton(
+            selected = selected,
+            onClick = onClick,
+            colors = RadioButtonDefaults.colors(
+                selectedColor = MaterialTheme.colorScheme.primary,
+            ),
+        )
+        Spacer(Modifier.width(8.dp))
+        Column {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Text(
+                text = hint,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
 }

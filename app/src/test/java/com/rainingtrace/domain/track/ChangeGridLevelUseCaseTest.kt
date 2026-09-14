@@ -9,6 +9,7 @@ import com.rainingtrace.domain.map.HexCellId
 import com.rainingtrace.domain.map.LocationSource
 import com.rainingtrace.domain.map.WorldCoordinate
 import com.rainingtrace.domain.settings.AppSettingsRepository
+import com.rainingtrace.domain.settings.LocationMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
@@ -21,10 +22,16 @@ class ChangeGridLevelUseCaseTest {
 
     private class FakeSettings : AppSettingsRepository {
         var level: GridLevel = GridLevel.M
+        var mode: LocationMode = LocationMode.FAKE
         override val gridLevel: Flow<GridLevel> = flowOf(level)
         override suspend fun currentGridLevel() = level
         override suspend fun setGridLevel(level: GridLevel) {
             this.level = level
+        }
+        override val locationMode: Flow<LocationMode> = flowOf(mode)
+        override suspend fun currentLocationMode() = mode
+        override suspend fun setLocationMode(mode: LocationMode) {
+            this.mode = mode
         }
     }
 

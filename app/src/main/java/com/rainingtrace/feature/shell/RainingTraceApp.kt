@@ -95,12 +95,14 @@ fun RainingTraceApp(container: AppContainer) {
                         placeRepository = container.placeRepository,
                         explorationRepository = container.explorationRepository,
                         debugMapTap = container.debugMapTap,
+                        locationModeFlow = container.locationModeFlow,
+                        refreshLocation = container::refreshLocation,
                     )
                 }
                 MapScreen(
                     viewModel = mapViewModel,
                     mapAdapter = container.mapRenderer,
-                    useFakeLocation = container.useFakeLocation,
+                    modifier = Modifier.fillMaxSize(),
                 )
             }
 

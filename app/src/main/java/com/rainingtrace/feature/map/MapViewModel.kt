@@ -23,15 +23,19 @@ import com.rainingtrace.domain.map.PlaceVisual
 import com.rainingtrace.domain.map.PlayerMarkerVisual
 import com.rainingtrace.domain.map.WorldCoordinate
 import com.rainingtrace.domain.map.distanceMetersTo
+import com.rainingtrace.domain.settings.LocationMode
 import com.rainingtrace.domain.track.RecordTrackPointUseCase
 import com.rainingtrace.domain.track.RecordTrackResult
 import com.rainingtrace.domain.track.RevealFogFromPointUseCase
 import com.rainingtrace.domain.track.TrackRepository
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.time.ZoneId
+
+enum class LocationPermission { UNKNOWN, GRANTED, DENIED }
 
 data class MapUiState(
     val revealedCount: Int = 0,
@@ -40,6 +44,8 @@ data class MapUiState(
     val toast: String? = null,
     val showTrack: Boolean = true,
     val showFog: Boolean = true,
+    val locationMode: LocationMode = LocationMode.FAKE,
+    val locationPermission: LocationPermission = LocationPermission.UNKNOWN,
 )
 
 /**
@@ -60,8 +66,11 @@ class MapViewModel(
     private val observePlace: ObservePlaceUseCase,
     private val placeRepository: PlaceRepository,
     private val explorationRepository: ExplorationRepository,
-    /** Fake 模式下点击地图移动；真实定位模式为 null。 */
+    /** Fake 模式下点击地图移动；GPS 模式内部忽略。 */
     private val debugMapTap: ((WorldCoordinate) -> Unit)?,
+    private val locationModeFlow: Flow<LocationMode>,
+    /** 权限授予后重新拉起 GPS 采集。 */
+    private val refreshLocation: () -> Unit,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MapUiState())
@@ -77,10 +86,22 @@ class MapViewModel(
             mapRenderer.setLayerVisible(MapLayer.TRACK, _uiState.value.showTrack)
             mapRenderer.setLayerVisible(MapLayer.FOG_MASK, _uiState.value.showFog)
             refreshTodayTrack()
+            launch {
+                locationModeFlow.collect { mode ->
+                    _uiState.value = _uiState.value.copy(locationMode = mode)
+                }
+            }
             locationProvider.updates.collect { fix ->
                 onLocationFix(fix)
             }
         }
+    }
+
+    /** Compose 权限请求结果回调；授权后重新拉起 GPS 采集。 */
+    fun onPermissionResult(granted: Boolean) {
+        val permission = if (granted) LocationPermission.GRANTED else LocationPermission.DENIED
+        _uiState.value = _uiState.value.copy(locationPermission = permission)
+        if (granted) refreshLocation()
     }
 
     /** Fake 模式：点击地图 = 移动（注入 FakeLocationProvider）；真实模式无效。 */
