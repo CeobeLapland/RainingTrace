@@ -38,9 +38,11 @@ import com.rainingtrace.core.common.AppContainer
 import com.rainingtrace.feature.ar.ArScreen
 import com.rainingtrace.feature.camera.CameraRoute
 import com.rainingtrace.feature.home.HomeScreen
+import com.rainingtrace.feature.inventory.InventoryRoute
 import com.rainingtrace.feature.journal.JournalRoute
 import com.rainingtrace.feature.map.MapScreen
 import com.rainingtrace.feature.map.MapViewModel
+import com.rainingtrace.feature.map.WorldStatusViewModel
 import com.rainingtrace.feature.messages.MessagesScreen
 import com.rainingtrace.feature.profile.MeScreen
 import com.rainingtrace.feature.settings.SettingsRoute
@@ -101,6 +103,12 @@ fun RainingTraceApp(container: AppContainer) {
                 }
                 MapScreen(
                     viewModel = mapViewModel,
+                    worldStatus = viewModel {
+                        WorldStatusViewModel(
+                            clock = container.clock,
+                            weatherProvider = container.weatherProvider,
+                        )
+                    },
                     mapAdapter = container.mapRenderer,
                     modifier = Modifier.fillMaxSize(),
                 )
@@ -125,12 +133,20 @@ fun RainingTraceApp(container: AppContainer) {
             composable(Routes.ME) {
                 MeScreen(
                     onOpenJournal = { navController.navigate(Routes.JOURNAL) },
+                    onOpenInventory = { navController.navigate(Routes.INVENTORY) },
                     onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                 )
             }
 
             composable(Routes.JOURNAL) {
                 JournalRoute(
+                    container = container,
+                    onBack = { navController.popBackStack() },
+                )
+            }
+
+            composable(Routes.INVENTORY) {
+                InventoryRoute(
                     container = container,
                     onBack = { navController.popBackStack() },
                 )

@@ -15,7 +15,9 @@ import com.rainingtrace.domain.exploration.ExplorationRepository
 import com.rainingtrace.domain.exploration.ObservePlaceUseCase
 import com.rainingtrace.domain.footprint.FootprintRepository
 import com.rainingtrace.domain.inventory.AddItemToInventoryUseCase
+import com.rainingtrace.domain.inventory.InMemoryResourceCatalog
 import com.rainingtrace.domain.inventory.InventoryRepository
+import com.rainingtrace.domain.inventory.ResourceCatalog
 import com.rainingtrace.domain.map.GridManager
 import com.rainingtrace.domain.map.HexGrid
 import com.rainingtrace.domain.map.LocationProvider
@@ -31,6 +33,8 @@ import com.rainingtrace.domain.track.RebuildFogFromTrackUseCase
 import com.rainingtrace.domain.track.RecordTrackPointUseCase
 import com.rainingtrace.domain.track.RevealFogFromPointUseCase
 import com.rainingtrace.domain.track.TrackRepository
+import com.rainingtrace.domain.world.FakeWeatherProvider
+import com.rainingtrace.domain.world.WeatherProvider
 import com.rainingtrace.platform.ar.ArCoreController
 import com.rainingtrace.platform.camera.CameraXController
 import com.rainingtrace.platform.location.FakeLocationProvider
@@ -130,6 +134,14 @@ class AppContainer(
     val inventoryRepository: InventoryRepository by lazy {
         RoomInventoryRepository(database.inventoryDao())
     }
+
+    /** 资源/图鉴目录：定义库存在这里，库存量只在 inventoryRepository。 */
+    val resourceCatalog: ResourceCatalog by lazy {
+        InMemoryResourceCatalog(InMemoryResourceCatalog.DEFAULT)
+    }
+
+    /** 世界天气状态：MVP 用 Fake（固定晴），P1 接真实 API。 */
+    val weatherProvider: WeatherProvider by lazy { FakeWeatherProvider() }
 
     val addItem: AddItemToInventoryUseCase by lazy { AddItemToInventoryUseCase(clock) }
 

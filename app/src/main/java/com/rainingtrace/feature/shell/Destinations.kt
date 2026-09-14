@@ -14,6 +14,7 @@ object Routes {
     const val MESSAGES = "messages"
     const val ME = "me"
     const val JOURNAL = "journal"
+    const val INVENTORY = "inventory"
     const val SETTINGS = "settings"
 }
 

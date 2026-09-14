@@ -56,10 +56,12 @@ import org.maplibre.android.maps.MapView
 @Composable
 fun MapScreen(
     viewModel: MapViewModel,
+    worldStatus: WorldStatusViewModel,
     mapAdapter: MapRendererAdapter,
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val world by worldStatus.uiState.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
     val mapViewRef = remember { mutableStateOf<MapView?>(null) }
     val context = LocalContext.current
@@ -167,6 +169,7 @@ fun MapScreen(
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             MapChip(text = "足迹 · 已探索 ${uiState.revealedCount} 格")
+            MapChip(text = "${world.weatherLabel} · ${world.timeLabel}")
             when (uiState.locationMode) {
                 com.rainingtrace.domain.settings.LocationMode.FAKE ->
                     MapChip(text = "Fake 定位 · 点按地图移动", emphasized = true)

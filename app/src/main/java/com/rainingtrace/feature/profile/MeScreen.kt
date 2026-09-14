@@ -27,6 +27,7 @@ import com.rainingtrace.R
 @Composable
 fun MeScreen(
     onOpenJournal: () -> Unit,
+    onOpenInventory: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -78,6 +79,13 @@ fun MeScreen(
                 modifier = Modifier.size(20.dp),
             )
         }
+
+        MeRow(
+            iconRes = R.drawable.ic_fog,
+            title = "背包 / 图鉴",
+            subtitle = "观察与记录收藏",
+            onClick = onOpenInventory,
+        )
 
         MeRow(
             iconRes = R.drawable.ic_settings,
