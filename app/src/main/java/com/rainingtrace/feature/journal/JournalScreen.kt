@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,9 +18,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,25 +36,110 @@ import com.rainingtrace.core.ui.LocalImage
 import com.rainingtrace.core.ui.label
 import com.rainingtrace.domain.memory.MemoryNode
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
+/** 日记页的两个页签：记忆是"我拍到的/写下的"，轨迹是"我走过的"。 */
+enum class JournalTab(val label: String) {
+    MEMORY("记忆"),
+    TRACK("轨迹"),
+}
+
 /**
- * 日记时间线：记忆即收藏（GDD 支柱）。
- * 按日期分组展示（今天 / 昨天 / 具体日期），每条记忆可「在地图查看」。
+ * 日记：记忆即收藏（GDD 支柱 §06），轨迹即足迹（GDD §05）。
+ *
+ * - 记忆页签：按日期分组（今天 / 昨天 / 具体日期），每条可「在地图查看」；
+ * - 轨迹页签：月历标出有轨迹的日子，选中那天看摘要并可「在地图查看」。
  */
 @Composable
 fun JournalScreen(
     viewModel: JournalViewModel,
     onViewOnMap: (MemoryNode) -> Unit,
+    onViewTrackDay: (LocalDate) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val days by viewModel.days.collectAsStateWithLifecycle()
+    val trackDays by viewModel.trackDays.collectAsStateWithLifecycle()
+    val selectedTrackDay by viewModel.selectedTrackDay.collectAsStateWithLifecycle()
     val playingRef by viewModel.playingRef.collectAsStateWithLifecycle()
+    var tab by remember { mutableStateOf(JournalTab.MEMORY) }
 
+    // 切到轨迹页签时重查一次，刚走完的路立刻能看到。
+    LaunchedEffect(tab) {
+        if (tab == JournalTab.TRACK) viewModel.refreshTrackDays()
+    }
+
+    Column(modifier = modifier.fillMaxSize()) {
+        JournalTabRow(tab = tab, onSelect = { tab = it })
+        when (tab) {
+            JournalTab.MEMORY -> MemoryTimeline(
+                days = days,
+                playingRef = playingRef,
+                onViewOnMap = onViewOnMap,
+                onToggleAudio = viewModel::onToggleAudio,
+            )
+
+            JournalTab.TRACK -> Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+            ) {
+                TrackCalendar(
+                    days = trackDays,
+                    selectedDay = selectedTrackDay,
+                    onSelectDay = viewModel::selectTrackDay,
+                    onViewOnMap = onViewTrackDay,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun JournalTabRow(tab: JournalTab, onSelect: (JournalTab) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        JournalTab.entries.forEach { entry ->
+            val selected = entry == tab
+            Surface(
+                color = if (selected) {
+                    MaterialTheme.colorScheme.secondary.copy(alpha = 0.35f)
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant
+                },
+                shape = RoundedCornerShape(percent = 50),
+                modifier = Modifier.clickable { onSelect(entry) },
+            ) {
+                Text(
+                    text = entry.label,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (selected) {
+                        MaterialTheme.colorScheme.onSecondary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 7.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MemoryTimeline(
+    days: List<JournalDay>,
+    playingRef: String?,
+    onViewOnMap: (MemoryNode) -> Unit,
+    onToggleAudio: (String) -> Unit,
+) {
     if (days.isEmpty()) {
         Column(
-            modifier = modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -63,8 +154,8 @@ fun JournalScreen(
     }
 
     LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         days.forEach { day ->
@@ -76,7 +167,7 @@ fun JournalScreen(
                     memory = memory,
                     playingRef = playingRef,
                     onViewOnMap = onViewOnMap,
-                    onToggleAudio = viewModel::onToggleAudio,
+                    onToggleAudio = onToggleAudio,
                 )
             }
         }

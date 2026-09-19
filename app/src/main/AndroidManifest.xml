@@ -15,6 +15,9 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- 后台同步任务通知（WorkManager 降级路径） -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- 足迹后台记录：location 类型前台服务（显式开关，低频，只写本机轨迹表） -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 
     <!-- 硬件特性：均可选，缺失时功能降级而非不可安装 -->
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />
@@ -47,6 +50,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- 足迹后台记录：只做「定位 → 去噪 → 写库」，不跑迷雾/渲染/世界状态 -->
+        <service
+            android:name=".platform.location.TrackRecordingService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
     </application>
 
 </manifest>

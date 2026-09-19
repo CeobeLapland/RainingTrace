@@ -98,6 +98,8 @@ fun RainingTraceApp(container: AppContainer) {
                         explorationRepository = container.explorationRepository,
                         memoryRepository = container.memoryRepository,
                         memoryFocus = container.memoryFocusRequest,
+                        trackDayFocus = container.trackDayFocusRequest,
+                        foregroundState = container.foregroundState,
                         debugMapTap = container.debugMapTap,
                         settings = container.settingsRepository,
                         refreshLocation = container::refreshLocation,
@@ -109,6 +111,7 @@ fun RainingTraceApp(container: AppContainer) {
                         WorldStatusViewModel(
                             clock = container.clock,
                             weatherProvider = container.weatherProvider,
+                            foregroundState = container.foregroundState,
                         )
                     },
                     mapAdapter = container.mapRenderer,
@@ -148,6 +151,11 @@ fun RainingTraceApp(container: AppContainer) {
                         // 先把聚焦请求放进容器，再切回世界 Tab；
                         // 地图侧可能被重建（VM 首次 collect 就会读到），也可能还活着（collect 收到变化）。
                         container.memoryFocusRequest.request(memory)
+                        navigateToTab(navController, Routes.WORLD)
+                    },
+                    onViewTrackDay = { date ->
+                        // 与记忆同构：轨迹日历「在地图查看」也走一次性聚焦请求。
+                        container.trackDayFocusRequest.request(date)
                         navigateToTab(navController, Routes.WORLD)
                     },
                 )

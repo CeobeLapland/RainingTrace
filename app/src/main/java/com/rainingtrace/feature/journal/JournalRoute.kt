@@ -27,6 +27,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rainingtrace.R
 import com.rainingtrace.core.common.AppContainer
 import com.rainingtrace.domain.memory.MemoryNode
+import java.time.LocalDate
 
 /**
  * 日记子页面：从「我的」进入，自带返回顶栏，不显示主外壳底栏。
@@ -36,6 +37,7 @@ fun JournalRoute(
     container: AppContainer,
     onBack: () -> Unit,
     onViewOnMap: (MemoryNode) -> Unit,
+    onViewTrackDay: (LocalDate) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BackHandler { onBack() }
@@ -44,6 +46,7 @@ fun JournalRoute(
         JournalViewModel(
             memoryRepository = container.memoryRepository,
             audioNote = container.audioNoteController,
+            trackRepository = container.trackRepository,
             clock = container.clock,
         )
     }
@@ -87,7 +90,11 @@ fun JournalRoute(
                 )
             }
 
-            JournalScreen(viewModel = journalViewModel, onViewOnMap = onViewOnMap)
+            JournalScreen(
+                viewModel = journalViewModel,
+                onViewOnMap = onViewOnMap,
+                onViewTrackDay = onViewTrackDay,
+            )
         }
     }
 }

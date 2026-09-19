@@ -3,15 +3,19 @@ package com.rainingtrace.data.settings
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.rainingtrace.domain.map.GridLevel
 import com.rainingtrace.domain.map.PlaceType
 import com.rainingtrace.domain.settings.AppSettingsRepository
+import com.rainingtrace.domain.settings.BackgroundInterval
+import com.rainingtrace.domain.settings.DayWindow
 import com.rainingtrace.domain.settings.LocationMode
 import com.rainingtrace.domain.settings.MapFilterSettings
 import com.rainingtrace.domain.settings.MemoryTimeFilter
+import com.rainingtrace.domain.settings.TrackingSettings
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -75,11 +79,50 @@ class DataStoreSettingsRepository(
         }
     }
 
+    override val tracking: Flow<TrackingSettings> =
+        context.settingsDataStore.data.map { prefs ->
+            TrackingSettings(
+                enabled = prefs[KEY_TRACKING_ENABLED] ?: false,
+                backgroundInterval = prefs[KEY_BG_INTERVAL]
+                    ?.let { runCatching { BackgroundInterval.valueOf(it) }.getOrNull() }
+                    ?: BackgroundInterval.DEFAULT,
+                daytimeOnly = prefs[KEY_DAYTIME_ONLY] ?: true,
+                dayWindow = prefs[KEY_DAY_WINDOW]
+                    ?.let { runCatching { DayWindow.valueOf(it) }.getOrNull() }
+                    ?: DayWindow.DEFAULT,
+            )
+        }
+
+    override suspend fun currentTracking(): TrackingSettings = tracking.first()
+
+    override suspend fun setTracking(settings: TrackingSettings) {
+        context.settingsDataStore.edit { prefs ->
+            prefs[KEY_TRACKING_ENABLED] = settings.enabled
+            prefs[KEY_BG_INTERVAL] = settings.backgroundInterval.name
+            prefs[KEY_DAYTIME_ONLY] = settings.daytimeOnly
+            prefs[KEY_DAY_WINDOW] = settings.dayWindow.name
+        }
+    }
+
+    override suspend fun fogWatermarkMs(): Long? =
+        context.settingsDataStore.data.map { it[KEY_FOG_WATERMARK] }.first()
+
+    override suspend fun setFogWatermarkMs(epochMs: Long) {
+        context.settingsDataStore.edit { prefs ->
+            prefs[KEY_FOG_WATERMARK] = epochMs
+        }
+    }
+
     private companion object {
         val KEY_GRID_LEVEL = stringPreferencesKey("grid_level")
         val KEY_LOCATION_MODE = stringPreferencesKey("location_mode")
         val KEY_SHOWN_PLACE_TYPES = stringSetPreferencesKey("shown_place_types")
         val KEY_SHOW_MEMORIES = booleanPreferencesKey("show_memories")
         val KEY_MEMORY_TIME = stringPreferencesKey("memory_time")
+        val KEY_TRACKING_ENABLED = booleanPreferencesKey("tracking_enabled")
+        val KEY_BG_INTERVAL = stringPreferencesKey("tracking_bg_interval")
+        val KEY_DAYTIME_ONLY = booleanPreferencesKey("tracking_daytime_only")
+        val KEY_DAY_WINDOW = stringPreferencesKey("tracking_day_window")
+        val KEY_FOG_WATERMARK = longPreferencesKey("fog_watermark_ms")
     }
 }

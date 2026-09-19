@@ -2,6 +2,7 @@ package com.rainingtrace.feature.map
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.rainingtrace.core.lifecycle.AppForegroundState
 import com.rainingtrace.core.time.WorldClock
 import com.rainingtrace.domain.world.WeatherKind
 import com.rainingtrace.domain.world.WeatherProvider
@@ -24,10 +25,13 @@ data class WorldStatusUiState(
  * 世界状态接线（GDD §07）：时间 + 天气。
  * MVP 用 FakeWeatherProvider（固定晴），随时间轮询刷新；
  * P1 接真实天气 API 后本 VM 不变，只换 provider。
+ *
+ * 只在应用可见时轮询：后台不跑世界状态（省电边界，与地图处理流同一闸门）。
  */
 class WorldStatusViewModel(
     private val clock: WorldClock,
     private val weatherProvider: WeatherProvider,
+    private val foregroundState: AppForegroundState,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(WorldStatusUiState())
@@ -35,9 +39,14 @@ class WorldStatusViewModel(
 
     init {
         viewModelScope.launch {
-            while (true) {
+            foregroundState.isForeground.collect { foreground ->
+                if (!foreground) return@collect
+                // 回到前台先立刻补一帧，再继续轮询。
                 _uiState.value = refresh()
-                delay(REFRESH_INTERVAL_MS)
+                while (foregroundState.isForeground.value) {
+                    delay(REFRESH_INTERVAL_MS)
+                    _uiState.value = refresh()
+                }
             }
         }
     }

@@ -29,6 +29,14 @@ interface ExplorationDao {
     suspend fun countLevel(prefix: String): Int
 }
 
+/** 轨迹按本地日汇总的一行（轨迹日历用），不加载具体点。 */
+data class TrackDayRow(
+    val dayIndex: Long,
+    val pointCount: Int,
+    val firstEpochMs: Long,
+    val lastEpochMs: Long,
+)
+
 @Dao
 interface TrackPointDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
@@ -40,6 +48,19 @@ interface TrackPointDao {
             "ORDER BY timestampEpochMs ASC",
     )
     suspend fun between(fromMs: Long, toMs: Long): List<TrackPointEntity>
+
+    /**
+     * 按本地日分桶的汇总（日期倒序）。86400000 = 一天的毫秒数。
+     * 时间戳是 UTC，所以先加时区偏移再除以一天；中国无夏令时，固定偏移是精确的。
+     */
+    @Query(
+        "SELECT (timestampEpochMs + :zoneOffsetMs) / 86400000 AS dayIndex, " +
+            "COUNT(*) AS pointCount, " +
+            "MIN(timestampEpochMs) AS firstEpochMs, " +
+            "MAX(timestampEpochMs) AS lastEpochMs " +
+            "FROM track_points GROUP BY dayIndex ORDER BY dayIndex DESC",
+    )
+    suspend fun daySummaries(zoneOffsetMs: Long): List<TrackDayRow>
 
     @Query("SELECT * FROM track_points ORDER BY timestampEpochMs ASC")
     suspend fun all(): List<TrackPointEntity>

@@ -1,5 +1,6 @@
 package com.rainingtrace.platform.location
 
+import com.rainingtrace.domain.map.LocationCadenceController
 import com.rainingtrace.domain.map.LocationProvider
 import com.rainingtrace.domain.map.RawLocationFix
 import com.rainingtrace.domain.map.WorldCoordinate
@@ -27,7 +28,7 @@ class SwitchableLocationProvider(
     initialMode: LocationMode,
     parentScope: CoroutineScope,
     modeFlow: Flow<LocationMode>,
-) : LocationProvider {
+) : LocationProvider, LocationCadenceController {
 
     private val _updates = MutableSharedFlow<RawLocationFix>(
         replay = 1,
@@ -65,6 +66,11 @@ class SwitchableLocationProvider(
     /** 权限可能刚被授予/撤销时调用：按当前模式重启采集。 */
     fun refresh() {
         switchTo(mode)
+    }
+
+    /** 后台低频档只在真实定位上有意义；Fake 是调试输入。 */
+    override fun setPassiveIntervalMs(intervalMs: Long?) {
+        android.setPassiveIntervalMs(intervalMs)
     }
 
     private fun switchTo(newMode: LocationMode) {

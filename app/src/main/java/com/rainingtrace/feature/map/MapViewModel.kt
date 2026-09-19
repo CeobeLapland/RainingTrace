@@ -2,6 +2,7 @@ package com.rainingtrace.feature.map
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.rainingtrace.core.lifecycle.AppForegroundState
 import com.rainingtrace.core.time.WorldClock
 import com.rainingtrace.domain.exploration.CellFogState
 import com.rainingtrace.domain.exploration.ExplorationRepository
@@ -36,12 +37,20 @@ import com.rainingtrace.domain.settings.MemoryTimeFilter
 import com.rainingtrace.domain.track.RecordTrackPointUseCase
 import com.rainingtrace.domain.track.RecordTrackResult
 import com.rainingtrace.domain.track.RevealFogFromPointUseCase
+import com.rainingtrace.domain.track.TRACK_ZONE
+import com.rainingtrace.domain.track.TrackDayFocusRequest
+import com.rainingtrace.domain.track.TrackPoint
 import com.rainingtrace.domain.track.TrackRepository
+import com.rainingtrace.domain.track.dayEndEpochMs
+import com.rainingtrace.domain.track.dayStartEpochMs
+import com.rainingtrace.domain.track.trackCamera
+import com.rainingtrace.domain.track.trackLengthMeters
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.time.ZoneId
+import java.time.Instant
+import java.time.LocalDate
 
 enum class LocationPermission { UNKNOWN, GRANTED, DENIED }
 
@@ -52,6 +61,8 @@ data class MapUiState(
     val selectedPlace: Place? = null,
     /** 日记「在地图查看」跳过来的记忆 → 聚焦卡 + 高亮环。 */
     val focusedMemory: MemoryNode? = null,
+    /** 轨迹日历跳过来的某一天 → 底部摘要卡 + 画那天的轨迹（空 = 画今天）。 */
+    val focusedTrackDay: FocusedTrackDay? = null,
     /** 观察范围内的已揭示地点（按距离升序），驱动"附近多地点"列表。 */
     val nearbyPlaces: List<Place> = emptyList(),
     val showFilterPanel: Boolean = false,
@@ -60,6 +71,17 @@ data class MapUiState(
     val showFog: Boolean = true,
     val locationMode: LocationMode = LocationMode.FAKE,
     val locationPermission: LocationPermission = LocationPermission.UNKNOWN,
+    /** 足迹记录开关打开（GPS 模式下才有意义）→ 左上角"记录中"提示。 */
+    val trackingEnabled: Boolean = false,
+)
+
+/** 轨迹日历选中的一天：摘要文案已算好，UI 不做业务计算。 */
+data class FocusedTrackDay(
+    val date: LocalDate,
+    val pointCount: Int,
+    val lengthMeters: Double,
+    val startLabel: String,
+    val endLabel: String,
 )
 
 /**
@@ -83,6 +105,10 @@ class MapViewModel(
     private val memoryRepository: MemoryRepository,
     /** 日记「在地图查看」的一次性聚焦请求。 */
     private val memoryFocus: MemoryFocusRequest,
+    /** 轨迹日历「在地图查看」的一次性聚焦请求。 */
+    private val trackDayFocus: TrackDayFocusRequest,
+    /** 前后台状态：后台不跑迷雾/渲染/查地点（省电边界）。 */
+    private val foregroundState: AppForegroundState,
     /** Fake 模式下点击地图移动；GPS 模式内部忽略。 */
     private val debugMapTap: ((WorldCoordinate) -> Unit)?,
     /** 本地偏好：定位模式 + 图层筛选（筛选作为唯一真相，重启保留）。 */
@@ -107,7 +133,7 @@ class MapViewModel(
             explorationState = explorationRepository.loadState()
             mapRenderer.setLayerVisible(MapLayer.TRACK, _uiState.value.showTrack)
             mapRenderer.setLayerVisible(MapLayer.FOG_MASK, _uiState.value.showFog)
-            refreshTodayTrack()
+            refreshTrack()
             launch {
                 settings.locationMode.collect { mode ->
                     _uiState.value = _uiState.value.copy(locationMode = mode)
@@ -127,7 +153,22 @@ class MapViewModel(
                     if (memory != null) focusMemory(memory)
                 }
             }
+            // 轨迹日历「在地图查看」：把相机移到那天轨迹的范围。
+            launch {
+                trackDayFocus.date.collect { date ->
+                    if (date != null) focusTrackDay(date)
+                }
+            }
+            // 足迹记录开关：只用于左上角提示。
+            launch {
+                settings.tracking.collect { tracking ->
+                    _uiState.value = _uiState.value.copy(trackingEnabled = tracking.enabled)
+                }
+            }
             locationProvider.updates.collect { fix ->
+                // 前台闸门：进程不可见时直接丢弃。
+                // 后台只由 TrackRecordingService 写轨迹点，这里不跑去噪/开雾/渲染/查地点。
+                if (!foregroundState.isForeground.value) return@collect
                 onLocationFix(fix)
             }
         }
@@ -157,6 +198,8 @@ class MapViewModel(
     fun refresh() {
         viewModelScope.launch {
             explorationState = explorationRepository.loadState()
+            // 后台只写了轨迹点、没算迷雾：回到前台按水位一次性补算。
+            catchUpFogFromBackgroundTracks()
             _uiState.value = _uiState.value.copy(
                 revealedCount = explorationState.revealedCount(),
             )
@@ -165,12 +208,36 @@ class MapViewModel(
                 mapRenderer.renderPlayer(PlayerMarkerVisual(coordinate))
                 refreshPlaces(coordinate)
             }
-            refreshTodayTrack()
+            refreshTrack()
             mapRenderer.setLayerVisible(MapLayer.TRACK, _uiState.value.showTrack)
             mapRenderer.setLayerVisible(MapLayer.FOG_MASK, _uiState.value.showFog)
             // MapView 重建后高亮环也没了，补一次。
             _uiState.value.focusedMemory?.let { mapRenderer.renderFocus(it.coordinate) }
         }
+    }
+
+    /**
+     * 后台记录 → 前台补算迷雾。
+     *
+     * 后台服务只往 track_points 写点；迷雾是轨迹点的投影，回到前台按"水位"
+     * （最后一次已投影到迷雾的时间戳）把新增点增量 reveal 一次即可。
+     * 迷雾单调只升，本操作幂等，重复执行不会出错。
+     */
+    private suspend fun catchUpFogFromBackgroundTracks() {
+        val nowMs = clock.now().toEpochMilli()
+        val watermark = settings.fogWatermarkMs()
+        if (watermark != null) {
+            val points = trackRepository.between(watermark + 1, nowMs)
+            if (points.isNotEmpty()) {
+                points.forEach { point ->
+                    explorationState = revealFog(explorationState, point.coordinate)
+                }
+                explorationRepository.saveStates(explorationState.cellStates)
+            }
+        }
+        // 首次运行（水位为空）不做补算：此刻已持久化的迷雾本来就是对的。
+        // 水位推到 now，避免每次回前台都重扫一大段历史点。
+        settings.setFogWatermarkMs(nowMs)
     }
 
     fun setShowTrack(visible: Boolean) {
@@ -291,7 +358,7 @@ class MapViewModel(
         explorationRepository.saveStates(explorationState.cellStates)
         renderViewport()
         mapRenderer.renderPlayer(PlayerMarkerVisual(coordinate))
-        refreshTodayTrack()
+        refreshTrack()
         refreshPlaces(coordinate)
 
         _uiState.value = _uiState.value.copy(
@@ -299,6 +366,36 @@ class MapViewModel(
             lastFix = coordinate,
         )
     }
+
+    /** 关闭轨迹日历的聚焦卡：回到"今天"的轨迹，并消费请求。 */
+    fun clearTrackDayFocus() {
+        _uiState.value = _uiState.value.copy(focusedTrackDay = null)
+        trackDayFocus.consume()
+        viewModelScope.launch { refreshTrack() }
+    }
+
+    /**
+     * 轨迹日历选中某天：画那天的轨迹，并把相机移到这段轨迹的范围。
+     * 没点的日子（理论上日历不会给）就只清空。
+     */
+    private suspend fun focusTrackDay(date: LocalDate) {
+        val points = trackRepository.between(dayStartEpochMs(date), dayEndEpochMs(date))
+        _uiState.value = _uiState.value.copy(
+            focusedTrackDay = FocusedTrackDay(
+                date = date,
+                pointCount = points.size,
+                lengthMeters = trackLengthMeters(points),
+                startLabel = points.firstOrNull()?.let(::timeLabelOf) ?: "--:--",
+                endLabel = points.lastOrNull()?.let(::timeLabelOf) ?: "--:--",
+            ),
+            selectedPlace = null,
+        )
+        mapRenderer.renderTrack(points.map { it.coordinate })
+        trackCamera(points)?.let(mapRenderer::setCamera)
+    }
+
+    private fun timeLabelOf(point: TrackPoint): String =
+        MEMORY_TIME_FORMAT.format(Instant.ofEpochMilli(point.timestampEpochMs).atZone(TRACK_ZONE))
 
     private suspend fun refreshTodayTrack() {
         val nowInstant = clock.now()
@@ -308,6 +405,19 @@ class MapViewModel(
             .toInstant()
             .toEpochMilli()
         val points = trackRepository.between(dayStartMs, nowInstant.toEpochMilli())
+            .map { it.coordinate }
+        mapRenderer.renderTrack(points)
+    }
+
+    /** 画轨迹：选了某天就画那天，否则画今天。 */
+    private suspend fun refreshTrack() {
+        val focused = _uiState.value.focusedTrackDay
+        if (focused == null) {
+            refreshTodayTrack()
+            return
+        }
+        val points = trackRepository
+            .between(dayStartEpochMs(focused.date), dayEndEpochMs(focused.date))
             .map { it.coordinate }
         mapRenderer.renderTrack(points)
     }
@@ -403,7 +513,6 @@ class MapViewModel(
         private const val FOG_EXPAND_FACTOR = 1.35
         private const val MEMORY_LIMIT = 200
         private const val WEEK_MS = 7L * 24 * 60 * 60 * 1000
-        private val TRACK_ZONE: ZoneId = ZoneId.of("Asia/Shanghai")
         private val MEMORY_TIME_FORMAT: java.time.format.DateTimeFormatter =
             java.time.format.DateTimeFormatter.ofPattern("HH:mm")
     }

@@ -11,6 +11,7 @@ import com.rainingtrace.domain.map.WorldCoordinate
 import com.rainingtrace.domain.settings.AppSettingsRepository
 import com.rainingtrace.domain.settings.LocationMode
 import com.rainingtrace.domain.settings.MapFilterSettings
+import com.rainingtrace.domain.settings.TrackingSettings
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
@@ -24,6 +25,9 @@ class ChangeGridLevelUseCaseTest {
     private class FakeSettings : AppSettingsRepository {
         var level: GridLevel = GridLevel.M
         var mode: LocationMode = LocationMode.FAKE
+        var trackingSettings = TrackingSettings()
+        var watermarkMs: Long? = null
+
         override val gridLevel: Flow<GridLevel> = flowOf(level)
         override suspend fun currentGridLevel() = level
         override suspend fun setGridLevel(level: GridLevel) {
@@ -37,6 +41,15 @@ class ChangeGridLevelUseCaseTest {
         override val mapFilter: Flow<MapFilterSettings> = flowOf(MapFilterSettings())
         override suspend fun currentMapFilter() = MapFilterSettings()
         override suspend fun setMapFilter(filter: MapFilterSettings) = Unit
+        override val tracking: Flow<TrackingSettings> = flowOf(trackingSettings)
+        override suspend fun currentTracking() = trackingSettings
+        override suspend fun setTracking(settings: TrackingSettings) {
+            trackingSettings = settings
+        }
+        override suspend fun fogWatermarkMs() = watermarkMs
+        override suspend fun setFogWatermarkMs(epochMs: Long) {
+            watermarkMs = epochMs
+        }
     }
 
     private class FakeExploration : ExplorationRepository {
@@ -58,6 +71,7 @@ class ChangeGridLevelUseCaseTest {
         override suspend fun append(point: TrackPoint) {}
         override suspend fun latestPoint() = all.maxByOrNull { it.timestampEpochMs }
         override suspend fun between(fromEpochMs: Long, toEpochMs: Long) = all
+        override suspend fun days(zoneOffsetMs: Long): List<TrackDay> = emptyList()
         override suspend fun all() = all
     }
 

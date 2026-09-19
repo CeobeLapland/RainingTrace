@@ -19,6 +19,7 @@ import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.rainingtrace.core.time.WorldClock
+import com.rainingtrace.domain.map.LocationCadenceController
 import com.rainingtrace.domain.map.LocationProvider
 import com.rainingtrace.domain.map.LocationSource
 import com.rainingtrace.domain.map.RawLocationFix
@@ -35,12 +36,13 @@ import kotlinx.coroutines.flow.asSharedFlow
  * - GMS 不可用/启动异常时降级系统 LocationManager（GPS + NETWORK）；
  * - 仅在 [start] 且已授权时采集，[stop] 立即解绑；无权限不抛异常；
  * - 不做去噪——原始 fix 交给 RecordTrackPointUseCase（精度/瞬移过滤）。
- * - 只前台使用，不申请后台定位权限。
+ * - 前台默认 5s；进程退到后台由记录服务调 [setPassiveIntervalMs] 降频（省电）。
+ * - 本类不自作主张采集：起停与档位都由上层决定。
  */
 class AndroidLocationProvider(
     private val appContext: Context,
     private val clock: WorldClock,
-) : LocationProvider {
+) : LocationProvider, LocationCadenceController {
 
     private val _updates = MutableSharedFlow<RawLocationFix>(
         replay = 1,
@@ -52,6 +54,22 @@ class AndroidLocationProvider(
     @Volatile
     private var lastFix: RawLocationFix? = null
     override val latest: RawLocationFix? get() = lastFix
+
+    /** 后台低频档（毫秒）；null = 前台默认节奏。 */
+    @Volatile
+    private var passiveIntervalMs: Long? = null
+
+    @Volatile
+    private var running = false
+
+    /** 切档：正在采集时用新间隔重启一次请求（只重启采集，不产生游戏语义事件）。 */
+    override fun setPassiveIntervalMs(intervalMs: Long?) {
+        if (passiveIntervalMs == intervalMs) return
+        passiveIntervalMs = intervalMs
+        if (running) start()
+    }
+
+    private fun currentIntervalMs(): Long = passiveIntervalMs ?: UPDATE_INTERVAL_MS
 
     private var fusedClient: FusedLocationProviderClient? = null
     private var fusedCallback: LocationCallback? = null
@@ -72,11 +90,13 @@ class AndroidLocationProvider(
     fun start(): Boolean {
         stop()
         if (!hasPermission()) return false
-        if (tryStartFused()) return true
-        return tryStartLocationManager()
+        val started = if (tryStartFused()) true else tryStartLocationManager()
+        running = started
+        return started
     }
 
     fun stop() {
+        running = false
         runCatching {
             fusedCallback?.let { fusedClient?.removeLocationUpdates(it) }
         }
@@ -96,9 +116,12 @@ class AndroidLocationProvider(
         if (!gmsAvailable) return false
         return try {
             val client = LocationServices.getFusedLocationProviderClient(appContext)
-            val request = LocationRequest.Builder(UPDATE_INTERVAL_MS)
+            val interval = currentIntervalMs()
+            val request = LocationRequest.Builder(interval)
                 .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
-                .setMinUpdateIntervalMillis(FASTEST_INTERVAL_MS)
+                .setMinUpdateIntervalMillis(
+                    (interval / 2).coerceAtLeast(FASTEST_INTERVAL_MS),
+                )
                 .build()
             val callback = object : LocationCallback() {
                 override fun onLocationResult(result: LocationResult) {
@@ -148,8 +171,9 @@ class AndroidLocationProvider(
             return false
         }
         return try {
+            val interval = currentIntervalMs()
             providers.forEach { provider ->
-                lm.requestLocationUpdates(provider, UPDATE_INTERVAL_MS, 0f, listener)
+                lm.requestLocationUpdates(provider, interval, 0f, listener)
             }
             locationManager = lm
             managerListener = listener

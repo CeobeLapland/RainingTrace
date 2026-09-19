@@ -193,6 +193,11 @@ fun MapScreen(
         ) {
             MapChip(text = "足迹 · 已探索 ${uiState.revealedCount} 格")
             MapChip(text = "${world.weatherLabel} · ${world.timeLabel}")
+            if (uiState.trackingEnabled &&
+                uiState.locationMode == com.rainingtrace.domain.settings.LocationMode.GPS
+            ) {
+                MapChip(text = "足迹记录中", emphasized = true)
+            }
             when (uiState.locationMode) {
                 com.rainingtrace.domain.settings.LocationMode.FAKE ->
                     MapChip(text = "Fake 定位 · 点按地图移动", emphasized = true)
@@ -260,13 +265,22 @@ fun MapScreen(
             )
         }
 
-        // 底部信息优先级：聚焦记忆（日记跳过来）→ 选中地点 → 附近地点列表。
+        // 底部信息优先级：聚焦记忆 → 聚焦某天轨迹 → 选中地点 → 附近地点列表。
         val focusedMemory = uiState.focusedMemory
+        val focusedDay = uiState.focusedTrackDay
         val selected = uiState.selectedPlace
         when {
             focusedMemory != null -> MemoryFocusCard(
                 memory = focusedMemory,
                 onClose = viewModel::clearMemoryFocus,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(16.dp),
+            )
+
+            focusedDay != null -> TrackDayFocusCard(
+                day = focusedDay,
+                onClose = viewModel::clearTrackDayFocus,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(16.dp),
@@ -471,6 +485,59 @@ private fun MemoryFocusCard(
             }
         }
     }
+}
+
+/** 轨迹日历「在地图查看」聚焦卡：说明当前画的是哪天的轨迹。 */
+@Composable
+private fun TrackDayFocusCard(
+    day: FocusedTrackDay,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(modifier = modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = TRACK_DAY_TITLE.format(day.date),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(
+                        text = "${distanceLabel(day.lengthMeters)} · " +
+                            "${day.startLabel}–${day.endLabel} · ${day.pointCount} 个点",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .clickable(onClick = onClose),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_close),
+                        contentDescription = "关闭",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+            Text(
+                text = "这是那一天走过的轨迹。关掉就回到今天。",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
+    }
+}
+
+private fun distanceLabel(meters: Double): String = if (meters < 1000) {
+    "${meters.toInt()} m"
+} else {
+    String.format(java.util.Locale.SIMPLIFIED_CHINESE, "%.2f km", meters / 1000)
 }
 
 /** 地点详情卡：缩略图占位 + 名称/类型/距离 + 说明 + 全部可执行动作。 */
@@ -743,3 +810,5 @@ private fun timeFilterLabel(filter: MemoryTimeFilter): String = when (filter) {
 
 private val MAP_ZONE: ZoneId = ZoneId.of("Asia/Shanghai")
 private val MEMORY_TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+private val TRACK_DAY_TITLE: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("M月d日 EEEE", java.util.Locale.SIMPLIFIED_CHINESE)

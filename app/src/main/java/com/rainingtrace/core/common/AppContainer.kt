@@ -1,6 +1,7 @@
 package com.rainingtrace.core.common
 
 import android.content.Context
+import com.rainingtrace.core.lifecycle.AppForegroundState
 import com.rainingtrace.core.time.SystemWorldClock
 import com.rainingtrace.core.time.WorldClock
 import com.rainingtrace.data.local.RainingTraceDatabase
@@ -30,22 +31,29 @@ import com.rainingtrace.domain.memory.CreateMemoryUseCase
 import com.rainingtrace.domain.memory.MemoryFocusRequest
 import com.rainingtrace.domain.memory.MemoryRepository
 import com.rainingtrace.domain.settings.AppSettingsRepository
+import com.rainingtrace.domain.settings.LocationMode
 import com.rainingtrace.domain.track.ChangeGridLevelUseCase
 import com.rainingtrace.domain.track.RebuildFogFromTrackUseCase
 import com.rainingtrace.domain.track.RecordTrackPointUseCase
 import com.rainingtrace.domain.track.RevealFogFromPointUseCase
+import com.rainingtrace.domain.track.TrackDayFocusRequest
 import com.rainingtrace.domain.track.TrackRepository
+import com.rainingtrace.domain.track.TrackingController
 import com.rainingtrace.domain.world.FakeWeatherProvider
 import com.rainingtrace.domain.world.WeatherProvider
 import com.rainingtrace.platform.ar.ArCoreController
 import com.rainingtrace.platform.audio.AndroidAudioNoteController
 import com.rainingtrace.platform.camera.CameraXController
+import com.rainingtrace.platform.location.AndroidTrackingController
 import com.rainingtrace.platform.location.FakeLocationProvider
 import com.rainingtrace.platform.map.MapLibreAdapter
 import com.rainingtrace.platform.location.AndroidLocationProvider
 import com.rainingtrace.platform.location.SwitchableLocationProvider
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -110,8 +118,57 @@ class AppContainer(
     /** 供 feature 判断当前定位模式（权限流、Fake 提示等）。 */
     val locationModeFlow get() = settingsRepository.locationMode
 
-    /** 定位权限状态变化后重新尝试拉起 GPS 采集。 */
-    fun refreshLocation() = locationProvider.refresh()
+    /** 应用前后台状态：地图处理流与后台记录服务的唯一省电闸门。 */
+    val foregroundState = AppForegroundState()
+
+    val trackingController: TrackingController by lazy {
+        AndroidTrackingController(appContext)
+    }
+
+    /** 定位权限是否已授予（监督者与记录服务共用同一判断）。 */
+    fun hasLocationPermission(): Boolean = androidLocationProvider.hasPermission()
+
+    /**
+     * 足迹记录服务的唯一决策点：开关开 + GPS 模式 + 有定位权限 = 该记录。
+     *
+     * 停随时可以停；启只能发生在应用可见时——Android 14 起禁止从后台启动
+     * location 类型前台服务。所以这里也把前台状态作为一个输入。
+     */
+    private fun syncTrackingService(enabled: Boolean, mode: LocationMode, foreground: Boolean) {
+        val shouldRun = enabled && mode == LocationMode.GPS && hasLocationPermission()
+        when {
+            shouldRun && foreground -> trackingController.start()
+            !shouldRun -> trackingController.stop()
+            // shouldRun 但当前不可见：不做任何事。服务本该已在可见时拉起；
+            // 若被系统杀掉，则等下次回到前台再启动（这是唯一合法的启动时机）。
+        }
+    }
+
+    init {
+        applicationScope.launch {
+            combine(
+                settingsRepository.tracking,
+                settingsRepository.locationMode,
+                foregroundState.isForeground,
+            ) { tracking, mode, foreground -> Triple(tracking.enabled, mode, foreground) }
+                .distinctUntilChanged()
+                .collect { (enabled, mode, foreground) ->
+                    syncTrackingService(enabled, mode, foreground)
+                }
+        }
+    }
+
+    /** 定位权限状态变化后重新尝试拉起 GPS 采集（并重新评估足迹记录服务）。 */
+    fun refreshLocation() {
+        locationProvider.refresh()
+        applicationScope.launch {
+            syncTrackingService(
+                enabled = settingsRepository.currentTracking().enabled,
+                mode = settingsRepository.currentLocationMode(),
+                foreground = foregroundState.isForeground.value,
+            )
+        }
+    }
 
     /** 调试用：仅 Fake 模式点击地图有效。 */
     val debugMapTap: (WorldCoordinate) -> Unit = { coordinate ->
@@ -183,6 +240,9 @@ class AppContainer(
 
     /** 日记 →「在地图查看」：一次性聚焦请求，地图侧消费后清空。 */
     val memoryFocusRequest: MemoryFocusRequest = MemoryFocusRequest()
+
+    /** 轨迹日历 →「在地图查看」：同上，聚焦某一天的轨迹。 */
+    val trackDayFocusRequest: TrackDayFocusRequest = TrackDayFocusRequest()
 
     val cameraController: CameraXController by lazy {
         CameraXController(context = appContext, clock = clock)

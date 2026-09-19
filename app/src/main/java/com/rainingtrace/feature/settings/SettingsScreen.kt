@@ -1,6 +1,13 @@
 package com.rainingtrace.feature.settings
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,19 +28,24 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rainingtrace.R
 import com.rainingtrace.core.common.AppContainer
 import com.rainingtrace.domain.map.GridLevel
+import com.rainingtrace.domain.settings.BackgroundInterval
+import com.rainingtrace.domain.settings.DayWindow
 import com.rainingtrace.domain.settings.LocationMode
 
 @Composable
@@ -49,6 +61,21 @@ fun SettingsRoute(
     }
     val gridLevel by viewModel.gridLevel.collectAsStateWithLifecycle()
     val locationMode by viewModel.locationMode.collectAsStateWithLifecycle()
+    val tracking by viewModel.tracking.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
+    val notificationLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { /* 拒绝也不影响记录，只是看不到那条常驻通知 */ }
+
+    fun requestNotificationPermission() {
+        val granted = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.POST_NOTIFICATIONS,
+        ) == PackageManager.PERMISSION_GRANTED
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !granted) {
+            notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -104,7 +131,7 @@ fun SettingsRoute(
 
                 SectionLabel("定位方式")
                 Text(
-                    text = "GPS：用真实位置开雾与记录轨迹（仅前台、仅本机）；Fake：点击地图移动，用于调试。",
+                    text = "GPS：用真实位置开雾与记录轨迹（只存本机）；Fake：点击地图移动，用于调试。",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 20.dp),
@@ -122,6 +149,77 @@ fun SettingsRoute(
                     selected = locationMode == LocationMode.FAKE,
                     onClick = { viewModel.selectLocationMode(LocationMode.FAKE) },
                 )
+
+                SectionLabel("足迹记录")
+                Text(
+                    text = "开启后，回到桌面也会按下面间隔记录位置（系统会显示一条常驻通知）。" +
+                        "后台只做「定位 → 去噪 → 写本机轨迹表」这一件事，" +
+                        "迷雾、地图渲染、世界状态都不在后台跑，回到前台会自动补算。",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 20.dp),
+                )
+                Spacer(Modifier.height(8.dp))
+                ToggleRow(
+                    title = "记录我的足迹",
+                    hint = if (locationMode == LocationMode.GPS) {
+                        "关闭后解锁屏期间不再记录"
+                    } else {
+                        "需要先切到 GPS 真实定位"
+                    },
+                    checked = tracking.enabled,
+                    onCheckedChange = { enabled ->
+                        if (enabled) requestNotificationPermission()
+                        viewModel.setTrackingEnabled(enabled)
+                    },
+                )
+
+                if (tracking.enabled) {
+                    Text(
+                        text = "后台记录间隔",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.padding(start = 20.dp, top = 8.dp),
+                    )
+                    BackgroundInterval.entries.forEach { interval ->
+                        OptionRow(
+                            title = interval.label,
+                            hint = intervalHint(interval),
+                            selected = tracking.backgroundInterval == interval,
+                            onClick = { viewModel.setBackgroundInterval(interval) },
+                        )
+                    }
+
+                    ToggleRow(
+                        title = "仅白天记录",
+                        hint = "夜里不写任何轨迹点",
+                        checked = tracking.daytimeOnly,
+                        onCheckedChange = viewModel::setDaytimeOnly,
+                    )
+                    if (tracking.daytimeOnly) {
+                        DayWindow.entries.forEach { window ->
+                            OptionRow(
+                                title = window.label,
+                                hint = "这个时段内才后台记录",
+                                selected = tracking.dayWindow == window,
+                                onClick = { viewModel.setDayWindow(window) },
+                            )
+                        }
+                    }
+
+                    if (!hasBackgroundLocationPermission(context)) {
+                        Text(
+                            text = "把定位权限设为「始终允许」：部分系统会限制「仅使用期间」的后台定位。" +
+                                "点这里去应用设置里改。",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.tertiary,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { openAppSettings(context) }
+                                .padding(horizontal = 20.dp, vertical = 10.dp),
+                        )
+                    }
+                }
             }
         }
     }
@@ -135,6 +233,60 @@ private fun SectionLabel(text: String) {
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 8.dp),
     )
+}
+
+@Composable
+private fun ToggleRow(
+    title: String,
+    hint: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!checked) }
+            .padding(horizontal = 20.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Text(
+                text = hint,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+private fun intervalHint(interval: BackgroundInterval): String = when (interval) {
+    BackgroundInterval.S30 -> "最细，走一段就有多个点，也更费电"
+    BackgroundInterval.M1 -> "推荐，校园散步够用"
+    BackgroundInterval.M2 -> "省电，轨迹更粗"
+    BackgroundInterval.M5 -> "极省电，只保留大致去向"
+}
+
+private fun hasBackgroundLocationPermission(context: android.content.Context): Boolean =
+    ContextCompat.checkSelfPermission(
+        context, Manifest.permission.ACCESS_BACKGROUND_LOCATION,
+    ) == PackageManager.PERMISSION_GRANTED
+
+/** 后台定位权限在 Android 11+ 只能去系统设置里改，这里直接跳到应用详情页。 */
+private fun openAppSettings(context: android.content.Context) {
+    runCatching {
+        context.startActivity(
+            Intent(
+                android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                Uri.fromParts("package", context.packageName, null),
+            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
+    }
 }
 
 @Composable

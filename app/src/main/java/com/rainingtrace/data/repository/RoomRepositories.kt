@@ -28,8 +28,10 @@ import com.rainingtrace.domain.map.WorldCoordinate
 import com.rainingtrace.domain.memory.MemoryNode
 import com.rainingtrace.domain.memory.MemoryRepository
 import com.rainingtrace.domain.memory.Mood
+import com.rainingtrace.domain.track.TrackDay
 import com.rainingtrace.domain.track.TrackPoint
 import com.rainingtrace.domain.track.TrackRepository
+import com.rainingtrace.domain.track.trackDayOf
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -126,6 +128,16 @@ class RoomTrackRepository(
 
     override suspend fun between(fromEpochMs: Long, toEpochMs: Long): List<TrackPoint> =
         dao.between(fromEpochMs, toEpochMs).map { it.toDomain() }
+
+    override suspend fun days(zoneOffsetMs: Long): List<TrackDay> =
+        dao.daySummaries(zoneOffsetMs).map {
+            trackDayOf(
+                dayIndex = it.dayIndex,
+                pointCount = it.pointCount,
+                firstEpochMs = it.firstEpochMs,
+                lastEpochMs = it.lastEpochMs,
+            )
+        }
 
     override suspend fun all(): List<TrackPoint> = dao.all().map { it.toDomain() }
 }

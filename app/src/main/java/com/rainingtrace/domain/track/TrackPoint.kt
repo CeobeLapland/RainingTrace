@@ -28,6 +28,9 @@ interface TrackRepository {
     /** 时间区间内的点，时间升序。 */
     suspend fun between(fromEpochMs: Long, toEpochMs: Long): List<TrackPoint>
 
+    /** 有轨迹的本地日汇总（日期倒序），供轨迹日历；不加载具体点。 */
+    suspend fun days(zoneOffsetMs: Long = TRACK_ZONE_OFFSET_MS): List<TrackDay>
+
     /** 全部轨迹点（时间升序）；切换迷雾档位时用于整体重建。 */
     suspend fun all(): List<TrackPoint>
 }
