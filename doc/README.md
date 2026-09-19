@@ -44,6 +44,7 @@ V2 已经暴露了一个典型风险：
 | `09_版本与Git策略.md` | Commit、branch、rollback、checkpoint | 人 + AI | P1 |
 | `10_风险与反模式.md` | “不要再把 V2 写废”的红线 | 人 + AI | P0 |
 | `11_MVP_首个可玩切片.md` | 第一口“雨迹味”的精确目标 | 人 + AI | P0 |
+| `12_AR实现路径与阶段规划.md` | AR 的两条技术路线、精度事实、素材需求与阶段划分 | 人 + AI | P1 |
 | `templates/` | Issue、ADR、Feature Spec 模板 | 人 | P1 |
 | `prompts/` | 按场景拆好的 prompt | 人 | P0 |
 
