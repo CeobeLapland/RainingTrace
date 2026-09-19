@@ -55,6 +55,7 @@ class MapLibreAdapter : MapRendererAdapter {
     private var pendingPlayer: PlayerMarkerVisual? = null
     private var pendingPlaces: List<PlaceVisual>? = null
     private var pendingMemories: List<MemoryVisual>? = null
+    private var pendingFocus: WorldCoordinate? = null
     private var pendingTrack: List<WorldCoordinate>? = null
 
     /** 图层期望可见性；style 就绪/换代后据此重放。 */
@@ -246,6 +247,23 @@ class MapLibreAdapter : MapRendererAdapter {
         )
     }
 
+    override fun renderFocus(coordinate: WorldCoordinate?) {
+        val loaded = style
+        if (loaded == null) {
+            pendingFocus = coordinate
+            return
+        }
+        val source = loaded.safeSource(FOCUS_SOURCE)
+            ?: run { pendingFocus = coordinate; return }
+        source.setGeoJson(
+            if (coordinate == null) {
+                EMPTY_FC
+            } else {
+                FeatureCollection.fromFeature(Feature.fromGeometry(toPoint(coordinate)))
+            },
+        )
+    }
+
     override fun renderTrack(points: List<WorldCoordinate>) {
         val loaded = style
         if (loaded == null) {
@@ -305,6 +323,7 @@ class MapLibreAdapter : MapRendererAdapter {
         pendingPlayer?.let { renderPlayer(it); pendingPlayer = null }
         pendingPlaces?.let { renderPlaces(it); pendingPlaces = null }
         pendingMemories?.let { renderMemories(it); pendingMemories = null }
+        pendingFocus?.let { renderFocus(it); pendingFocus = null }
         pendingTrack?.let { renderTrack(it); pendingTrack = null }
         // style 换代后图层是新建的，按期望可见性重放一次。
         layerVisibility.forEach { (layer, visible) -> applyLayerVisibility(layer, visible) }
@@ -337,6 +356,7 @@ class MapLibreAdapter : MapRendererAdapter {
         loaded.addSource(GeoJsonSource(PLAYER_SOURCE, EMPTY))
         loaded.addSource(GeoJsonSource(PLACES_SOURCE, EMPTY_FC))
         loaded.addSource(GeoJsonSource(MEMORY_SOURCE, EMPTY_FC))
+        loaded.addSource(GeoJsonSource(FOCUS_SOURCE, EMPTY_FC))
         loaded.addSource(GeoJsonSource(TRACKS_SOURCE, EMPTY_FC))
 
         // 注册每种地点类型的水滴位图（颜色+字）+ 未探索 "?" 位图，供图标层按类型 match 取图。
@@ -443,6 +463,17 @@ class MapLibreAdapter : MapRendererAdapter {
         loaded.addLayer(memoryLayer(null, MEMORY_DEFAULT_COLOR))
         // 记忆时间小字层。
         loaded.addLayer(memoryTimeLabelLayer(fontStack))
+        // 聚焦高亮环（日记「在地图查看」）：空心环，压在最上层，不受筛选影响。
+        loaded.addLayer(
+            CircleLayer(FOCUS_LAYER, FOCUS_SOURCE).apply {
+                setProperties(
+                    PropertyFactory.circleColor(FOCUS_FILL_COLOR),
+                    PropertyFactory.circleRadius(FOCUS_RADIUS),
+                    PropertyFactory.circleStrokeColor(FOCUS_STROKE_COLOR),
+                    PropertyFactory.circleStrokeWidth(FOCUS_STROKE_WIDTH),
+                )
+            },
+        )
         loaded.addLayer(
             CircleLayer(PLAYER_LAYER, PLAYER_SOURCE).apply {
                 setProperties(
@@ -621,6 +652,8 @@ class MapLibreAdapter : MapRendererAdapter {
         private const val UNREVEALED_LAYER = "rt-places-unrevealed"
         private const val MEMORY_LAYER_PREFIX = "rt-memory"
         private const val MEMORY_TIME_LABEL_LAYER = "rt-memory-time"
+        private const val FOCUS_SOURCE = "rt-focus"
+        private const val FOCUS_LAYER = "rt-focus-ring"
         private const val TRACK_LAYER = "rt-track-line"
         private const val PLACE_IMAGE_PREFIX = "rt-pin-"
         private const val UNREVEALED_IMAGE = "rt-pin-unrevealed"
@@ -643,6 +676,11 @@ class MapLibreAdapter : MapRendererAdapter {
         private const val MEMORY_LABEL_OFFSET_Y = 3f
         private const val MEMORY_DEFAULT_COLOR = "#8A93A6"
         private const val PROP_MEMORY_TIME = "memoryTime"
+        // 聚焦高亮环：空心琥珀环，不遮挡目标本身。
+        private const val FOCUS_FILL_COLOR = "#1FD99A2B"
+        private const val FOCUS_STROKE_COLOR = "#D99A2B"
+        private const val FOCUS_RADIUS = 16f
+        private const val FOCUS_STROKE_WIDTH = 2.5f
         // 记忆圆点心情→颜色（CSS hex 字符串，MapLibre 数据驱动颜色要求字符串）。
         private val MEMORY_COLOR: Map<Mood, String> = mapOf(
             Mood.CALM to "#2E6FA3",

@@ -17,6 +17,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rainingtrace.R
 import com.rainingtrace.core.common.AppContainer
+import com.rainingtrace.domain.memory.MemoryNode
 
 /**
  * 日记子页面：从「我的」进入，自带返回顶栏，不显示主外壳底栏。
@@ -33,14 +35,23 @@ import com.rainingtrace.core.common.AppContainer
 fun JournalRoute(
     container: AppContainer,
     onBack: () -> Unit,
+    onViewOnMap: (MemoryNode) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BackHandler { onBack() }
 
     val journalViewModel: JournalViewModel = viewModel {
-        JournalViewModel(memoryRepository = container.memoryRepository)
+        JournalViewModel(
+            memoryRepository = container.memoryRepository,
+            audioNote = container.audioNoteController,
+            clock = container.clock,
+        )
     }
     LaunchedEffect(Unit) { journalViewModel.refresh() }
+    // 离开日记页停止回放，别让语音在后台继续响。
+    DisposableEffect(Unit) {
+        onDispose { journalViewModel.onLeave() }
+    }
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -76,7 +87,7 @@ fun JournalRoute(
                 )
             }
 
-            JournalScreen(viewModel = journalViewModel)
+            JournalScreen(viewModel = journalViewModel, onViewOnMap = onViewOnMap)
         }
     }
 }

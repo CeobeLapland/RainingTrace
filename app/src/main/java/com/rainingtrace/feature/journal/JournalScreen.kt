@@ -1,5 +1,7 @@
 package com.rainingtrace.feature.journal
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,6 +13,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -18,8 +22,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.rainingtrace.core.ui.AudioNoteChip
+import com.rainingtrace.core.ui.LocalImage
+import com.rainingtrace.core.ui.label
 import com.rainingtrace.domain.memory.MemoryNode
 import java.time.Instant
 import java.time.ZoneId
@@ -27,16 +35,18 @@ import java.time.format.DateTimeFormatter
 
 /**
  * 日记时间线：记忆即收藏（GDD 支柱）。
- * MVP 显示文字/心情/时间/地点格；照片缩略图 P1 补。
+ * 按日期分组展示（今天 / 昨天 / 具体日期），每条记忆可「在地图查看」。
  */
 @Composable
 fun JournalScreen(
     viewModel: JournalViewModel,
+    onViewOnMap: (MemoryNode) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val memories by viewModel.memories.collectAsStateWithLifecycle()
+    val days by viewModel.days.collectAsStateWithLifecycle()
+    val playingRef by viewModel.playingRef.collectAsStateWithLifecycle()
 
-    if (memories.isEmpty()) {
+    if (days.isEmpty()) {
         Column(
             modifier = modifier.fillMaxSize(),
             verticalArrangement = Arrangement.Center,
@@ -57,19 +67,58 @@ fun JournalScreen(
         contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        items(memories, key = { it.id }) { memory ->
-            MemoryCard(memory)
+        days.forEach { day ->
+            item(key = "day-${day.date}") {
+                DayHeader(label = day.label, count = day.memories.size)
+            }
+            items(day.memories, key = { it.id }) { memory ->
+                MemoryCard(
+                    memory = memory,
+                    playingRef = playingRef,
+                    onViewOnMap = onViewOnMap,
+                    onToggleAudio = viewModel::onToggleAudio,
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun MemoryCard(memory: MemoryNode, modifier: Modifier = Modifier) {
+private fun DayHeader(label: String, count: Int, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 6.dp, bottom = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+        Text(
+            text = "$count 条",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun MemoryCard(
+    memory: MemoryNode,
+    playingRef: String?,
+    onViewOnMap: (MemoryNode) -> Unit,
+    onToggleAudio: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Card(modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     text = TIME_FORMATTER.format(
@@ -91,25 +140,41 @@ private fun MemoryCard(memory: MemoryNode, modifier: Modifier = Modifier) {
             }
             if (memory.mediaRefs.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    memory.mediaRefs.take(3).forEach { uri ->
-                        LocalImageThumbnail(localUri = uri)
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    memory.mediaRefs.forEach { uri ->
+                        LocalImage(
+                            localUri = uri,
+                            modifier = Modifier
+                                .size(THUMB_DP)
+                                .clip(RoundedCornerShape(10.dp)),
+                        )
                     }
                 }
             }
+            memory.audioRef?.let { audioRef ->
+                Spacer(Modifier.height(8.dp))
+                AudioNoteChip(
+                    audioRef = audioRef,
+                    isPlaying = playingRef == audioRef,
+                    onToggle = { onToggleAudio(audioRef) },
+                )
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = "在地图查看",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .clickable { onViewOnMap(memory) }
+                    .padding(vertical = 4.dp),
+            )
         }
     }
 }
 
 private val ZONE: ZoneId = ZoneId.of("Asia/Shanghai")
-private val TIME_FORMATTER: DateTimeFormatter =
-    DateTimeFormatter.ofPattern("M月d日 HH:mm")
-
-private fun com.rainingtrace.domain.memory.Mood.label(): String = when (this) {
-    com.rainingtrace.domain.memory.Mood.CALM -> "平静"
-    com.rainingtrace.domain.memory.Mood.HAPPY -> "开心"
-    com.rainingtrace.domain.memory.Mood.CURIOUS -> "好奇"
-    com.rainingtrace.domain.memory.Mood.LONELY -> "孤独"
-    com.rainingtrace.domain.memory.Mood.EXCITED -> "兴奋"
-    com.rainingtrace.domain.memory.Mood.MELANCHOLY -> "低落"
-}
+private val TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+private val THUMB_DP = 72.dp

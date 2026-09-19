@@ -24,8 +24,10 @@ data class MemoryNode(
     val text: String = "",
     val mood: Mood? = null,
     val tags: Set<String> = emptySet(),
-    /** 本地图片 URI（content://）；P1 起换 Storage 引用。 */
+    /** 本地图片 URI（content://）；P1 起换 Storage 引用。可多张。 */
     val mediaRefs: List<String> = emptyList(),
+    /** 本地语音 URI；MVP 每条记忆最多一段。 */
+    val audioRef: String? = null,
     val sourceEventId: String? = null,
 )
 

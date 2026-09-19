@@ -61,9 +61,11 @@ fun CameraRoute(
             CameraMode.PHOTO -> {
                 val cameraViewModel: CameraViewModel = viewModel {
                     CameraViewModel(
+                        clock = container.clock,
                         grid = container.grid,
                         locationProvider = container.locationProvider,
                         cameraController = container.cameraController,
+                        audioNote = container.audioNoteController,
                         createMemory = container.createMemory,
                     )
                 }

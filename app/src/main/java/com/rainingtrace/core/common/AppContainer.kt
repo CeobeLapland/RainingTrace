@@ -25,7 +25,9 @@ import com.rainingtrace.domain.map.MapRendererAdapter
 import com.rainingtrace.domain.map.PlaceRepository
 import com.rainingtrace.domain.map.WorldCoordinate
 import com.rainingtrace.domain.ar.ArController
+import com.rainingtrace.domain.memory.AudioNoteController
 import com.rainingtrace.domain.memory.CreateMemoryUseCase
+import com.rainingtrace.domain.memory.MemoryFocusRequest
 import com.rainingtrace.domain.memory.MemoryRepository
 import com.rainingtrace.domain.settings.AppSettingsRepository
 import com.rainingtrace.domain.track.ChangeGridLevelUseCase
@@ -36,6 +38,7 @@ import com.rainingtrace.domain.track.TrackRepository
 import com.rainingtrace.domain.world.FakeWeatherProvider
 import com.rainingtrace.domain.world.WeatherProvider
 import com.rainingtrace.platform.ar.ArCoreController
+import com.rainingtrace.platform.audio.AndroidAudioNoteController
 import com.rainingtrace.platform.camera.CameraXController
 import com.rainingtrace.platform.location.FakeLocationProvider
 import com.rainingtrace.platform.map.MapLibreAdapter
@@ -178,8 +181,16 @@ class AppContainer(
         RoomMemoryRepository(database.memoryDao())
     }
 
+    /** 日记 →「在地图查看」：一次性聚焦请求，地图侧消费后清空。 */
+    val memoryFocusRequest: MemoryFocusRequest = MemoryFocusRequest()
+
     val cameraController: CameraXController by lazy {
         CameraXController(context = appContext, clock = clock)
+    }
+
+    /** 语音记录/回放：录音失败必须能降级为纯文字记忆。 */
+    val audioNoteController: AudioNoteController by lazy {
+        AndroidAudioNoteController(context = appContext, clock = clock)
     }
 
     val createMemory: CreateMemoryUseCase by lazy {

@@ -33,7 +33,8 @@ class CreateMemoryUseCase(
             text = draft.text.trim(),
             mood = draft.mood,
             tags = draft.tags,
-            mediaRefs = draft.media?.let { listOf(it.localUri) } ?: emptyList(),
+            mediaRefs = draft.media.map { it.localUri },
+            audioRef = draft.audio?.localUri,
         )
         memoryRepository.save(memory)
 
@@ -56,14 +57,15 @@ class CreateMemoryUseCase(
     }
 }
 
-/** 记忆草稿：编辑器里未保存的内容。 */
+/** 记忆草稿：编辑器里未保存的内容。照片可多张，语音最多一段，三者至少有一项。 */
 data class MemoryDraft(
     val coordinate: com.rainingtrace.domain.map.WorldCoordinate,
     val text: String = "",
     val mood: Mood? = null,
     val tags: Set<String> = emptySet(),
-    val media: CapturedMedia? = null,
+    val media: List<CapturedMedia> = emptyList(),
+    val audio: CapturedAudio? = null,
 ) {
     val isValid: Boolean
-        get() = text.isNotBlank() || media != null
+        get() = text.isNotBlank() || media.isNotEmpty() || audio != null
 }

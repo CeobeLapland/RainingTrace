@@ -14,3 +14,11 @@ data class CapturedMedia(
     val mimeType: String = "image/jpeg",
     val coordinate: WorldCoordinate? = null,
 )
+
+/** 录音产物：一段语音（MVP 每条记忆最多一段）。 */
+data class CapturedAudio(
+    val localUri: String,
+    val durationMs: Long,
+    val capturedAtEpochMs: Long,
+    val mimeType: String = "audio/mp4",
+)

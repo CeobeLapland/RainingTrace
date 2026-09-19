@@ -59,6 +59,8 @@ data class MemoryEntity(
     val mood: String?,
     val tags: String,
     val mediaRefs: String,
+    /** 语音 URI；MVP 每条最多一段。v3 新增。 */
+    val audioRef: String?,
     val sourceEventId: String?,
 )
 

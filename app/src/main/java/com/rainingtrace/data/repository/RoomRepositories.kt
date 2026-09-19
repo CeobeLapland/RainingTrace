@@ -231,6 +231,7 @@ class RoomMemoryRepository(
                 mood = memory.mood?.name,
                 tags = memory.tags.joinToString(TAG_SEP.toString()),
                 mediaRefs = memory.mediaRefs.joinToString(TAG_SEP.toString()),
+                audioRef = memory.audioRef,
                 sourceEventId = memory.sourceEventId,
             ),
         )
@@ -247,6 +248,7 @@ class RoomMemoryRepository(
         mood = mood?.let { Mood.valueOf(it) },
         tags = if (tags.isEmpty()) emptySet() else tags.split(TAG_SEP).toSet(),
         mediaRefs = if (mediaRefs.isEmpty()) emptyList() else mediaRefs.split(TAG_SEP),
+        audioRef = audioRef,
         sourceEventId = sourceEventId,
     )
 

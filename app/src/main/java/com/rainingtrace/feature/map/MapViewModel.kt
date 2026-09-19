@@ -26,6 +26,8 @@ import com.rainingtrace.domain.map.PlaceVisual
 import com.rainingtrace.domain.map.PlayerMarkerVisual
 import com.rainingtrace.domain.map.WorldCoordinate
 import com.rainingtrace.domain.map.distanceMetersTo
+import com.rainingtrace.domain.memory.MemoryFocusRequest
+import com.rainingtrace.domain.memory.MemoryNode
 import com.rainingtrace.domain.memory.MemoryRepository
 import com.rainingtrace.domain.settings.AppSettingsRepository
 import com.rainingtrace.domain.settings.LocationMode
@@ -48,6 +50,8 @@ data class MapUiState(
     val lastFix: WorldCoordinate? = null,
     /** 已选中的地点（点图标/附近列表选中）→ 详情卡。 */
     val selectedPlace: Place? = null,
+    /** 日记「在地图查看」跳过来的记忆 → 聚焦卡 + 高亮环。 */
+    val focusedMemory: MemoryNode? = null,
     /** 观察范围内的已揭示地点（按距离升序），驱动"附近多地点"列表。 */
     val nearbyPlaces: List<Place> = emptyList(),
     val showFilterPanel: Boolean = false,
@@ -77,6 +81,8 @@ class MapViewModel(
     private val placeRepository: PlaceRepository,
     private val explorationRepository: ExplorationRepository,
     private val memoryRepository: MemoryRepository,
+    /** 日记「在地图查看」的一次性聚焦请求。 */
+    private val memoryFocus: MemoryFocusRequest,
     /** Fake 模式下点击地图移动；GPS 模式内部忽略。 */
     private val debugMapTap: ((WorldCoordinate) -> Unit)?,
     /** 本地偏好：定位模式 + 图层筛选（筛选作为唯一真相，重启保留）。 */
@@ -113,6 +119,12 @@ class MapViewModel(
                     _filters.value = f
                     renderMemoriesNow()
                     lastCoordinate?.let { refreshPlaces(it) }
+                }
+            }
+            // 日记「在地图查看」：把相机移到该记忆并高亮。
+            launch {
+                memoryFocus.memory.collect { memory ->
+                    if (memory != null) focusMemory(memory)
                 }
             }
             locationProvider.updates.collect { fix ->
@@ -156,6 +168,8 @@ class MapViewModel(
             refreshTodayTrack()
             mapRenderer.setLayerVisible(MapLayer.TRACK, _uiState.value.showTrack)
             mapRenderer.setLayerVisible(MapLayer.FOG_MASK, _uiState.value.showFog)
+            // MapView 重建后高亮环也没了，补一次。
+            _uiState.value.focusedMemory?.let { mapRenderer.renderFocus(it.coordinate) }
         }
     }
 
@@ -240,6 +254,22 @@ class MapViewModel(
 
     fun clearSelection() {
         _uiState.value = _uiState.value.copy(selectedPlace = null)
+    }
+
+    /** 关闭聚焦卡：清掉高亮环并消费请求（避免返回地图时又跳一次）。 */
+    fun clearMemoryFocus() {
+        _uiState.value = _uiState.value.copy(focusedMemory = null)
+        mapRenderer.renderFocus(null)
+        memoryFocus.consume()
+    }
+
+    private fun focusMemory(memory: MemoryNode) {
+        _uiState.value = _uiState.value.copy(
+            focusedMemory = memory,
+            selectedPlace = null,
+        )
+        mapRenderer.renderFocus(memory.coordinate)
+        mapRenderer.setCamera(MapCamera(memory.coordinate, FOCUS_ZOOM))
     }
 
     fun consumeToast() {
@@ -366,6 +396,8 @@ class MapViewModel(
 
     companion object {
         const val DEFAULT_ZOOM = 16.5
+        /** 「在地图查看」聚焦时的缩放：比默认更近，看清目标周边。 */
+        const val FOCUS_ZOOM = 18.0
         const val PLACE_MARKER_RADIUS_METERS = 600.0
         const val PLACE_CARD_RADIUS_METERS = 150.0
         private const val FOG_EXPAND_FACTOR = 1.35

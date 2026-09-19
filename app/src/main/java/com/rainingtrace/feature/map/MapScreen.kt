@@ -6,6 +6,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,9 +14,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -44,18 +47,24 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rainingtrace.R
+import com.rainingtrace.core.ui.LocalImage
+import com.rainingtrace.core.ui.label
 import com.rainingtrace.domain.map.MapRendererAdapter
 import com.rainingtrace.domain.map.Place
 import com.rainingtrace.domain.map.PlaceActionType
 import com.rainingtrace.domain.map.PlaceType
 import com.rainingtrace.domain.map.distanceMetersTo
 import com.rainingtrace.domain.map.placeStyle
+import com.rainingtrace.domain.memory.MemoryNode
 import com.rainingtrace.domain.settings.MapFilterSettings
 import com.rainingtrace.domain.settings.MemoryTimeFilter
 import com.rainingtrace.platform.map.MapLibreAdapter
 import kotlinx.coroutines.delay
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 /**
  * 地图屏：AndroidView 包装 MapView，业务只通过 [MapRendererAdapter] 交互。
@@ -251,11 +260,19 @@ fun MapScreen(
             )
         }
 
-        // 底部地点信息：
-        // 有选中地点 → 详情卡；否则观察范围内有地点 → 附近列表（多个可逐个选）。
+        // 底部信息优先级：聚焦记忆（日记跳过来）→ 选中地点 → 附近地点列表。
+        val focusedMemory = uiState.focusedMemory
         val selected = uiState.selectedPlace
-        if (selected != null) {
-            PlaceDetailCard(
+        when {
+            focusedMemory != null -> MemoryFocusCard(
+                memory = focusedMemory,
+                onClose = viewModel::clearMemoryFocus,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(16.dp),
+            )
+
+            selected != null -> PlaceDetailCard(
                 place = selected,
                 distanceMeters = selected.coordinate.distanceMetersTo(
                     uiState.lastFix ?: selected.coordinate,
@@ -266,8 +283,8 @@ fun MapScreen(
                     .align(Alignment.BottomCenter)
                     .padding(16.dp),
             )
-        } else if (uiState.nearbyPlaces.isNotEmpty()) {
-            NearbyPlacesCard(
+
+            uiState.nearbyPlaces.isNotEmpty() -> NearbyPlacesCard(
                 places = uiState.nearbyPlaces,
                 distanceOf = { p ->
                     p.coordinate.distanceMetersTo(uiState.lastFix ?: p.coordinate)
@@ -378,6 +395,81 @@ private fun MapChip(
             color = content,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
         )
+    }
+}
+
+/** 日记「在地图查看」聚焦卡：说明当前高亮的是哪条记忆。 */
+@Composable
+private fun MemoryFocusCard(
+    memory: MemoryNode,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(modifier = modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("记忆", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        text = buildString {
+                            append(
+                                MEMORY_TIME_FORMAT.format(
+                                    Instant.ofEpochMilli(memory.createdAtEpochMs).atZone(MAP_ZONE),
+                                ),
+                            )
+                            memory.mood?.let { append(" · ${it.label()}") }
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .clickable(onClick = onClose),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_close),
+                        contentDescription = "关闭",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+            if (memory.text.isNotBlank()) {
+                Text(
+                    text = memory.text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+            if (memory.mediaRefs.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    memory.mediaRefs.forEach { uri ->
+                        LocalImage(
+                            localUri = uri,
+                            modifier = Modifier
+                                .size(64.dp)
+                                .clip(RoundedCornerShape(10.dp)),
+                        )
+                    }
+                }
+            }
+            if (memory.audioRef != null) {
+                Text(
+                    text = "含一段语音，可在日记里回放",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+        }
     }
 }
 
@@ -648,3 +740,6 @@ private fun timeFilterLabel(filter: MemoryTimeFilter): String = when (filter) {
     MemoryTimeFilter.TODAY -> "今天"
     MemoryTimeFilter.THIS_WEEK -> "近一周"
 }
+
+private val MAP_ZONE: ZoneId = ZoneId.of("Asia/Shanghai")
+private val MEMORY_TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")

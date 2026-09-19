@@ -118,6 +118,12 @@ interface MapRendererAdapter {
     /** 记忆标记点；空列表时清空。 */
     fun renderMemories(memories: List<MemoryVisual>)
 
+    /**
+     * 「在地图查看」的聚焦高亮环（与筛选无关，始终可见）；null 表示清除。
+     * 日记跳转地图时用它标出目标，避免落在密集标记里找不到。
+     */
+    fun renderFocus(coordinate: WorldCoordinate?)
+
     /** 今日/区间轨迹折线；少于 2 个点时清空。 */
     fun renderTrack(points: List<WorldCoordinate>)
 

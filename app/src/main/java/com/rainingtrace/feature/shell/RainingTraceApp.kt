@@ -97,6 +97,7 @@ fun RainingTraceApp(container: AppContainer) {
                         placeRepository = container.placeRepository,
                         explorationRepository = container.explorationRepository,
                         memoryRepository = container.memoryRepository,
+                        memoryFocus = container.memoryFocusRequest,
                         debugMapTap = container.debugMapTap,
                         settings = container.settingsRepository,
                         refreshLocation = container::refreshLocation,
@@ -143,6 +144,12 @@ fun RainingTraceApp(container: AppContainer) {
                 JournalRoute(
                     container = container,
                     onBack = { navController.popBackStack() },
+                    onViewOnMap = { memory ->
+                        // 先把聚焦请求放进容器，再切回世界 Tab；
+                        // 地图侧可能被重建（VM 首次 collect 就会读到），也可能还活着（collect 收到变化）。
+                        container.memoryFocusRequest.request(memory)
+                        navigateToTab(navController, Routes.WORLD)
+                    },
                 )
             }
 

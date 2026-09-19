@@ -1,9 +1,7 @@
-package com.rainingtrace.feature.journal
+package com.rainingtrace.core.ui
 
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -11,43 +9,42 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
- * 本地照片缩略图：直接解码 app 私有目录文件，不引入图片库。
+ * 本地图片（app 私有目录）显示，不引入图片库。
  *
  * inSampleSize 按目标边长降采样，避免大图 OOM；
  * 解码失败（文件被清理等）静默不显示。
+ * 尺寸交给调用方的 modifier 决定（缩略图 / 大图回看共用）。
  */
 @Composable
-fun LocalImageThumbnail(
+fun LocalImage(
     localUri: String,
     modifier: Modifier = Modifier,
+    targetPx: Int = DEFAULT_TARGET_PX,
+    contentScale: ContentScale = ContentScale.Crop,
 ) {
-    val bitmap by produceState<ImageBitmap?>(initialValue = null, localUri) {
+    val bitmap by produceState<ImageBitmap?>(initialValue = null, localUri, targetPx) {
         value = withContext(Dispatchers.IO) {
-            runCatching { decodeThumbnail(localUri, TARGET_PX) }.getOrNull()?.asImageBitmap()
+            runCatching { decode(localUri, targetPx) }.getOrNull()?.asImageBitmap()
         }
     }
     bitmap?.let {
         Image(
             bitmap = it,
-            contentDescription = "memory photo",
-            contentScale = ContentScale.Crop,
-            modifier = modifier
-                .width(THUMB_DP.dp)
-                .height(THUMB_DP.dp),
+            contentDescription = null,
+            contentScale = contentScale,
+            modifier = modifier,
         )
     }
 }
 
-private const val TARGET_PX = 256
-private const val THUMB_DP = 72
+private const val DEFAULT_TARGET_PX = 256
 
-private fun decodeThumbnail(localUri: String, targetPx: Int): android.graphics.Bitmap? {
+private fun decode(localUri: String, targetPx: Int): android.graphics.Bitmap? {
     val path = localUri.removePrefix("file://")
     val file = File(path)
     if (!file.exists()) return null

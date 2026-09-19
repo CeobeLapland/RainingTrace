@@ -1,4 +1,4 @@
-﻿package com.rainingtrace.domain.memory
+package com.rainingtrace.domain.memory
 
 import com.rainingtrace.core.time.FakeWorldClock
 import com.rainingtrace.domain.exploration.CellFogState
@@ -83,10 +83,19 @@ class CreateMemoryUseCaseTest {
             MemoryDraft(
                 coordinate = coord,
                 text = "镜月鱼影",
-                media = CapturedMedia(localUri = "file:///x.jpg", capturedAtEpochMs = 123L),
+                media = listOf(
+                    CapturedMedia(localUri = "file:///x.jpg", capturedAtEpochMs = 123L),
+                    CapturedMedia(localUri = "file:///y.jpg", capturedAtEpochMs = 124L),
+                ),
+                audio = CapturedAudio(
+                    localUri = "file:///v.m4a",
+                    durationMs = 5_000L,
+                    capturedAtEpochMs = 125L,
+                ),
             ),
         )
-        assertEquals(listOf("file:///x.jpg"), node.mediaRefs)
+        assertEquals(listOf("file:///x.jpg", "file:///y.jpg"), node.mediaRefs)
+        assertEquals("file:///v.m4a", node.audioRef)
     }
 
     @Test
@@ -105,12 +114,15 @@ class CreateMemoryUseCaseTest {
     }
 
     @Test
-    fun `draft validity requires text or media`() {
+    fun `draft validity requires text or media or audio`() {
         val coord = WorldCoordinate(39.7326, 116.1712)
         assertTrue(!MemoryDraft(coord).isValid)
         assertTrue(MemoryDraft(coord, text = "x").isValid)
         assertTrue(
-            MemoryDraft(coord, media = CapturedMedia("u", 1L)).isValid,
+            MemoryDraft(coord, media = listOf(CapturedMedia("u", 1L))).isValid,
+        )
+        assertTrue(
+            MemoryDraft(coord, audio = CapturedAudio("a", 1_000L, 1L)).isValid,
         )
     }
 }
