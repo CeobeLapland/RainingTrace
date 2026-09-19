@@ -281,12 +281,13 @@ class MapViewModel(
         viewModelScope.launch {
             when (val result = observePlace(coordinate, place)) {
                 is ObserveResult.Success ->
-                    showToast("获得「${result.resourceName}」×1（共 ${result.newQuantity}）")
+                    showToast("获得「${result.resourceName}」×${result.amount}（共 ${result.newQuantity}）")
                 is ObserveResult.Rejected -> showToast(
                     when (result.reason) {
                         ObserveRejectReason.TOO_FAR -> "离地点太远了"
                         ObserveRejectReason.ON_COOLDOWN -> "刚观察过，让它安静一会儿"
                         ObserveRejectReason.ACTION_NOT_AVAILABLE -> "这里没什么可观察的"
+                        ObserveRejectReason.NOTHING_HERE -> "这时候看不出什么，换个天气或时段再来"
                         ObserveRejectReason.REWARD_FAILED -> "观察失败了"
                     },
                 )

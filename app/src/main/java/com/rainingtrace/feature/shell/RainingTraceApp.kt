@@ -108,11 +108,7 @@ fun RainingTraceApp(container: AppContainer) {
                 MapScreen(
                     viewModel = mapViewModel,
                     worldStatus = viewModel {
-                        WorldStatusViewModel(
-                            clock = container.clock,
-                            weatherProvider = container.weatherProvider,
-                            foregroundState = container.foregroundState,
-                        )
+                        WorldStatusViewModel(worldState = container.worldStateProvider)
                     },
                     mapAdapter = container.mapRenderer,
                     modifier = Modifier.fillMaxSize(),

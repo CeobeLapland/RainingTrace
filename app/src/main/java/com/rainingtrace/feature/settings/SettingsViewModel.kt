@@ -9,13 +9,20 @@ import com.rainingtrace.domain.settings.DayWindow
 import com.rainingtrace.domain.settings.LocationMode
 import com.rainingtrace.domain.settings.TrackingSettings
 import com.rainingtrace.domain.track.ChangeGridLevelUseCase
+import com.rainingtrace.domain.world.MutableWeatherProvider
+import com.rainingtrace.domain.world.WeatherKind
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class SettingsViewModel(
     private val settings: AppSettingsRepository,
     private val changeGridLevel: ChangeGridLevelUseCase,
+    /** 可手动设定的天气；真实天气 API 接上后传空，调试区自动隐藏。 */
+    private val mutableWeather: MutableWeatherProvider? = null,
 ) : ViewModel() {
 
     val gridLevel = settings.gridLevel
@@ -27,12 +34,24 @@ class SettingsViewModel(
     val tracking = settings.tracking
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TrackingSettings())
 
+    val canSetWeather: Boolean get() = mutableWeather != null
+
+    /** 当前天气：地图 chip、产出条件都跟着它走。 */
+    val weatherKind: StateFlow<WeatherKind?> = mutableWeather?.weather
+        ?.map { it.kind }
+        ?.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), mutableWeather.weather.value.kind)
+        ?: MutableStateFlow(null)
+
     fun selectGridLevel(level: GridLevel) {
         viewModelScope.launch { changeGridLevel(level) }
     }
 
     fun selectLocationMode(mode: LocationMode) {
         viewModelScope.launch { settings.setLocationMode(mode) }
+    }
+
+    fun setWeatherKind(kind: WeatherKind) {
+        mutableWeather?.setKind(kind)
     }
 
     fun setTrackingEnabled(enabled: Boolean) = updateTracking { it.copy(enabled = enabled) }

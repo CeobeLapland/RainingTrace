@@ -11,6 +11,10 @@ import com.rainingtrace.domain.map.GridLevel
 import com.rainingtrace.domain.map.GridManager
 import com.rainingtrace.domain.map.HexCellId
 import com.rainingtrace.domain.map.WorldCoordinate
+import com.rainingtrace.domain.world.FakeWorldStateProvider
+import com.rainingtrace.domain.world.WeatherKind
+import com.rainingtrace.domain.world.WeatherState
+import com.rainingtrace.domain.world.deriveWorldState
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
@@ -25,6 +29,17 @@ class CreateMemoryUseCaseTest {
     private val gridManager = GridManager(GridLevel.M, origin)
     private val grid = gridManager.grid
     private val clock = FakeWorldClock(Instant.parse("2026-09-13T08:00:00Z"))
+
+    /** 记忆要落档当时的天气，所以测试里给一个固定"雨天"的世界状态。 */
+    private val world = FakeWorldStateProvider(
+        deriveWorldState(instant = clock.now(), weather = WeatherState(WeatherKind.LIGHT_RAIN)),
+    )
+
+    private fun useCase(
+        memories: FakeMemoryRepository = FakeMemoryRepository(),
+        exploration: FakeExplorationRepository = FakeExplorationRepository(),
+        footprints: FakeFootprintRepository = FakeFootprintRepository(),
+    ) = CreateMemoryUseCase(gridManager, clock, memories, exploration, footprints, world)
 
     private class FakeMemoryRepository : MemoryRepository {
         val saved = mutableListOf<MemoryNode>()
@@ -57,11 +72,11 @@ class CreateMemoryUseCaseTest {
         val memories = FakeMemoryRepository()
         val exploration = FakeExplorationRepository()
         val footprints = FakeFootprintRepository()
-        val useCase = CreateMemoryUseCase(gridManager, clock, memories, exploration, footprints)
+        val createMemory = useCase(memories, exploration, footprints)
 
         val coord = WorldCoordinate(39.7326, 116.1712)
         val cell = grid.cellOf(coord)
-        val node = useCase(MemoryDraft(coordinate = coord, text = "第一次在雨中来到湖边", mood = Mood.CALM))
+        val node = createMemory(MemoryDraft(coordinate = coord, text = "第一次在雨中来到湖边", mood = Mood.CALM))
 
         assertEquals(1, memories.saved.size)
         assertEquals("第一次在雨中来到湖边", memories.saved.first().text)
@@ -71,15 +86,18 @@ class CreateMemoryUseCaseTest {
         assertEquals(FootprintEventType.MEMORY_CREATED, footprints.events.first().eventType)
         // 足迹位置也是连续坐标
         assertEquals(coord, footprints.events.first().coordinate)
+        // 世界状态一起落档：以后能重建"昨天雨天的湖"
+        assertEquals(WeatherKind.LIGHT_RAIN, node.weather)
+        assertEquals("LIGHT_RAIN", footprints.events.first().payload["weather"])
+        assertEquals("DAY", footprints.events.first().payload["timeOfDay"])
     }
 
     @Test
     fun `memory with photo stores media ref`() = runTest {
         val memories = FakeMemoryRepository()
-        val useCase = CreateMemoryUseCase(gridManager, clock, memories, FakeExplorationRepository(), FakeFootprintRepository(),
-        )
+        val createMemory = useCase(memories)
         val coord = WorldCoordinate(39.7326, 116.1712)
-        val node = useCase(
+        val node = createMemory(
             MemoryDraft(
                 coordinate = coord,
                 text = "镜月鱼影",
@@ -105,9 +123,8 @@ class CreateMemoryUseCaseTest {
         val cell = grid.cellOf(coord)
         exploration.saveStates(mapOf(cell to CellFogState.SPECIAL))
 
-        val useCase = CreateMemoryUseCase(gridManager, clock, FakeMemoryRepository(), exploration, FakeFootprintRepository(),
-        )
-        useCase(MemoryDraft(coordinate = coord, text = "hi"))
+        val createMemory = useCase(exploration = exploration, footprints = FakeFootprintRepository())
+        createMemory(MemoryDraft(coordinate = coord, text = "hi"))
 
         // SPECIAL 比 MEMORIZED 更高，应保留 SPECIAL
         assertEquals(CellFogState.SPECIAL, exploration.state.stateOf(cell))

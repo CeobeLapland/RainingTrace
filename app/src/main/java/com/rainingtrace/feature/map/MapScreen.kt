@@ -192,7 +192,7 @@ fun MapScreen(
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             MapChip(text = "足迹 · 已探索 ${uiState.revealedCount} 格")
-            MapChip(text = "${world.weatherLabel} · ${world.timeLabel}")
+            MapChip(text = "${world.weatherLabel} · ${world.timeOfDayLabel} · ${world.timeLabel}")
             if (uiState.trackingEnabled &&
                 uiState.locationMode == com.rainingtrace.domain.settings.LocationMode.GPS
             ) {

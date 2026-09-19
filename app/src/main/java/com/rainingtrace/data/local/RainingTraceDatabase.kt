@@ -14,6 +14,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * v2：战争迷雾架构（track_points 成为空间真相，记忆/足迹坐标化，
  * fog 主键带格子档位）。开发期数据为测试数据，v1→v2 走 destructive。
  * v3：记忆支持一段语音（memories.audioRef）。**走显式迁移，不删库**。
+ * v4：记忆带当时的世界状态（memories.weatherKind / season）。
  */
 @Database(
     entities = [
@@ -23,7 +24,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         MemoryEntity::class,
         InventoryItemEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 abstract class RainingTraceDatabase : RoomDatabase() {
@@ -43,11 +44,22 @@ abstract class RainingTraceDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v4：记忆落档创建时的天气/季节。
+         * 老数据的这两列只能是 null（当时没记），不做回填——回填等于编造历史。
+         */
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE memories ADD COLUMN weatherKind TEXT")
+                db.execSQL("ALTER TABLE memories ADD COLUMN season TEXT")
+            }
+        }
+
         fun create(context: Context): RainingTraceDatabase =
             Room.databaseBuilder(context, RainingTraceDatabase::class.java, NAME)
                 // v1→v2 结构不兼容；用户已确认开发期删库重来。
                 // v2→v3 起改为显式 Migration：正式有用户数据后不允许再 destructive。
-                .addMigrations(MIGRATION_2_3)
+                .addMigrations(MIGRATION_2_3, MIGRATION_3_4)
                 .fallbackToDestructiveMigration(false)
                 .build()
     }

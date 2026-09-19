@@ -40,7 +40,12 @@ import com.rainingtrace.domain.track.TrackDayFocusRequest
 import com.rainingtrace.domain.track.TrackRepository
 import com.rainingtrace.domain.track.TrackingController
 import com.rainingtrace.domain.world.FakeWeatherProvider
+import com.rainingtrace.domain.world.InMemoryResourceYieldRuleCatalog
+import com.rainingtrace.domain.world.MutableWeatherProvider
+import com.rainingtrace.domain.world.ResourceYieldRuleCatalog
+import com.rainingtrace.domain.world.SystemWorldStateProvider
 import com.rainingtrace.domain.world.WeatherProvider
+import com.rainingtrace.domain.world.WorldStateProvider
 import com.rainingtrace.platform.ar.ArCoreController
 import com.rainingtrace.platform.audio.AndroidAudioNoteController
 import com.rainingtrace.platform.camera.CameraXController
@@ -200,8 +205,28 @@ class AppContainer(
         InMemoryResourceCatalog(InMemoryResourceCatalog.DEFAULT)
     }
 
-    /** 世界天气状态：MVP 用 Fake（固定晴），P1 接真实 API。 */
+    /** 世界天气状态：MVP 用 Fake（固定晴）；P1 换真实 API 适配器，条件与产出不用改。 */
     val weatherProvider: WeatherProvider by lazy { FakeWeatherProvider() }
+
+    /** 供设置页的调试区手动改天气（真实 API 版不实现 MutableWeatherProvider，界面自动隐藏）。 */
+    val mutableWeatherProvider: MutableWeatherProvider? get() = weatherProvider as? MutableWeatherProvider
+
+    /**
+     * 世界状态（时间 + 天气 + 季节/节日）：资源产出、事件、NPC 出现的统一输入口。
+     * 只在有人订阅时推进（WhileSubscribed），后台不空转。
+     */
+    val worldStateProvider: WorldStateProvider by lazy {
+        SystemWorldStateProvider(
+            clock = clock,
+            weatherProvider = weatherProvider,
+            scope = applicationScope,
+        )
+    }
+
+    /** 产出规则表：加内容只加规则，不改用例。 */
+    val resourceYieldRules: ResourceYieldRuleCatalog by lazy {
+        InMemoryResourceYieldRuleCatalog(InMemoryResourceYieldRuleCatalog.DEFAULT)
+    }
 
     val addItem: AddItemToInventoryUseCase by lazy { AddItemToInventoryUseCase(clock) }
 
@@ -231,6 +256,9 @@ class AppContainer(
             inventoryRepository = inventoryRepository,
             addItem = addItem,
             footprintRepository = footprintRepository,
+            resourceCatalog = resourceCatalog,
+            worldState = worldStateProvider,
+            rules = resourceYieldRules,
         )
     }
 
@@ -260,6 +288,7 @@ class AppContainer(
             memoryRepository = memoryRepository,
             explorationRepository = explorationRepository,
             footprintRepository = footprintRepository,
+            worldState = worldStateProvider,
         )
     }
 

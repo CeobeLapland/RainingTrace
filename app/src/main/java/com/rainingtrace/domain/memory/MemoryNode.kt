@@ -1,11 +1,13 @@
 package com.rainingtrace.domain.memory
 
 import com.rainingtrace.domain.map.WorldCoordinate
+import com.rainingtrace.domain.world.Season
+import com.rainingtrace.domain.world.WeatherKind
 
 /**
  * RT-DOM-007: 记忆节点。
  *
- * 位置 + 时间 + 图片/文字 + 心情 + 标签（GDD §06）。
+ * 位置 + 时间 + 图片/文字 + 心情 + 标签 + **当时的天气/季节**（GDD §06）。
  * 位置是连续坐标，不依附六边形格子；与 FootprintEvent 一样 append-only。
  */
 enum class Mood {
@@ -28,6 +30,10 @@ data class MemoryNode(
     val mediaRefs: List<String> = emptyList(),
     /** 本地语音 URI；MVP 每条记忆最多一段。 */
     val audioRef: String? = null,
+    /** 创建时的天气（世界状态落档）；老数据为 null = 未知。 */
+    val weather: WeatherKind? = null,
+    /** 创建时的季节；季节规则未定时为 null（见 [Season]）。 */
+    val season: Season? = null,
     val sourceEventId: String? = null,
 )
 

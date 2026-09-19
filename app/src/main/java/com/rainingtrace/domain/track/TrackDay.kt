@@ -1,5 +1,6 @@
 package com.rainingtrace.domain.track
 
+import com.rainingtrace.core.time.WORLD_ZONE
 import com.rainingtrace.domain.map.MapCamera
 import com.rainingtrace.domain.map.WorldCoordinate
 import com.rainingtrace.domain.map.distanceMetersTo
@@ -9,8 +10,8 @@ import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.ln
 
-/** 轨迹/日记统一时间口径：Asia/Shanghai（固定 +08:00，1991 年后无夏令时）。 */
-val TRACK_ZONE: ZoneId = ZoneId.of("Asia/Shanghai")
+/** 轨迹/日记统一时间口径：与全局世界时区同一个值（见 [WORLD_ZONE]）。 */
+val TRACK_ZONE: ZoneId = WORLD_ZONE
 const val TRACK_ZONE_OFFSET_MS = 8L * 60 * 60 * 1000
 const val DAY_MS = 24L * 60 * 60 * 1000
 

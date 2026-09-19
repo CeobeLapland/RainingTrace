@@ -43,10 +43,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rainingtrace.R
 import com.rainingtrace.core.common.AppContainer
+import com.rainingtrace.core.ui.label
 import com.rainingtrace.domain.map.GridLevel
 import com.rainingtrace.domain.settings.BackgroundInterval
 import com.rainingtrace.domain.settings.DayWindow
 import com.rainingtrace.domain.settings.LocationMode
+import com.rainingtrace.domain.world.WeatherKind
 
 @Composable
 fun SettingsRoute(
@@ -57,11 +59,16 @@ fun SettingsRoute(
     BackHandler { onBack() }
 
     val viewModel: SettingsViewModel = viewModel {
-        SettingsViewModel(container.settingsRepository, container.changeGridLevel)
+        SettingsViewModel(
+            settings = container.settingsRepository,
+            changeGridLevel = container.changeGridLevel,
+            mutableWeather = container.mutableWeatherProvider,
+        )
     }
     val gridLevel by viewModel.gridLevel.collectAsStateWithLifecycle()
     val locationMode by viewModel.locationMode.collectAsStateWithLifecycle()
     val tracking by viewModel.tracking.collectAsStateWithLifecycle()
+    val weatherKind by viewModel.weatherKind.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     val notificationLauncher = rememberLauncherForActivityResult(
@@ -220,6 +227,27 @@ fun SettingsRoute(
                         )
                     }
                 }
+
+                // 真实天气 API 接入前，靠这里手动切天气来验证"世界状态影响产出"。
+                if (viewModel.canSetWeather) {
+                    SectionLabel("世界状态（调试）")
+                    Text(
+                        text = "真实天气还没接。手动切换会立刻影响地图上的天气与地点产出，" +
+                            "比如雨天在湖边观察会掉「湖泊记忆碎片」。",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 20.dp),
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    WeatherKind.entries.forEach { kind ->
+                        OptionRow(
+                            title = kind.label(),
+                            hint = weatherHint(kind),
+                            selected = weatherKind == kind,
+                            onClick = { viewModel.setWeatherKind(kind) },
+                        )
+                    }
+                }
             }
         }
     }
@@ -270,6 +298,16 @@ private fun intervalHint(interval: BackgroundInterval): String = when (interval)
     BackgroundInterval.M1 -> "推荐，校园散步够用"
     BackgroundInterval.M2 -> "省电，轨迹更粗"
     BackgroundInterval.M5 -> "极省电，只保留大致去向"
+}
+
+private fun weatherHint(kind: WeatherKind): String = when (kind) {
+    WeatherKind.CLEAR -> "默认；只出保底产出"
+    WeatherKind.CLOUDY -> "无特殊产出"
+    WeatherKind.LIGHT_RAIN -> "雨天限定产出会触发（湖边出记忆碎片）"
+    WeatherKind.HEAVY_RAIN -> "雨天限定产出会触发"
+    WeatherKind.SNOW -> "无特殊产出（季节玩法待定）"
+    WeatherKind.FOG -> "无特殊产出"
+    WeatherKind.WIND -> "无特殊产出"
 }
 
 private fun hasBackgroundLocationPermission(context: android.content.Context): Boolean =

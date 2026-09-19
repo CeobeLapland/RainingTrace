@@ -217,12 +217,23 @@ private fun MemoryCard(
                     ),
                     style = MaterialTheme.typography.labelMedium,
                 )
-                memory.mood?.let {
-                    Text(
-                        text = it.label(),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // 当时的天气/季节：老记忆可能没有，就不显示。
+                    memory.weather?.let { weather ->
+                        Text(
+                            text = weather.label(),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.secondary,
+                        )
+                        Spacer(Modifier.size(6.dp))
+                    }
+                    memory.mood?.let {
+                        Text(
+                            text = it.label(),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
                 }
             }
             if (memory.text.isNotBlank()) {

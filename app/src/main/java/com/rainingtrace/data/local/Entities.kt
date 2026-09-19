@@ -61,6 +61,10 @@ data class MemoryEntity(
     val mediaRefs: String,
     /** 语音 URI；MVP 每条最多一段。v3 新增。 */
     val audioRef: String?,
+    /** 创建时的天气类型名；v4 新增，老数据为 null（未知）。 */
+    val weatherKind: String?,
+    /** 创建时的季节名；v4 新增，老数据为 null（季节规则未定）。 */
+    val season: String?,
     val sourceEventId: String?,
 )
 

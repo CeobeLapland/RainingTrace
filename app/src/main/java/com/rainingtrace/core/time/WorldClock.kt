@@ -5,6 +5,12 @@ import java.time.LocalDate
 import java.time.ZoneId
 
 /**
+ * 本应用的世界时区：GDD 现实映射目前是单一校园/城市，所以全局一个时区。
+ * 所有"本地日期/时段/季节"判断都走它，不要在别处再写字面量。
+ */
+val WORLD_ZONE: ZoneId = ZoneId.of("Asia/Shanghai")
+
+/**
  * RT-DOM-008: 世界时钟。
  *
  * 所有业务时间必须经此接口获取（见 05_领域模型 §10）。

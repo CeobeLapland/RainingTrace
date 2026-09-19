@@ -32,6 +32,8 @@ import com.rainingtrace.domain.track.TrackDay
 import com.rainingtrace.domain.track.TrackPoint
 import com.rainingtrace.domain.track.TrackRepository
 import com.rainingtrace.domain.track.trackDayOf
+import com.rainingtrace.domain.world.Season
+import com.rainingtrace.domain.world.WeatherKind
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -244,6 +246,8 @@ class RoomMemoryRepository(
                 tags = memory.tags.joinToString(TAG_SEP.toString()),
                 mediaRefs = memory.mediaRefs.joinToString(TAG_SEP.toString()),
                 audioRef = memory.audioRef,
+                weatherKind = memory.weather?.name,
+                season = memory.season?.name,
                 sourceEventId = memory.sourceEventId,
             ),
         )
@@ -261,6 +265,8 @@ class RoomMemoryRepository(
         tags = if (tags.isEmpty()) emptySet() else tags.split(TAG_SEP).toSet(),
         mediaRefs = if (mediaRefs.isEmpty()) emptyList() else mediaRefs.split(TAG_SEP),
         audioRef = audioRef,
+        weather = weatherKind?.let { runCatching { WeatherKind.valueOf(it) }.getOrNull() },
+        season = season?.let { runCatching { Season.valueOf(it) }.getOrNull() },
         sourceEventId = sourceEventId,
     )
 
