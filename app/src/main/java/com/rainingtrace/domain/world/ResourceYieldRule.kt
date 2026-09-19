@@ -35,10 +35,11 @@ data class ResourceYieldRule(
     }
 
     /**
-     * 越"具体"（条件越多）的规则越优先：雨天湖边的碎片先于泛泛的观察记录。
-     * 这样加条件内容不需要调优先级数值。
+     * 规则具体度：条件越多越优先，其次"绑定了地点类型"的优先于泛用的。
+     * 加权（条件×2 + 地点）让"雨天限定的湖边苔痕"稳稳压过泛用保底规则，
+     * 加内容时不需要回头调优先级数值。
      */
-    val specificity: Int get() = conditions.size
+    val specificity: Int get() = conditions.size * 2 + if (placeType != null) 1 else 0
 
     fun matches(place: Place, state: WorldState): Boolean {
         if (placeType != null && place.type != placeType) return false
@@ -66,6 +67,8 @@ class InMemoryResourceYieldRuleCatalog(
         byAction[action].orEmpty()
 
     companion object {
+        // ---- 观察 ----
+
         /** 保底：任何地点认真看一次 → 观察记录（MVP 原有行为）。 */
         val OBSERVE_BASE = ResourceYieldRule(
             id = "rule.observe.base",
@@ -86,6 +89,153 @@ class InMemoryResourceYieldRuleCatalog(
             cooldownMs = 30 * 60 * 1000L,
         )
 
-        val DEFAULT = listOf(OBSERVE_BASE, OBSERVE_RAINY_LAKE)
+        /**
+         * 异常示例（GDD §15/§26）：雨夜湖边的反光里多出一条鱼影。
+         * 条件最多 → 优先于上面两条，玩家会先看到它。
+         */
+        val OBSERVE_MIRROR_MOON_FISH = ResourceYieldRule(
+            id = "rule.observe.mirror_moon_fish",
+            resourceId = InMemoryResourceCatalog.MIRROR_MOON_FISH_SHADOW.id,
+            action = PlaceActionType.OBSERVE,
+            placeType = PlaceType.LAKE,
+            conditions = listOf(
+                RAINY_WEATHER,
+                WorldCondition.TimeOfDayIn(setOf(TimeOfDay.NIGHT)),
+            ),
+            cooldownMs = 120 * 60 * 1000L,
+        )
+
+        // ---- 采集：自然 ----
+
+        val COLLECT_BASE = ResourceYieldRule(
+            id = "rule.collect.base",
+            resourceId = InMemoryResourceCatalog.RAIN_MOSS.id,
+            action = PlaceActionType.COLLECT,
+            placeType = PlaceType.GARDEN,
+        )
+
+        val COLLECT_RAIN_MOSS = ResourceYieldRule(
+            id = "rule.collect.rain_moss",
+            resourceId = InMemoryResourceCatalog.RAIN_MOSS.id,
+            action = PlaceActionType.COLLECT,
+            placeType = PlaceType.GARDEN,
+            conditions = listOf(RAINY_WEATHER),
+            amount = 2,
+        )
+
+        val COLLECT_REED = ResourceYieldRule(
+            id = "rule.collect.reed",
+            resourceId = InMemoryResourceCatalog.REED_LEAF.id,
+            action = PlaceActionType.COLLECT,
+            placeType = PlaceType.LAKE,
+        )
+
+        val COLLECT_PINE_CONE = ResourceYieldRule(
+            id = "rule.collect.pine_cone",
+            resourceId = InMemoryResourceCatalog.PINE_CONE.id,
+            action = PlaceActionType.COLLECT,
+            placeType = PlaceType.GARDEN,
+            conditions = listOf(WorldCondition.SeasonIn(setOf(Season.AUTUMN))),
+            amount = 2,
+        )
+
+        val COLLECT_PETAL = ResourceYieldRule(
+            id = "rule.collect.petal",
+            resourceId = InMemoryResourceCatalog.PETAL.id,
+            action = PlaceActionType.COLLECT,
+            placeType = PlaceType.GARDEN,
+            conditions = listOf(WorldCondition.SeasonIn(setOf(Season.SPRING))),
+            amount = 2,
+        )
+
+        /** 黎明限定：草叶上的露水过了早上就没了。 */
+        val COLLECT_DEW_GRASS = ResourceYieldRule(
+            id = "rule.collect.dew_grass",
+            resourceId = InMemoryResourceCatalog.LAWN_DEW_GRASS.id,
+            action = PlaceActionType.COLLECT,
+            placeType = PlaceType.GARDEN,
+            conditions = listOf(WorldCondition.TimeOfDayIn(setOf(TimeOfDay.DAWN))),
+        )
+
+        /** 雪天限定：只在冬天的雪面上结成。 */
+        val COLLECT_FROST = ResourceYieldRule(
+            id = "rule.collect.frost",
+            resourceId = InMemoryResourceCatalog.FROST_PATTERN.id,
+            action = PlaceActionType.COLLECT,
+            placeType = PlaceType.GARDEN,
+            conditions = listOf(
+                WorldCondition.WeatherIn(setOf(WeatherKind.SNOW)),
+                WorldCondition.SeasonIn(setOf(Season.WINTER)),
+            ),
+            cooldownMs = 60 * 60 * 1000L,
+        )
+
+        // ---- 采集：知识 / 文化 ----
+
+        val COLLECT_SHELF_CARD = ResourceYieldRule(
+            id = "rule.collect.shelf_card",
+            resourceId = InMemoryResourceCatalog.LIBRARY_SHELF_CARD.id,
+            action = PlaceActionType.COLLECT,
+            placeType = PlaceType.LIBRARY,
+        )
+
+        /** 图书馆的阅读随记：只在自己也静下来读完一段之后才有（白天时段表达"坐下来读"）。 */
+        val COLLECT_READING_NOTE = ResourceYieldRule(
+            id = "rule.collect.reading_note",
+            resourceId = InMemoryResourceCatalog.READING_NOTE.id,
+            action = PlaceActionType.COLLECT,
+            placeType = PlaceType.LIBRARY,
+            conditions = listOf(WorldCondition.TimeOfDayIn(setOf(TimeOfDay.DAY, TimeOfDay.DUSK))),
+        )
+
+        val COLLECT_MENU_TICKET = ResourceYieldRule(
+            id = "rule.collect.menu_ticket",
+            resourceId = InMemoryResourceCatalog.CANTEEN_MENU_TICKET.id,
+            action = PlaceActionType.COLLECT,
+            placeType = PlaceType.CANTEEN,
+        )
+
+        val COLLECT_PLAZA_FLYER = ResourceYieldRule(
+            id = "rule.collect.plaza_flyer",
+            resourceId = InMemoryResourceCatalog.PLAZA_FLYER.id,
+            action = PlaceActionType.COLLECT,
+            placeType = PlaceType.PLAZA,
+        )
+
+        val COLLECT_DORM_SCRAP = ResourceYieldRule(
+            id = "rule.collect.dorm_scrap",
+            resourceId = InMemoryResourceCatalog.DORM_NOTE_SCRAP.id,
+            action = PlaceActionType.COLLECT,
+            placeType = PlaceType.DORM,
+        )
+
+        /** 夜水声：入夜后才听得出来。 */
+        val COLLECT_NIGHT_WATER_SOUND = ResourceYieldRule(
+            id = "rule.collect.night_water_sound",
+            resourceId = InMemoryResourceCatalog.NIGHT_WATER_SOUND.id,
+            action = PlaceActionType.COLLECT,
+            placeType = PlaceType.LAKE,
+            conditions = listOf(WorldCondition.TimeOfDayIn(setOf(TimeOfDay.NIGHT))),
+            cooldownMs = 45 * 60 * 1000L,
+        )
+
+        val DEFAULT = listOf(
+            OBSERVE_BASE,
+            OBSERVE_RAINY_LAKE,
+            OBSERVE_MIRROR_MOON_FISH,
+            COLLECT_BASE,
+            COLLECT_RAIN_MOSS,
+            COLLECT_REED,
+            COLLECT_PINE_CONE,
+            COLLECT_PETAL,
+            COLLECT_DEW_GRASS,
+            COLLECT_FROST,
+            COLLECT_SHELF_CARD,
+            COLLECT_READING_NOTE,
+            COLLECT_MENU_TICKET,
+            COLLECT_PLAZA_FLYER,
+            COLLECT_DORM_SCRAP,
+            COLLECT_NIGHT_WATER_SOUND,
+        )
     }
 }

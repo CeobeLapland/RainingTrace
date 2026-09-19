@@ -1,8 +1,10 @@
 package com.rainingtrace.domain.world
 
+import com.rainingtrace.core.time.FakeWorldClock
 import com.rainingtrace.core.time.WORLD_ZONE
 import java.time.LocalDate
 import java.time.ZoneOffset
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -105,5 +107,31 @@ class WorldStateTest {
 
         assertEquals(state, provider.current())
         assertEquals(TimeOfDay.NIGHT, provider.state.value.timeOfDay)
+    }
+
+    @Test
+    fun `system provider applies the debug time of day override only to time of day`() = runTest {
+        val clock = FakeWorldClock(instantAt(hour = 16, minute = 30))
+        val timeOfDaySource = ManualTimeOfDaySource()
+        val provider = SystemWorldStateProvider(
+            clock = clock,
+            weatherProvider = FakeWeatherProvider(),
+            seasonSource = ManualSeasonSource(),
+            timeOfDaySource = timeOfDaySource,
+            // stateIn 会常驻一个收集协程，放进 backgroundScope，否则 runTest 会等它
+            scope = backgroundScope,
+        )
+
+        // 自动：按真实时间推导
+        assertEquals(TimeOfDay.DAY, provider.current().timeOfDay)
+
+        // 固定成夜晚：只改时段判断，分钟数仍是真实时间
+        timeOfDaySource.setFixed(TimeOfDay.NIGHT)
+        assertEquals(TimeOfDay.NIGHT, provider.current().timeOfDay)
+        assertEquals(16 * 60 + 30, provider.current().minuteOfDay)
+
+        // 取消覆盖后回到真实推导
+        timeOfDaySource.setFixed(null)
+        assertEquals(TimeOfDay.DAY, provider.current().timeOfDay)
     }
 }

@@ -7,9 +7,10 @@ import com.rainingtrace.core.time.WorldClock
 import com.rainingtrace.domain.exploration.CellFogState
 import com.rainingtrace.domain.exploration.ExplorationRepository
 import com.rainingtrace.domain.exploration.ExplorationState
-import com.rainingtrace.domain.exploration.ObservePlaceUseCase
-import com.rainingtrace.domain.exploration.ObserveRejectReason
-import com.rainingtrace.domain.exploration.ObserveResult
+import com.rainingtrace.domain.exploration.PerformPlaceActionUseCase
+import com.rainingtrace.domain.exploration.PlaceActionRejectReason
+import com.rainingtrace.domain.exploration.PlaceActionResult
+import com.rainingtrace.domain.exploration.PlaceYieldPreview
 import com.rainingtrace.domain.exploration.rank
 import com.rainingtrace.domain.map.HexCellId
 import com.rainingtrace.domain.map.HexCellVisual
@@ -21,6 +22,7 @@ import com.rainingtrace.domain.map.MapRendererAdapter
 import com.rainingtrace.domain.map.MapViewport
 import com.rainingtrace.domain.map.MemoryVisual
 import com.rainingtrace.domain.map.Place
+import com.rainingtrace.domain.map.PlaceActionType
 import com.rainingtrace.domain.map.PlaceRepository
 import com.rainingtrace.domain.map.PlaceType
 import com.rainingtrace.domain.map.PlaceVisual
@@ -65,6 +67,8 @@ data class MapUiState(
     val focusedTrackDay: FocusedTrackDay? = null,
     /** 观察范围内的已揭示地点（按距离升序），驱动"附近多地点"列表。 */
     val nearbyPlaces: List<Place> = emptyList(),
+    /** 选中地点各动作的"此刻产出"提示；选中时才计算，清空选择即丢弃。 */
+    val actionPreviews: Map<PlaceActionType, PlaceYieldPreview> = emptyMap(),
     val showFilterPanel: Boolean = false,
     val toast: String? = null,
     val showTrack: Boolean = true,
@@ -99,7 +103,7 @@ class MapViewModel(
     private val recordTrackPoint: RecordTrackPointUseCase,
     private val revealFog: RevealFogFromPointUseCase,
     private val trackRepository: TrackRepository,
-    private val observePlace: ObservePlaceUseCase,
+    private val performPlaceAction: PerformPlaceActionUseCase,
     private val placeRepository: PlaceRepository,
     private val explorationRepository: ExplorationRepository,
     private val memoryRepository: MemoryRepository,
@@ -213,6 +217,8 @@ class MapViewModel(
             mapRenderer.setLayerVisible(MapLayer.FOG_MASK, _uiState.value.showFog)
             // MapView 重建后高亮环也没了，补一次。
             _uiState.value.focusedMemory?.let { mapRenderer.renderFocus(it.coordinate) }
+            // 回到前台/切回本屏时重算产出提示：可能刚在设置里改过天气或季节。
+            refreshActionPreviews()
         }
     }
 
@@ -275,23 +281,39 @@ class MapViewModel(
         viewModelScope.launch { settings.setMapFilter(filter) }
     }
 
-    fun onObserveClicked() {
+    /** 点地点卡上的动作按钮：观察 / 采集走同一个入口，只是 action 不同。 */
+    fun onPlaceAction(action: PlaceActionType) {
         val place = _uiState.value.selectedPlace ?: return
         val coordinate = lastCoordinate ?: return
         viewModelScope.launch {
-            when (val result = observePlace(coordinate, place)) {
-                is ObserveResult.Success ->
+            when (val result = performPlaceAction(coordinate, place, action)) {
+                is PlaceActionResult.Success ->
                     showToast("获得「${result.resourceName}」×${result.amount}（共 ${result.newQuantity}）")
-                is ObserveResult.Rejected -> showToast(
+                is PlaceActionResult.Rejected -> showToast(
                     when (result.reason) {
-                        ObserveRejectReason.TOO_FAR -> "离地点太远了"
-                        ObserveRejectReason.ON_COOLDOWN -> "刚观察过，让它安静一会儿"
-                        ObserveRejectReason.ACTION_NOT_AVAILABLE -> "这里没什么可观察的"
-                        ObserveRejectReason.NOTHING_HERE -> "这时候看不出什么，换个天气或时段再来"
-                        ObserveRejectReason.REWARD_FAILED -> "观察失败了"
+                        PlaceActionRejectReason.TOO_FAR ->
+                            if (action == PlaceActionType.COLLECT) "再走近一点才能采" else "离地点太远了"
+                        PlaceActionRejectReason.ON_COOLDOWN -> "刚来过，让它安静一会儿"
+                        PlaceActionRejectReason.ACTION_NOT_AVAILABLE -> "这里不能这么做"
+                        PlaceActionRejectReason.NOTHING_HERE -> "这时候看不出什么，换个天气或时段再来"
+                        PlaceActionRejectReason.REWARD_FAILED -> "这次没成功"
                     },
                 )
             }
+            // 结果会改变冷却状态，提示要跟着更新（从"有产出"变成"刚来过"）。
+            refreshActionPreviews()
+        }
+    }
+
+    /** 重算选中地点的各动作产出提示；没有选中地点就清空。 */
+    private suspend fun refreshActionPreviews() {
+        val place = _uiState.value.selectedPlace ?: return
+        val previews = place.actions.associateWith { action ->
+            performPlaceAction.preview(place, action)
+        }
+        // 计算期间选择可能已变（异步），只在仍是同一地点时落地。
+        if (_uiState.value.selectedPlace?.id == place.id) {
+            _uiState.value = _uiState.value.copy(actionPreviews = previews)
         }
     }
 
@@ -313,15 +335,17 @@ class MapViewModel(
 
     /** 选中地点（详情卡）；重复选同一地点则收起。 */
     fun selectPlace(place: Place) {
-        _uiState.value = if (_uiState.value.selectedPlace?.id == place.id) {
-            _uiState.value.copy(selectedPlace = null)
-        } else {
-            _uiState.value.copy(selectedPlace = place)
+        if (_uiState.value.selectedPlace?.id == place.id) {
+            clearSelection()
+            return
         }
+        // 先清空旧提示，避免显示上一个地点的产出。
+        _uiState.value = _uiState.value.copy(selectedPlace = place, actionPreviews = emptyMap())
+        viewModelScope.launch { refreshActionPreviews() }
     }
 
     fun clearSelection() {
-        _uiState.value = _uiState.value.copy(selectedPlace = null)
+        _uiState.value = _uiState.value.copy(selectedPlace = null, actionPreviews = emptyMap())
     }
 
     /** 关闭聚焦卡：清掉高亮环并消费请求（避免返回地图时又跳一次）。 */
@@ -335,6 +359,7 @@ class MapViewModel(
         _uiState.value = _uiState.value.copy(
             focusedMemory = memory,
             selectedPlace = null,
+            actionPreviews = emptyMap(),
         )
         mapRenderer.renderFocus(memory.coordinate)
         mapRenderer.setCamera(MapCamera(memory.coordinate, FOCUS_ZOOM))
@@ -390,6 +415,7 @@ class MapViewModel(
                 endLabel = points.lastOrNull()?.let(::timeLabelOf) ?: "--:--",
             ),
             selectedPlace = null,
+            actionPreviews = emptyMap(),
         )
         mapRenderer.renderTrack(points.map { it.coordinate })
         trackCamera(points)?.let(mapRenderer::setCamera)

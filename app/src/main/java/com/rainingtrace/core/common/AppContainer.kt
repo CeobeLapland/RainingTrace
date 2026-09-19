@@ -13,7 +13,7 @@ import com.rainingtrace.data.repository.RoomMemoryRepository
 import com.rainingtrace.data.repository.RoomTrackRepository
 import com.rainingtrace.data.settings.DataStoreSettingsRepository
 import com.rainingtrace.domain.exploration.ExplorationRepository
-import com.rainingtrace.domain.exploration.ObservePlaceUseCase
+import com.rainingtrace.domain.exploration.PerformPlaceActionUseCase
 import com.rainingtrace.domain.footprint.FootprintRepository
 import com.rainingtrace.domain.inventory.AddItemToInventoryUseCase
 import com.rainingtrace.domain.inventory.InMemoryResourceCatalog
@@ -41,9 +41,13 @@ import com.rainingtrace.domain.track.TrackRepository
 import com.rainingtrace.domain.track.TrackingController
 import com.rainingtrace.domain.world.FakeWeatherProvider
 import com.rainingtrace.domain.world.InMemoryResourceYieldRuleCatalog
+import com.rainingtrace.domain.world.ManualSeasonSource
+import com.rainingtrace.domain.world.ManualTimeOfDaySource
 import com.rainingtrace.domain.world.MutableWeatherProvider
 import com.rainingtrace.domain.world.ResourceYieldRuleCatalog
+import com.rainingtrace.domain.world.SeasonSource
 import com.rainingtrace.domain.world.SystemWorldStateProvider
+import com.rainingtrace.domain.world.TimeOfDaySource
 import com.rainingtrace.domain.world.WeatherProvider
 import com.rainingtrace.domain.world.WorldStateProvider
 import com.rainingtrace.platform.ar.ArCoreController
@@ -212,13 +216,24 @@ class AppContainer(
     val mutableWeatherProvider: MutableWeatherProvider? get() = weatherProvider as? MutableWeatherProvider
 
     /**
-     * 世界状态（时间 + 天气 + 季节/节日）：资源产出、事件、NPC 出现的统一输入口。
+     * 季节来源：推导口径未定，当前是手动（设置页调试区）设定。
+     * 将来接日历规则时换实现，产出条件不用改。
+     */
+    val seasonSource: SeasonSource by lazy { ManualSeasonSource() }
+
+    /** 时段来源：默认按真实时间；调试区可固定成某时段，验证黎明/夜晚限定内容。 */
+    val timeOfDaySource: TimeOfDaySource by lazy { ManualTimeOfDaySource() }
+
+    /**
+     * 世界状态（时间 + 天气 + 季节 + 时段）：资源产出、事件、NPC 出现的统一输入口。
      * 只在有人订阅时推进（WhileSubscribed），后台不空转。
      */
     val worldStateProvider: WorldStateProvider by lazy {
         SystemWorldStateProvider(
             clock = clock,
             weatherProvider = weatherProvider,
+            seasonSource = seasonSource,
+            timeOfDaySource = timeOfDaySource,
             scope = applicationScope,
         )
     }
@@ -250,8 +265,8 @@ class AppContainer(
         )
     }
 
-    val observePlace: ObservePlaceUseCase by lazy {
-        ObservePlaceUseCase(
+    val performPlaceAction: PerformPlaceActionUseCase by lazy {
+        PerformPlaceActionUseCase(
             clock = clock,
             inventoryRepository = inventoryRepository,
             addItem = addItem,

@@ -55,6 +55,8 @@ import com.rainingtrace.domain.map.PlaceActionType
 import com.rainingtrace.domain.map.PlaceType
 import com.rainingtrace.domain.map.distanceMetersTo
 import com.rainingtrace.domain.map.placeStyle
+import com.rainingtrace.domain.exploration.PlaceActionRejectReason
+import com.rainingtrace.domain.exploration.PlaceYieldPreview
 import com.rainingtrace.domain.memory.MemoryNode
 import com.rainingtrace.domain.settings.MapFilterSettings
 import com.rainingtrace.domain.settings.MemoryTimeFilter
@@ -291,7 +293,8 @@ fun MapScreen(
                 distanceMeters = selected.coordinate.distanceMetersTo(
                     uiState.lastFix ?: selected.coordinate,
                 ),
-                onObserve = viewModel::onObserveClicked,
+                previews = uiState.actionPreviews,
+                onAction = viewModel::onPlaceAction,
                 onClose = viewModel::clearSelection,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -540,12 +543,18 @@ private fun distanceLabel(meters: Double): String = if (meters < 1000) {
     String.format(java.util.Locale.SIMPLIFIED_CHINESE, "%.2f km", meters / 1000)
 }
 
-/** 地点详情卡：缩略图占位 + 名称/类型/距离 + 说明 + 全部可执行动作。 */
+/**
+ * 地点详情卡：缩略图占位 + 名称/类型/距离 + 说明 + 每个可执行动作（带"此刻产出"提示）。
+ *
+ * 提示用的是与结算同一套规则判定，所以"显示有产出"就等于"点下去能拿到"；
+ * 世界状态（天气/时段/季节）一变，这里就跟着变。
+ */
 @Composable
 private fun PlaceDetailCard(
     place: Place,
     distanceMeters: Double,
-    onObserve: () -> Unit,
+    previews: Map<PlaceActionType, PlaceYieldPreview>,
+    onAction: (PlaceActionType) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -585,20 +594,46 @@ private fun PlaceDetailCard(
                     modifier = Modifier.padding(top = 10.dp),
                 )
             }
-            // 地点可做的动作不止一个：为每个动作渲染一个按钮。
-            Row(
+            // 动作竖排：每个动作一行（按钮 + 此刻产出），动作变多也不会挤成一坨。
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                place.actions.sortedBy { it.name }.forEach { action ->
-                    Button(onClick = onObserve) {
-                        Text(actionLabel(action))
+                place.actions.sortedBy { it.ordinal }.forEach { action ->
+                    val preview = previews[action]
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Button(onClick = { onAction(action) }) {
+                            Text(actionLabel(action))
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            text = previewLabel(preview),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (preview is PlaceYieldPreview.Ready) {
+                                MaterialTheme.colorScheme.secondary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        )
                     }
                 }
             }
         }
+    }
+}
+
+/** 产出提示文案；还没算出来时留省略号，避免闪烁成"没有"。 */
+private fun previewLabel(preview: PlaceYieldPreview?): String = when (preview) {
+    null -> "…"
+    is PlaceYieldPreview.Ready -> "此刻：${preview.resourceName} ×${preview.amount}"
+    is PlaceYieldPreview.Unavailable -> when (preview.reason) {
+        PlaceActionRejectReason.NOTHING_HERE -> "此刻没有"
+        PlaceActionRejectReason.ON_COOLDOWN -> "刚来过，过会儿再来"
+        PlaceActionRejectReason.ACTION_NOT_AVAILABLE -> "这里不能这么做"
+        PlaceActionRejectReason.TOO_FAR -> "太远了"
+        PlaceActionRejectReason.REWARD_FAILED -> "此刻拿不到"
     }
 }
 
@@ -680,6 +715,7 @@ private fun placeTypeLabel(type: PlaceType): String = when (type) {
 
 private fun actionLabel(action: PlaceActionType): String = when (action) {
     PlaceActionType.OBSERVE -> "观察"
+    PlaceActionType.COLLECT -> "采集"
 }
 
 /** 图层筛选面板：地点类型开关 + 记忆 + 时间。逻辑隐藏语义在 VM 侧保证。 */

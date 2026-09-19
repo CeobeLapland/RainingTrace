@@ -28,14 +28,17 @@ class FakePlaceRepository(
             .map { (place, _) -> place }
 
     companion object {
+        // 可执行的动作集合：每个地点至少一个；产出由 domain 的规则表决定，这里只管"能不能做"。
+        private val OBSERVE_AND_COLLECT = setOf(PlaceActionType.OBSERVE, PlaceActionType.COLLECT)
+
         // 北湖：校区中轴最北侧（公开资料参考值）
         val NORTH_LAKE = Place(
             id = "place.bit.north_lake",
             name = "北湖",
             type = PlaceType.LAKE,
             coordinate = WorldCoordinate(39.7326, 116.1712),
-            actions = setOf(PlaceActionType.OBSERVE),
-            description = "校区中轴最北侧的一潭水。雨后的傍晚，这里常有麻雀贴着水面掠过。",
+            actions = OBSERVE_AND_COLLECT,
+            description = "校区中轴最北侧的一潭水。岸边有芦苇，雨后的傍晚常有麻雀贴着水面掠过。",
         )
 
         // 以下坐标为校区内参考值，真机试玩后校准。
@@ -44,8 +47,8 @@ class FakePlaceRepository(
             name = "图书馆",
             type = PlaceType.LIBRARY,
             coordinate = WorldCoordinate(39.7302, 116.1690),
-            actions = setOf(PlaceActionType.OBSERVE),
-            description = "安静的大楼，午后阳光会斜斜地落在中庭。",
+            actions = OBSERVE_AND_COLLECT,
+            description = "安静的大楼，午后阳光会斜斜地落在中庭。书架间偶尔能翻出旧书目卡。",
         )
 
         val CANTEEN = Place(
@@ -53,8 +56,8 @@ class FakePlaceRepository(
             name = "食堂一",
             type = PlaceType.CANTEEN,
             coordinate = WorldCoordinate(39.7294, 116.1726),
-            actions = setOf(PlaceActionType.OBSERVE),
-            description = "饭点前总飘着饭菜香，窗口前排着长长的队。",
+            actions = OBSERVE_AND_COLLECT,
+            description = "饭点前总飘着饭菜香，窗口前排着长长的队。窗口边挂着今日的菜签。",
         )
 
         val PLAZA = Place(
@@ -62,8 +65,8 @@ class FakePlaceRepository(
             name = "中心广场",
             type = PlaceType.PLAZA,
             coordinate = WorldCoordinate(39.7310, 116.1735),
-            actions = setOf(PlaceActionType.OBSERVE),
-            description = "开阔的广场，周末偶尔会有社团活动。",
+            actions = OBSERVE_AND_COLLECT,
+            description = "开阔的广场，周末偶尔会有社团活动。角落里常落下几张传单。",
         )
 
         val GARDEN = Place(
@@ -71,8 +74,8 @@ class FakePlaceRepository(
             name = "湖心花园",
             type = PlaceType.GARDEN,
             coordinate = WorldCoordinate(39.7338, 116.1732),
-            actions = setOf(PlaceActionType.OBSERVE),
-            description = "一条小径绕着几棵老树，落叶和青苔安安静静地铺着。",
+            actions = OBSERVE_AND_COLLECT,
+            description = "一条小径绕着几棵老树。苔藓、松果与花瓣随季节换着铺在地上。",
         )
 
         val DORM = Place(
@@ -80,8 +83,8 @@ class FakePlaceRepository(
             name = "学生宿舍 3 号楼",
             type = PlaceType.DORM,
             coordinate = WorldCoordinate(39.7290, 116.1712),
-            actions = setOf(PlaceActionType.OBSERVE),
-            description = "晚上亮着许多窗，是回来的地方。",
+            actions = OBSERVE_AND_COLLECT,
+            description = "晚上亮着许多窗，是回来的地方。桌边总贴着几张写到一半的便签。",
         )
 
         val DEFAULT_PLACES = listOf(

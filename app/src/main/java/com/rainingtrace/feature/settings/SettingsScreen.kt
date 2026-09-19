@@ -48,6 +48,8 @@ import com.rainingtrace.domain.map.GridLevel
 import com.rainingtrace.domain.settings.BackgroundInterval
 import com.rainingtrace.domain.settings.DayWindow
 import com.rainingtrace.domain.settings.LocationMode
+import com.rainingtrace.domain.world.Season
+import com.rainingtrace.domain.world.TimeOfDay
 import com.rainingtrace.domain.world.WeatherKind
 
 @Composable
@@ -63,12 +65,16 @@ fun SettingsRoute(
             settings = container.settingsRepository,
             changeGridLevel = container.changeGridLevel,
             mutableWeather = container.mutableWeatherProvider,
+            seasonSource = container.seasonSource,
+            timeOfDaySource = container.timeOfDaySource,
         )
     }
     val gridLevel by viewModel.gridLevel.collectAsStateWithLifecycle()
     val locationMode by viewModel.locationMode.collectAsStateWithLifecycle()
     val tracking by viewModel.tracking.collectAsStateWithLifecycle()
     val weatherKind by viewModel.weatherKind.collectAsStateWithLifecycle()
+    val season by viewModel.season.collectAsStateWithLifecycle()
+    val timeOfDayOverride by viewModel.timeOfDayOverride.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     val notificationLauncher = rememberLauncherForActivityResult(
@@ -233,7 +239,7 @@ fun SettingsRoute(
                     SectionLabel("世界状态（调试）")
                     Text(
                         text = "真实天气还没接。手动切换会立刻影响地图上的天气与地点产出，" +
-                            "比如雨天在湖边观察会掉「湖泊记忆碎片」。",
+                            "比如雨天在湖边观察会掉「湖泊记忆碎片」，雨夜还能看到「镜月鱼影」。",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 20.dp),
@@ -245,6 +251,69 @@ fun SettingsRoute(
                             hint = weatherHint(kind),
                             selected = weatherKind == kind,
                             onClick = { viewModel.setWeatherKind(kind) },
+                        )
+                    }
+                }
+
+                // 时段：默认按真实时间，固定住才能验"黎明/夜晚限定"的内容。
+                if (viewModel.canSetTimeOfDay) {
+                    Text(
+                        text = "时段",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.padding(start = 20.dp, top = 12.dp),
+                    )
+                    Text(
+                        text = "默认按真实时间推导（05/08/17/20 点为界）。固定成某一段才能在白天验" +
+                            "「夜晚限定」这类内容；地图左上角的 chip 会显示当前时段。",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 20.dp),
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    OptionRow(
+                        title = "自动",
+                        hint = "按真实时间",
+                        selected = timeOfDayOverride == null,
+                        onClick = { viewModel.setTimeOfDayOverride(null) },
+                    )
+                    TimeOfDay.entries.forEach { entry ->
+                        OptionRow(
+                            title = entry.label(),
+                            hint = timeOfDayHint(entry),
+                            selected = timeOfDayOverride == entry,
+                            onClick = { viewModel.setTimeOfDayOverride(entry) },
+                        )
+                    }
+                }
+
+                // 季节推导口径（节气 vs 月份）还没定，先手动设定，服务"季节限定"内容的验证。
+                if (viewModel.canSetSeason) {
+                    Text(
+                        text = "季节",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.padding(start = 20.dp, top = 12.dp),
+                    )
+                    Text(
+                        text = "还没有按日期推导（口径未定），先手动切；未确定时季节性产出不会触发。",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 20.dp),
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    OptionRow(
+                        title = "未确定",
+                        hint = "季节条件一律不满足",
+                        selected = season == null,
+                        onClick = { viewModel.setSeason(null) },
+                    )
+                    Season.entries.forEach { entry ->
+                        OptionRow(
+                            title = entry.label(),
+                            hint = seasonHint(entry),
+                            selected = season == entry,
+                            onClick = { viewModel.setSeason(entry) },
                         )
                     }
                 }
@@ -303,11 +372,25 @@ private fun intervalHint(interval: BackgroundInterval): String = when (interval)
 private fun weatherHint(kind: WeatherKind): String = when (kind) {
     WeatherKind.CLEAR -> "默认；只出保底产出"
     WeatherKind.CLOUDY -> "无特殊产出"
-    WeatherKind.LIGHT_RAIN -> "雨天限定产出会触发（湖边出记忆碎片）"
-    WeatherKind.HEAVY_RAIN -> "雨天限定产出会触发"
-    WeatherKind.SNOW -> "无特殊产出（季节玩法待定）"
+    WeatherKind.LIGHT_RAIN -> "雨天限定：湖边碎片、花园苔痕"
+    WeatherKind.HEAVY_RAIN -> "雨天限定同上"
+    WeatherKind.SNOW -> "配冬天可采到「霜纹」"
     WeatherKind.FOG -> "无特殊产出"
     WeatherKind.WIND -> "无特殊产出"
+}
+
+private fun seasonHint(season: Season): String = when (season) {
+    Season.SPRING -> "花园掉花瓣"
+    Season.SUMMER -> "暂无季节限定内容"
+    Season.AUTUMN -> "花园掉松果"
+    Season.WINTER -> "配雪天花园出「霜纹」"
+}
+
+private fun timeOfDayHint(timeOfDay: TimeOfDay): String = when (timeOfDay) {
+    TimeOfDay.DAWN -> "05:00–08:00；可采到带露的草叶"
+    TimeOfDay.DAY -> "08:00–17:00；图书馆的阅读随记"
+    TimeOfDay.DUSK -> "17:00–20:00；也是阅读随记"
+    TimeOfDay.NIGHT -> "20:00–05:00；夜晚水声、雨夜镜月鱼影"
 }
 
 private fun hasBackgroundLocationPermission(context: android.content.Context): Boolean =

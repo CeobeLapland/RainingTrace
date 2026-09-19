@@ -11,11 +11,13 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 /**
- * 图鉴条目：一条资源定义 + 当前拥有数量。quantity == 0 表示"未收集"。
+ * 图鉴条目：一条资源定义 + 当前拥有数量 + 首次获得时间。
+ * quantity == 0 表示"未收集"；首次获得时间是年鉴的雏形（"什么时候拿到的"）。
  */
 data class CollectionEntry(
     val definition: ResourceDefinition,
     val quantity: Int,
+    val firstAcquiredAtEpochMs: Long? = null,
 )
 
 data class InventoryUiState(
@@ -36,8 +38,12 @@ class InventoryViewModel(
     val uiState: StateFlow<InventoryUiState> = inventoryRepository.observeState()
         .map { state ->
             val entries = catalog.all().map { def ->
-                CollectionEntry(def, state.quantityOf(def.id))
-            }
+                    CollectionEntry(
+                        definition = def,
+                        quantity = state.quantityOf(def.id),
+                        firstAcquiredAtEpochMs = state.items[def.id]?.firstAcquiredAtEpochMs,
+                    )
+                }
             InventoryUiState(
                 entries = entries,
                 ownedKinds = entries.count { it.quantity > 0 },

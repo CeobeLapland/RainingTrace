@@ -20,8 +20,9 @@ enum class TimeOfDay { DAWN, DAY, DUSK, NIGHT }
 /**
  * 季节。
  *
- * 划分口径**暂未定**（节气 or 月份），所以现在只留字段、不推导：
- * provider 给 null 表示"未确定"，季节条件在未确定时一律不满足。
+ * 划分口径**暂未定**（节气 vs 月份），所以不做推导：值来自 [SeasonSource]，
+ * 当前由设置页调试区手动切换（同天气）。null 表示"未确定"，
+ * 季节条件在未确定时一律不满足。
  */
 enum class Season { SPRING, SUMMER, AUTUMN, WINTER }
 
@@ -92,7 +93,10 @@ interface WorldStateProvider {
 }
 
 /**
- * 系统实现：时钟 + 天气 + （暂未接入的）季节/节日。
+ * 系统实现：时钟 + 天气 + 季节 + 时段。
+ *
+ * 季节与时段当前由调试区手动设定（见 [SeasonSource] / [TimeOfDaySource]），
+ * 现实输入接上后换实现即可。拿不到真实值也不算错：[Season] 允许 null。
  *
  * [state] 只在"分钟"粒度上变化，所以 30 秒 tick 足够；没人订阅时
  * [SharingStarted.WhileSubscribed] 会让 tick 停下来，后台不空转。
@@ -100,26 +104,42 @@ interface WorldStateProvider {
 class SystemWorldStateProvider(
     private val clock: WorldClock,
     private val weatherProvider: WeatherProvider,
+    private val seasonSource: SeasonSource,
+    private val timeOfDaySource: TimeOfDaySource,
     scope: CoroutineScope,
-    /** 季节推导规则未定，先留空；将来的日历规则或开发者模式再注入。 */
-    private val season: Season? = null,
-    private val holiday: String? = null,
 ) : WorldStateProvider {
 
     override val state: StateFlow<WorldState> = combine(
         weatherProvider.weather,
+        seasonSource.season,
+        timeOfDaySource.fixed,
         ticker(),
-    ) { weather, _ -> snapshot(weather) }
+    ) { weather, season, fixedTimeOfDay, _ -> snapshot(weather, season, fixedTimeOfDay) }
         .stateIn(
             scope = scope,
             started = SharingStarted.WhileSubscribed(SUBSCRIBE_STOP_TIMEOUT_MS),
-            initialValue = snapshot(weatherProvider.weather.value),
+            initialValue = snapshot(
+                weather = weatherProvider.weather.value,
+                season = seasonSource.season.value,
+                fixedTimeOfDay = timeOfDaySource.fixed.value,
+            ),
         )
 
-    override fun current(): WorldState = snapshot(weatherProvider.weather.value)
+    override fun current(): WorldState = snapshot(
+        weather = weatherProvider.weather.value,
+        season = seasonSource.season.value,
+        fixedTimeOfDay = timeOfDaySource.fixed.value,
+    )
 
-    private fun snapshot(weather: WeatherState): WorldState =
-        deriveWorldState(clock.now(), weather, season, holiday)
+    private fun snapshot(
+        weather: WeatherState,
+        season: Season?,
+        fixedTimeOfDay: TimeOfDay?,
+    ): WorldState {
+        val derived = deriveWorldState(clock.now(), weather, season)
+        // 调试覆盖只换时段判断；minuteOfDay 保持真实值，精确到分钟的条件不受影响。
+        return if (fixedTimeOfDay == null) derived else derived.copy(timeOfDay = fixedTimeOfDay)
+    }
 
     private fun ticker() = flow {
         while (true) {

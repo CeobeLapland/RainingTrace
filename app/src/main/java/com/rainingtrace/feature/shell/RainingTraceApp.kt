@@ -93,7 +93,7 @@ fun RainingTraceApp(container: AppContainer) {
                         recordTrackPoint = container.recordTrackPoint,
                         revealFog = container.revealFog,
                         trackRepository = container.trackRepository,
-                        observePlace = container.observePlace,
+                        performPlaceAction = container.performPlaceAction,
                         placeRepository = container.placeRepository,
                         explorationRepository = container.explorationRepository,
                         memoryRepository = container.memoryRepository,

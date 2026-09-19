@@ -16,9 +16,10 @@ enum class PlaceType {
     OTHER,
 }
 
-/** P0 只开放观察；采集/钓鱼/交易随后续切片解锁。 */
+/** 地点动作：观察（看）与采集（拿）是两条不同的行为，产出规则按动作分开配。 */
 enum class PlaceActionType {
     OBSERVE,
+    COLLECT,
 }
 
 data class Place(

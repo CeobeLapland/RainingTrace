@@ -1,5 +1,6 @@
 package com.rainingtrace.domain.world
 
+import com.rainingtrace.domain.inventory.InMemoryResourceCatalog
 import com.rainingtrace.domain.map.Place
 import com.rainingtrace.domain.map.PlaceActionType
 import com.rainingtrace.domain.map.PlaceType
@@ -59,11 +60,30 @@ class ResourceYieldRuleTest {
 
     @Test
     fun `catalog groups rules by action`() {
-        assertEquals(2, catalog.rulesFor(PlaceActionType.OBSERVE).size)
+        val observeRules = catalog.rulesFor(PlaceActionType.OBSERVE)
+        val collectRules = catalog.rulesFor(PlaceActionType.COLLECT)
+
+        // 两个动作各自有规则，且互不串场
+        assertTrue(observeRules.isNotEmpty())
+        assertTrue(collectRules.isNotEmpty())
+        assertTrue(observeRules.all { it.action == PlaceActionType.OBSERVE })
+        assertTrue(collectRules.all { it.action == PlaceActionType.COLLECT })
         assertEquals(
             emptyList<ResourceYieldRule>(),
             InMemoryResourceYieldRuleCatalog(emptyList()).rulesFor(PlaceActionType.OBSERVE),
         )
+    }
+
+    @Test
+    fun `every default rule yields a resource that exists in the catalog`() {
+        val resources = InMemoryResourceCatalog(InMemoryResourceCatalog.DEFAULT)
+
+        InMemoryResourceYieldRuleCatalog.DEFAULT.forEach { rule ->
+            assertTrue(
+                "missing resource definition for ${rule.resourceId}",
+                resources.definition(rule.resourceId) != null,
+            )
+        }
     }
 
     @Test

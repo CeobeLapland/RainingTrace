@@ -25,8 +25,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.rainingtrace.core.time.WORLD_ZONE
 import com.rainingtrace.domain.inventory.Rarity
 import com.rainingtrace.domain.inventory.ResourceCategory
+import java.time.Instant
+import java.time.format.DateTimeFormatter
 
 /**
  * 背包/图鉴：收藏总览。每个目录条目一张卡：
@@ -121,11 +124,22 @@ private fun CollectionCard(entry: CollectionEntry) {
             }
             Spacer(Modifier.width(10.dp))
             if (owned) {
-                Text(
-                    text = "× ${entry.quantity}",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                )
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "× ${entry.quantity}",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    entry.firstAcquiredAtEpochMs?.let { first ->
+                        Text(
+                            text = "首次 ${FIRST_SEEN_FORMAT.format(
+                                Instant.ofEpochMilli(first).atZone(WORLD_ZONE),
+                            )}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
             } else {
                 Text(
                     text = "未收集",
@@ -140,14 +154,18 @@ private fun CollectionCard(entry: CollectionEntry) {
 private fun categoryGlyph(category: ResourceCategory): String = when (category) {
     ResourceCategory.NATURE -> "叶"
     ResourceCategory.KNOWLEDGE -> "记"
+    ResourceCategory.CULTURE -> "俗"
     ResourceCategory.MEMORY -> "忆"
+    ResourceCategory.ANOMALY -> "异"
     ResourceCategory.CRAFT -> "工"
 }
 
 private fun categoryLabel(category: ResourceCategory): String = when (category) {
     ResourceCategory.NATURE -> "自然"
     ResourceCategory.KNOWLEDGE -> "知识"
+    ResourceCategory.CULTURE -> "文化"
     ResourceCategory.MEMORY -> "记忆"
+    ResourceCategory.ANOMALY -> "异常"
     ResourceCategory.CRAFT -> "制造"
 }
 
@@ -157,3 +175,5 @@ private fun rarityLabel(rarity: Rarity): String = when (rarity) {
     Rarity.RARE -> "稀有"
     Rarity.ANOMALY -> "异常"
 }
+
+private val FIRST_SEEN_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("M月d日")

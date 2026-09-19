@@ -1,14 +1,15 @@
 package com.rainingtrace.domain.inventory
 
 /**
- * RT-DOM-004: 资源定义。
- *
  * 资源不只指自然物：观察记录、记忆碎片同样是"世界资源"（GDD §09）。
+ * 类别与 GDD §09 的资源表一一对应：自然 / 知识 / 文化 / 记忆 / 异常 / 制造。
  */
 enum class ResourceCategory {
     NATURE,
     KNOWLEDGE,
+    CULTURE,
     MEMORY,
+    ANOMALY,
     CRAFT,
 }
 
