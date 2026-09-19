@@ -30,6 +30,14 @@ data class PlaceVisual(
     val name: String,
     val coordinate: WorldCoordinate,
     val placeType: PlaceType,
+    /** false = 未探索，渲染为 "?" 且不显示名字。 */
+    val revealed: Boolean = true,
+)
+
+/** 记忆节点的地图标记：坐标 + 心情（决定颜色）。 */
+data class MemoryVisual(
+    val coordinate: WorldCoordinate,
+    val mood: com.rainingtrace.domain.memory.Mood?,
 )
 
 /**
@@ -97,6 +105,7 @@ enum class MapLayer {
     PLACES,
     TRACK,
     FOG_MASK,
+    MEMORY,
 }
 
 interface MapRendererAdapter {
@@ -104,6 +113,9 @@ interface MapRendererAdapter {
     fun renderCells(cells: List<HexCellVisual>)
     fun renderPlayer(marker: PlayerMarkerVisual?)
     fun renderPlaces(places: List<PlaceVisual>)
+
+    /** 记忆标记点；空列表时清空。 */
+    fun renderMemories(memories: List<MemoryVisual>)
 
     /** 今日/区间轨迹折线；少于 2 个点时清空。 */
     fun renderTrack(points: List<WorldCoordinate>)

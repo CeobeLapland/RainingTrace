@@ -227,6 +227,25 @@ fun MapScreen(
                 active = uiState.showTrack,
                 onClick = { viewModel.setShowTrack(!uiState.showTrack) },
             )
+            LayerToggleButton(
+                iconRes = com.rainingtrace.R.drawable.ic_settings,
+                label = "筛选",
+                active = uiState.showFilterPanel,
+                onClick = viewModel::toggleFilterPanel,
+            )
+        }
+
+        // 图层筛选面板：地点类型 + 记忆 + 时间
+        if (uiState.showFilterPanel) {
+            MapFilterPanel(
+                filters = uiState.filters,
+                onToggleType = viewModel::togglePlaceType,
+                onToggleMemories = viewModel::toggleMemories,
+                onSetTime = viewModel::setTimeFilter,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 12.dp, end = 12.dp),
+            )
         }
 
         // 底部地点信息：
@@ -499,4 +518,130 @@ private fun placeTypeLabel(type: PlaceType): String = when (type) {
 
 private fun actionLabel(action: PlaceActionType): String = when (action) {
     PlaceActionType.OBSERVE -> "观察"
+}
+
+/** 图层筛选面板：地点类型开关 + 记忆 + 时间。逻辑隐藏语义在 VM 侧保证。 */
+@Composable
+private fun MapFilterPanel(
+    filters: MapFilterState,
+    onToggleType: (PlaceType) -> Unit,
+    onToggleMemories: () -> Unit,
+    onSetTime: (TimeFilter) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(modifier = modifier) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text("只看这些地点", style = MaterialTheme.typography.labelMedium)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                PlaceType.entries.forEach { type ->
+                    PlaceTypeChip(
+                        type = type,
+                        selected = type in filters.shownPlaceTypes,
+                        onClick = { onToggleType(type) },
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .clickable(onClick = onToggleMemories)
+                    .padding(vertical = 6.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "显示记忆",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+                Text(
+                    text = if (filters.showMemories) "开" else "关",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (filters.showMemories) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+            }
+
+            Text("记忆时间", style = MaterialTheme.typography.labelMedium)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                TimeFilter.entries.forEach { tf ->
+                    TimeSegmentChip(
+                        label = timeFilterLabel(tf),
+                        selected = filters.timeFilter == tf,
+                        onClick = { onSetTime(tf) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlaceTypeChip(
+    type: PlaceType,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val spec = placeStyle(type)
+    Box(
+        modifier = Modifier
+            .size(32.dp)
+            .clip(CircleShape)
+            .background(
+                color = if (selected) Color(spec.argbColor) else MaterialTheme.colorScheme.surfaceVariant,
+            )
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = spec.glyph,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun TimeSegmentChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Surface(
+        color = if (selected) {
+            MaterialTheme.colorScheme.secondary.copy(alpha = 0.35f)
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant
+        },
+        shape = RoundedCornerShape(percent = 50),
+        modifier = Modifier.clickable(onClick = onClick),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (selected) {
+                MaterialTheme.colorScheme.onSecondary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+        )
+    }
+}
+
+private fun timeFilterLabel(filter: TimeFilter): String = when (filter) {
+    TimeFilter.ALL -> "全部"
+    TimeFilter.TODAY -> "今天"
+    TimeFilter.THIS_WEEK -> "近一周"
 }

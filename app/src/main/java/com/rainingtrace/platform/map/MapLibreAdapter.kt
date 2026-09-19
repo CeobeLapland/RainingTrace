@@ -13,12 +13,14 @@ import com.rainingtrace.domain.map.HexCellVisual
 import com.rainingtrace.domain.map.MapCamera
 import com.rainingtrace.domain.map.MapLayer
 import com.rainingtrace.domain.map.MapRendererAdapter
+import com.rainingtrace.domain.map.MemoryVisual
 import com.rainingtrace.domain.map.PlaceStyleSpec
 import com.rainingtrace.domain.map.PlaceType
 import com.rainingtrace.domain.map.PlaceVisual
 import com.rainingtrace.domain.map.PlayerMarkerVisual
 import com.rainingtrace.domain.map.WorldCoordinate
 import com.rainingtrace.domain.map.placeStyle
+import com.rainingtrace.domain.memory.Mood
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.Style
@@ -52,6 +54,7 @@ class MapLibreAdapter : MapRendererAdapter {
     private var pendingCells: List<HexCellVisual>? = null
     private var pendingPlayer: PlayerMarkerVisual? = null
     private var pendingPlaces: List<PlaceVisual>? = null
+    private var pendingMemories: List<MemoryVisual>? = null
     private var pendingTrack: List<WorldCoordinate>? = null
 
     /** 图层期望可见性；style 就绪/换代后据此重放。 */
@@ -127,7 +130,7 @@ class MapLibreAdapter : MapRendererAdapter {
     private fun handleTap(mapLibreMap: MapLibreMap, latLng: LatLng) {
         val screen = mapLibreMap.projection.toScreenLocation(latLng)
         val features = runCatching {
-            mapLibreMap.queryRenderedFeatures(screen, PLACES_ICON_LAYER, PLACES_LABEL_LAYER)
+            mapLibreMap.queryRenderedFeatures(screen, *placeLayerIds().toTypedArray())
         }.getOrNull()
         val placeId = features
             ?.mapNotNull { f -> runCatching { f.getStringProperty(PROP_PLACE_ID) }.getOrNull() }
@@ -212,8 +215,30 @@ class MapLibreAdapter : MapRendererAdapter {
                 places.map {
                     Feature.fromGeometry(toPoint(it.coordinate)).apply {
                         addStringProperty(PROP_PLACE_ID, it.placeId)
-                        addStringProperty(PROP_PLACE_NAME, it.name)
-                        addStringProperty(PROP_PLACE_TYPE, it.placeType.name)
+                        addStringProperty(PROP_PLACE_NAME, if (it.revealed) it.name else "")
+                        addStringProperty(
+                            PROP_PLACE_TYPE,
+                            if (it.revealed) it.placeType.name.lowercase() else UNREVEALED_KEY,
+                        )
+                    }
+                },
+            ),
+        )
+    }
+
+    override fun renderMemories(memories: List<MemoryVisual>) {
+        val loaded = style
+        if (loaded == null) {
+            pendingMemories = memories
+            return
+        }
+        val source = loaded.safeSource(MEMORY_SOURCE)
+            ?: run { pendingMemories = memories; return }
+        source.setGeoJson(
+            FeatureCollection.fromFeatures(
+                memories.map {
+                    Feature.fromGeometry(toPoint(it.coordinate)).apply {
+                        addStringProperty(PROP_MEMORY_MOOD, (it.mood?.name ?: "").lowercase())
                     }
                 },
             ),
@@ -262,6 +287,7 @@ class MapLibreAdapter : MapRendererAdapter {
             MapLayer.CELLS -> renderCells(emptyList())
             MapLayer.PLAYER -> renderPlayer(null)
             MapLayer.PLACES -> renderPlaces(emptyList())
+            MapLayer.MEMORY -> renderMemories(emptyList())
             MapLayer.TRACK -> renderTrack(emptyList())
             MapLayer.FOG_MASK -> Unit // FOG 是 UNKNOWN/DISCOVERED 格填充，随 renderCells 刷新
         }
@@ -272,6 +298,7 @@ class MapLibreAdapter : MapRendererAdapter {
         pendingCells?.let { renderCells(it); pendingCells = null }
         pendingPlayer?.let { renderPlayer(it); pendingPlayer = null }
         pendingPlaces?.let { renderPlaces(it); pendingPlaces = null }
+        pendingMemories?.let { renderMemories(it); pendingMemories = null }
         pendingTrack?.let { renderTrack(it); pendingTrack = null }
         // style 换代后图层是新建的，按期望可见性重放一次。
         layerVisibility.forEach { (layer, visible) -> applyLayerVisibility(layer, visible) }
@@ -289,7 +316,8 @@ class MapLibreAdapter : MapRendererAdapter {
     private fun layerIdsOf(layer: MapLayer): List<String> = when (layer) {
         MapLayer.CELLS -> CellFogState.entries.map { "fill_${it.name}" } + "cells_outline"
         MapLayer.PLAYER -> listOf(PLAYER_LAYER)
-        MapLayer.PLACES -> listOf(PLACES_ICON_LAYER, PLACES_LABEL_LAYER)
+        MapLayer.PLACES -> placeLayerIds()
+        MapLayer.MEMORY -> memoryLayerIds()
         MapLayer.TRACK -> listOf(TRACK_LAYER)
         // 迷雾开关只遮暗未知/见过格；到过格的苔绿/琥珀染色属于"已发现"，保持可见。
         MapLayer.FOG_MASK -> listOf(
@@ -302,13 +330,15 @@ class MapLibreAdapter : MapRendererAdapter {
         loaded.addSource(GeoJsonSource(CELLS_SOURCE, EMPTY_FC))
         loaded.addSource(GeoJsonSource(PLAYER_SOURCE, EMPTY))
         loaded.addSource(GeoJsonSource(PLACES_SOURCE, EMPTY_FC))
+        loaded.addSource(GeoJsonSource(MEMORY_SOURCE, EMPTY_FC))
         loaded.addSource(GeoJsonSource(TRACKS_SOURCE, EMPTY_FC))
 
-        // 注册每种地点类型的水滴位图（颜色+字），供图标层按类型 match 取图。
+        // 注册每种地点类型的水滴位图（颜色+字）+ 未探索 "?" 位图，供图标层按类型 match 取图。
         PlaceType.entries.forEach { type ->
             val spec = placeStyle(type)
             runCatching { loaded.addImage(placeImageName(type), placePinBitmap(spec)) }
         }
+        runCatching { loaded.addImage(UNREVEALED_IMAGE, unrevealedPinBitmap()) }
 
         // 战争迷雾 = 铺满视口的六边形格填充：
         // UNKNOWN 深夜色浓雾，DISCOVERED 薄雾（见过没到过），
@@ -346,48 +376,65 @@ class MapLibreAdapter : MapRendererAdapter {
             },
             "cells_outline",
         )
-        // 地点图标层：按地点类型取水滴位图；随缩放变尺寸（icon-size 走 zoom step）。
-        val iconImageExpr = Expression.match(
-            Expression.get(PROP_PLACE_TYPE),
-            Expression.literal(placeImageName(PlaceType.OTHER)),
-            *PlaceType.entries.flatMap { type ->
-                listOf(
-                    Expression.literal(type.name),
-                    Expression.literal(placeImageName(type)),
-                )
-            }.toTypedArray(),
-        )
+        // 地点层：每种类型一个静态图标层 + 该类型的名字。
+        // 不使用数据驱动的 icon-image(match)：MapLibre 会校验 match 分支标签唯一性，
+        // 一旦报 "Branch labels must be unique" 整个属性设置失败、整层不渲染。
+        // 静态 iconImage + eq 过滤与迷雾层同构，稳定可靠。
+        val fontStack = loaded.layers.asReversed()
+            .filterIsInstance<SymbolLayer>()
+            .firstNotNullOfOrNull { runCatching { it.textFont.value }.getOrNull() }
+        PlaceType.entries.forEach { type ->
+            loaded.addLayer(
+                SymbolLayer(placeLayerId(type), PLACES_SOURCE).apply {
+                    setFilter(
+                        Expression.eq(
+                            Expression.get(PROP_PLACE_TYPE),
+                            Expression.literal(type.name.lowercase()),
+                        ),
+                    )
+                    setProperties(
+                        PropertyFactory.iconImage(placeImageName(type)),
+                        PropertyFactory.iconSize(iconSizeExpr()),
+                        PropertyFactory.iconAnchor(Property.ICON_ANCHOR_BOTTOM),
+                        PropertyFactory.iconAllowOverlap(true),
+                        PropertyFactory.textField(Expression.get(PROP_PLACE_NAME)),
+                        PropertyFactory.textSize(PLACE_LABEL_SIZE),
+                        PropertyFactory.textColor(PLACE_LABEL_COLOR),
+                        PropertyFactory.textHaloColor(Color.WHITE),
+                        PropertyFactory.textHaloWidth(PLACE_LABEL_HALO),
+                        PropertyFactory.textOffset(arrayOf(0f, PLACE_LABEL_OFFSET_Y)),
+                        PropertyFactory.textAnchor(Property.TEXT_ANCHOR_TOP),
+                        PropertyFactory.textAllowOverlap(true),
+                    )
+                    if (fontStack != null) {
+                        setProperties(PropertyFactory.textFont(fontStack))
+                    }
+                },
+            )
+        }
+        // 未探索地点：灰色 "?"（名字为空，不渲染文字）。
         loaded.addLayer(
-            SymbolLayer(PLACES_ICON_LAYER, PLACES_SOURCE).apply {
+            SymbolLayer(UNREVEALED_LAYER, PLACES_SOURCE).apply {
+                setFilter(
+                    Expression.eq(
+                        Expression.get(PROP_PLACE_TYPE),
+                        Expression.literal(UNREVEALED_KEY),
+                    ),
+                )
                 setProperties(
-                    PropertyFactory.iconImage(iconImageExpr),
+                    PropertyFactory.iconImage(UNREVEALED_IMAGE),
                     PropertyFactory.iconSize(iconSizeExpr()),
                     PropertyFactory.iconAnchor(Property.ICON_ANCHOR_BOTTOM),
                     PropertyFactory.iconAllowOverlap(true),
                 )
             },
         )
-        // 地名层：字体栈复用底图样式（含 CJK），避免猜字体导致中文不显示；在图标下方。
-        val fontStack = loaded.layers.asReversed()
-            .filterIsInstance<SymbolLayer>()
-            .firstNotNullOfOrNull { runCatching { it.textFont.value }.getOrNull() }
-        loaded.addLayer(
-            SymbolLayer(PLACES_LABEL_LAYER, PLACES_SOURCE).apply {
-                setProperties(
-                    PropertyFactory.textField(Expression.get(PROP_PLACE_NAME)),
-                    PropertyFactory.textSize(PLACE_LABEL_SIZE),
-                    PropertyFactory.textColor(PLACE_LABEL_COLOR),
-                    PropertyFactory.textHaloColor(Color.WHITE),
-                    PropertyFactory.textHaloWidth(PLACE_LABEL_HALO),
-                    PropertyFactory.textOffset(arrayOf(0f, PLACE_LABEL_OFFSET_Y)),
-                    PropertyFactory.textAnchor(Property.TEXT_ANCHOR_TOP),
-                    PropertyFactory.textAllowOverlap(true),
-                )
-                if (fontStack != null) {
-                    setProperties(PropertyFactory.textFont(fontStack))
-                }
-            },
-        )
+        // 记忆标记：每种心情一个静态颜色层（同样避开数据驱动 circle-color）。
+        MEMORY_COLOR.forEach { (mood, color) ->
+            loaded.addLayer(memoryLayer(mood, color))
+        }
+        // 无心情记忆：默认灰。
+        loaded.addLayer(memoryLayer(null, MEMORY_DEFAULT_COLOR))
         loaded.addLayer(
             CircleLayer(PLAYER_LAYER, PLAYER_SOURCE).apply {
                 setProperties(
@@ -423,6 +470,34 @@ class MapLibreAdapter : MapRendererAdapter {
         )
 
     private fun placeImageName(type: PlaceType): String = "$PLACE_IMAGE_PREFIX${type.name}"
+
+    private fun placeLayerId(type: PlaceType): String = "$PLACES_LAYER_PREFIX-${type.name.lowercase()}"
+
+    private fun memoryLayerId(mood: Mood?): String =
+        "$MEMORY_LAYER_PREFIX-${mood?.name?.lowercase() ?: NONE_MOOD_KEY}"
+
+    private fun placeLayerIds(): List<String> = PlaceType.entries.map(::placeLayerId) + UNREVEALED_LAYER
+
+    private fun memoryLayerIds(): List<String> =
+        MEMORY_COLOR.keys.map { memoryLayerId(it) } + memoryLayerId(null)
+
+    /** 一种心情的记忆圆点层（静态颜色 + eq 过滤）。 */
+    private fun memoryLayer(mood: Mood?, color: String): CircleLayer =
+        CircleLayer(memoryLayerId(mood), MEMORY_SOURCE).apply {
+            setFilter(
+                Expression.eq(
+                    Expression.get(PROP_MEMORY_MOOD),
+                    Expression.literal(mood?.name?.lowercase() ?: ""),
+                ),
+            )
+            setProperties(
+                PropertyFactory.circleColor(color),
+                PropertyFactory.circleRadius(MEMORY_RADIUS),
+                PropertyFactory.circleStrokeColor(Color.WHITE),
+                PropertyFactory.circleStrokeWidth(MEMORY_STROKE),
+                PropertyFactory.circleOpacity(MEMORY_OPACITY),
+            )
+        }
 
     /** 图标尺寸随缩放放大：近看更大，远看更小（车道级到街区级）。 */
     private fun iconSizeExpr(): Expression =
@@ -471,6 +546,35 @@ class MapLibreAdapter : MapRendererAdapter {
         return bmp
     }
 
+    /** 未探索地点的灰色 "?" 水滴：半透明灰底，白问号。 */
+    private fun unrevealedPinBitmap(): Bitmap {
+        val w = 72
+        val h = 94
+        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bmp)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        val path = Path().apply {
+            moveTo(w / 2f, 6f)
+            cubicTo(w * 0.96f, h * 0.32f, w * 0.92f, h * 0.80f, w / 2f, h * 0.97f)
+            cubicTo(w * 0.08f, h * 0.80f, w * 0.04f, h * 0.32f, w / 2f, 6f)
+            close()
+        }
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = 7f
+        paint.strokeJoin = Paint.Join.ROUND
+        paint.color = Color.WHITE
+        canvas.drawPath(path, paint)
+        paint.style = Paint.Style.FILL
+        paint.color = UNREVEALED_PIN_COLOR
+        canvas.drawPath(path, paint)
+        paint.color = Color.WHITE
+        paint.typeface = Typeface.SANS_SERIF
+        paint.textSize = 40f
+        paint.textAlign = Paint.Align.CENTER
+        canvas.drawText("?", w / 2f, h * 0.60f, paint)
+        return bmp
+    }
+
     companion object {
         private const val TAG = "MapLibreAdapter"
 
@@ -481,19 +585,39 @@ class MapLibreAdapter : MapRendererAdapter {
         private const val CELLS_SOURCE = "rt-cells"
         private const val PLAYER_SOURCE = "rt-player"
         private const val PLACES_SOURCE = "rt-places"
+        private const val MEMORY_SOURCE = "rt-memories"
         private const val TRACKS_SOURCE = "rt-tracks"
         private const val PLAYER_LAYER = "rt-player-dot"
-        private const val PLACES_ICON_LAYER = "rt-places-icon"
-        private const val PLACES_LABEL_LAYER = "rt-places-label"
+        private const val PLACES_LAYER_PREFIX = "rt-places"
+        private const val UNREVEALED_LAYER = "rt-places-unrevealed"
+        private const val MEMORY_LAYER_PREFIX = "rt-memory"
         private const val TRACK_LAYER = "rt-track-line"
+        private const val PLACE_IMAGE_PREFIX = "rt-pin-"
+        private const val UNREVEALED_IMAGE = "rt-pin-unrevealed"
+        private const val UNREVEALED_KEY = "__unrevealed__"
+        private const val NONE_MOOD_KEY = "none"
+        private const val UNREVEALED_PIN_COLOR = 0x55_8A93A6
         private const val PROP_FOG = "fog"
         private const val PROP_PLACE_ID = "placeId"
         private const val PROP_PLACE_NAME = "placeName"
         private const val PROP_PLACE_TYPE = "placeType"
-        private const val PLACE_IMAGE_PREFIX = "rt-pin-"
+        private const val PROP_MEMORY_MOOD = "memoryMood"
         private const val PLACE_LABEL_SIZE = 13f
         private const val PLACE_LABEL_HALO = 1.6f
         private const val PLACE_LABEL_OFFSET_Y = 4f
+        private const val MEMORY_RADIUS = 6f
+        private const val MEMORY_STROKE = 2f
+        private const val MEMORY_OPACITY = 0.95f
+        private const val MEMORY_DEFAULT_COLOR = "#8A93A6"
+        // 记忆圆点心情→颜色（CSS hex 字符串，MapLibre 数据驱动颜色要求字符串）。
+        private val MEMORY_COLOR: Map<Mood, String> = mapOf(
+            Mood.CALM to "#2E6FA3",
+            Mood.HAPPY to "#D99A2B",
+            Mood.CURIOUS to "#3E8E70",
+            Mood.LONELY to "#7D8EA7",
+            Mood.EXCITED to "#D06B3A",
+            Mood.MELANCHOLY to "#8A6FB5",
+        )
         private const val OUTLINE_WIDTH = 0.5f
         private const val TRACK_WIDTH = 3.5f
         private const val TRACK_OPACITY = 0.85f
