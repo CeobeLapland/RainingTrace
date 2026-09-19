@@ -34,10 +34,11 @@ data class PlaceVisual(
     val revealed: Boolean = true,
 )
 
-/** 记忆节点的地图标记：坐标 + 心情（决定颜色）。 */
+/** 记忆节点的地图标记：坐标 + 心情（决定颜色）+ 时间小字（HH:mm）。 */
 data class MemoryVisual(
     val coordinate: WorldCoordinate,
     val mood: com.rainingtrace.domain.memory.Mood?,
+    val timeLabel: String,
 )
 
 /**

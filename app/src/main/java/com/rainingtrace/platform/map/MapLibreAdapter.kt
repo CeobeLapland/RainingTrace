@@ -239,6 +239,7 @@ class MapLibreAdapter : MapRendererAdapter {
                 memories.map {
                     Feature.fromGeometry(toPoint(it.coordinate)).apply {
                         addStringProperty(PROP_MEMORY_MOOD, (it.mood?.name ?: "").lowercase())
+                        addStringProperty(PROP_MEMORY_TIME, it.timeLabel)
                     }
                 },
             ),
@@ -253,12 +254,17 @@ class MapLibreAdapter : MapRendererAdapter {
         }
         val source = loaded.safeSource(TRACKS_SOURCE)
             ?: run { pendingTrack = points; return }
+        // 去掉连续重复点：0 长度线段是退化几何。
+        val distinct = mutableListOf<WorldCoordinate>()
+        points.forEach { c ->
+            if (distinct.lastOrNull() != c) distinct.add(c)
+        }
         source.setGeoJson(
-            if (points.size < 2) {
+            if (distinct.size < 2) {
                 EMPTY_FC
             } else {
                 FeatureCollection.fromFeature(
-                    Feature.fromGeometry(LineString.fromLngLats(points.map { toPoint(it) })),
+                    Feature.fromGeometry(LineString.fromLngLats(distinct.map { toPoint(it) })),
                 )
             },
         )
@@ -435,6 +441,8 @@ class MapLibreAdapter : MapRendererAdapter {
         }
         // 无心情记忆：默认灰。
         loaded.addLayer(memoryLayer(null, MEMORY_DEFAULT_COLOR))
+        // 记忆时间小字层。
+        loaded.addLayer(memoryTimeLabelLayer(fontStack))
         loaded.addLayer(
             CircleLayer(PLAYER_LAYER, PLAYER_SOURCE).apply {
                 setProperties(
@@ -479,9 +487,9 @@ class MapLibreAdapter : MapRendererAdapter {
     private fun placeLayerIds(): List<String> = PlaceType.entries.map(::placeLayerId) + UNREVEALED_LAYER
 
     private fun memoryLayerIds(): List<String> =
-        MEMORY_COLOR.keys.map { memoryLayerId(it) } + memoryLayerId(null)
+        MEMORY_COLOR.keys.map { memoryLayerId(it) } + memoryLayerId(null) + MEMORY_TIME_LABEL_LAYER
 
-    /** 一种心情的记忆圆点层（静态颜色 + eq 过滤）。 */
+    /** 一种心情的记忆圆点层（静态颜色 + eq 过滤）+ 时间小字。 */
     private fun memoryLayer(mood: Mood?, color: String): CircleLayer =
         CircleLayer(memoryLayerId(mood), MEMORY_SOURCE).apply {
             setFilter(
@@ -497,6 +505,27 @@ class MapLibreAdapter : MapRendererAdapter {
                 PropertyFactory.circleStrokeWidth(MEMORY_STROKE),
                 PropertyFactory.circleOpacity(MEMORY_OPACITY),
             )
+        }
+
+    /** 记忆时间标签层：圆点下方的极小小字（只画时间，如 "14:32"）。 */
+    private fun memoryTimeLabelLayer(fontStack: Array<String>?): SymbolLayer =
+        SymbolLayer(MEMORY_TIME_LABEL_LAYER, MEMORY_SOURCE).apply {
+            setFilter(
+                Expression.neq(Expression.get(PROP_MEMORY_TIME), Expression.literal("")),
+            )
+            setProperties(
+                PropertyFactory.textField(Expression.get(PROP_MEMORY_TIME)),
+                PropertyFactory.textSize(MEMORY_LABEL_SIZE),
+                PropertyFactory.textColor(MEMORY_LABEL_COLOR),
+                PropertyFactory.textHaloColor(Color.WHITE),
+                PropertyFactory.textHaloWidth(MEMORY_LABEL_HALO),
+                PropertyFactory.textOffset(arrayOf(0f, MEMORY_LABEL_OFFSET_Y)),
+                PropertyFactory.textAnchor(Property.TEXT_ANCHOR_TOP),
+                PropertyFactory.textAllowOverlap(true),
+            )
+            if (fontStack != null) {
+                setProperties(PropertyFactory.textFont(fontStack))
+            }
         }
 
     /** 图标尺寸随缩放放大：近看更大，远看更小（车道级到街区级）。 */
@@ -591,6 +620,7 @@ class MapLibreAdapter : MapRendererAdapter {
         private const val PLACES_LAYER_PREFIX = "rt-places"
         private const val UNREVEALED_LAYER = "rt-places-unrevealed"
         private const val MEMORY_LAYER_PREFIX = "rt-memory"
+        private const val MEMORY_TIME_LABEL_LAYER = "rt-memory-time"
         private const val TRACK_LAYER = "rt-track-line"
         private const val PLACE_IMAGE_PREFIX = "rt-pin-"
         private const val UNREVEALED_IMAGE = "rt-pin-unrevealed"
@@ -605,10 +635,14 @@ class MapLibreAdapter : MapRendererAdapter {
         private const val PLACE_LABEL_SIZE = 13f
         private const val PLACE_LABEL_HALO = 1.6f
         private const val PLACE_LABEL_OFFSET_Y = 4f
-        private const val MEMORY_RADIUS = 6f
-        private const val MEMORY_STROKE = 2f
+        private const val MEMORY_RADIUS = 5f
+        private const val MEMORY_STROKE = 1.5f
         private const val MEMORY_OPACITY = 0.95f
+        private const val MEMORY_LABEL_SIZE = 10f
+        private const val MEMORY_LABEL_HALO = 1.4f
+        private const val MEMORY_LABEL_OFFSET_Y = 3f
         private const val MEMORY_DEFAULT_COLOR = "#8A93A6"
+        private const val PROP_MEMORY_TIME = "memoryTime"
         // 记忆圆点心情→颜色（CSS hex 字符串，MapLibre 数据驱动颜色要求字符串）。
         private val MEMORY_COLOR: Map<Mood, String> = mapOf(
             Mood.CALM to "#2E6FA3",
@@ -644,6 +678,7 @@ class MapLibreAdapter : MapRendererAdapter {
         private val OUTLINE_COLOR = Color.parseColor("#14000000")
         private val PLAYER_COLOR = Color.parseColor("#D06B3A")
         private val PLACE_LABEL_COLOR = Color.parseColor("#2B3338")
+        private val MEMORY_LABEL_COLOR = Color.parseColor("#3A444C")
         private val TRACK_COLOR = Color.parseColor("#3E8E70")
         private val FOG_DARK = Color.parseColor("#0D1620")
 

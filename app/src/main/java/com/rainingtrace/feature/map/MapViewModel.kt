@@ -27,12 +27,14 @@ import com.rainingtrace.domain.map.PlayerMarkerVisual
 import com.rainingtrace.domain.map.WorldCoordinate
 import com.rainingtrace.domain.map.distanceMetersTo
 import com.rainingtrace.domain.memory.MemoryRepository
+import com.rainingtrace.domain.settings.AppSettingsRepository
 import com.rainingtrace.domain.settings.LocationMode
+import com.rainingtrace.domain.settings.MapFilterSettings
+import com.rainingtrace.domain.settings.MemoryTimeFilter
 import com.rainingtrace.domain.track.RecordTrackPointUseCase
 import com.rainingtrace.domain.track.RecordTrackResult
 import com.rainingtrace.domain.track.RevealFogFromPointUseCase
 import com.rainingtrace.domain.track.TrackRepository
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -41,16 +43,6 @@ import java.time.ZoneId
 
 enum class LocationPermission { UNKNOWN, GRANTED, DENIED }
 
-/** 记忆时间筛选：全部 / 今天 / 近一周。 */
-enum class TimeFilter { ALL, TODAY, THIS_WEEK }
-
-/** 地图图层筛选（逻辑隐藏：被关掉的不渲染、不进附近列表、点了没反应）。 */
-data class MapFilterState(
-    val shownPlaceTypes: Set<PlaceType> = PlaceType.entries.toSet(),
-    val showMemories: Boolean = true,
-    val timeFilter: TimeFilter = TimeFilter.ALL,
-)
-
 data class MapUiState(
     val revealedCount: Int = 0,
     val lastFix: WorldCoordinate? = null,
@@ -58,7 +50,6 @@ data class MapUiState(
     val selectedPlace: Place? = null,
     /** 观察范围内的已揭示地点（按距离升序），驱动"附近多地点"列表。 */
     val nearbyPlaces: List<Place> = emptyList(),
-    val filters: MapFilterState = MapFilterState(),
     val showFilterPanel: Boolean = false,
     val toast: String? = null,
     val showTrack: Boolean = true,
@@ -88,13 +79,18 @@ class MapViewModel(
     private val memoryRepository: MemoryRepository,
     /** Fake 模式下点击地图移动；GPS 模式内部忽略。 */
     private val debugMapTap: ((WorldCoordinate) -> Unit)?,
-    private val locationModeFlow: Flow<LocationMode>,
+    /** 本地偏好：定位模式 + 图层筛选（筛选作为唯一真相，重启保留）。 */
+    private val settings: AppSettingsRepository,
     /** 权限授予后重新拉起 GPS 采集。 */
     private val refreshLocation: () -> Unit,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MapUiState())
     val uiState: StateFlow<MapUiState> = _uiState.asStateFlow()
+
+    /** 图层筛选当前值（DataStore 为唯一真相，UI 从这里读）。 */
+    private val _filters = MutableStateFlow(MapFilterSettings())
+    val filters: StateFlow<MapFilterSettings> = _filters.asStateFlow()
 
     private var explorationState = ExplorationState()
     private var lastCoordinate: WorldCoordinate? = null
@@ -106,10 +102,17 @@ class MapViewModel(
             mapRenderer.setLayerVisible(MapLayer.TRACK, _uiState.value.showTrack)
             mapRenderer.setLayerVisible(MapLayer.FOG_MASK, _uiState.value.showFog)
             refreshTodayTrack()
-            renderMemoriesNow()
             launch {
-                locationModeFlow.collect { mode ->
+                settings.locationMode.collect { mode ->
                     _uiState.value = _uiState.value.copy(locationMode = mode)
+                }
+            }
+            // 筛选唯一真相在 DataStore：变化即重渲染（含重启恢复）。
+            launch {
+                settings.mapFilter.collect { f ->
+                    _filters.value = f
+                    renderMemoriesNow()
+                    lastCoordinate?.let { refreshPlaces(it) }
                 }
             }
             locationProvider.updates.collect { fix ->
@@ -166,33 +169,29 @@ class MapViewModel(
         mapRenderer.setLayerVisible(MapLayer.FOG_MASK, visible)
     }
 
-    // ---- 图层筛选（逻辑隐藏） ----
+    // ---- 图层筛选（逻辑隐藏；持久化到 DataStore） ----
 
     fun toggleFilterPanel() {
         _uiState.value = _uiState.value.copy(showFilterPanel = !_uiState.value.showFilterPanel)
     }
 
     fun togglePlaceType(type: PlaceType) {
-        val current = _uiState.value.filters.shownPlaceTypes
+        val current = _filters.value.shownPlaceTypes
         val next = if (type in current) current - type else current + type
-        applyFilter(_uiState.value.filters.copy(shownPlaceTypes = next))
+        persistFilter(_filters.value.copy(shownPlaceTypes = next))
     }
 
     fun toggleMemories() {
-        val f = _uiState.value.filters
-        applyFilter(f.copy(showMemories = !f.showMemories))
+        persistFilter(_filters.value.copy(showMemories = !_filters.value.showMemories))
     }
 
-    fun setTimeFilter(filter: TimeFilter) {
-        applyFilter(_uiState.value.filters.copy(timeFilter = filter))
+    fun setTimeFilter(filter: MemoryTimeFilter) {
+        persistFilter(_filters.value.copy(memoryTimeFilter = filter))
     }
 
-    private fun applyFilter(filters: MapFilterState) {
-        _uiState.value = _uiState.value.copy(filters = filters)
-        renderMemoriesNow()
-        lastCoordinate?.let { coordinate ->
-            viewModelScope.launch { refreshPlaces(coordinate) }
-        }
+    private fun persistFilter(filter: MapFilterSettings) {
+        _filters.value = filter
+        viewModelScope.launch { settings.setMapFilter(filter) }
     }
 
     fun onObserveClicked() {
@@ -218,7 +217,7 @@ class MapViewModel(
     fun onPlaceTapped(placeId: String) {
         viewModelScope.launch {
             placeRepository.placeById(placeId)?.let { place ->
-                if (isRevealed(place) && place.type in _uiState.value.filters.shownPlaceTypes) {
+                if (isRevealed(place) && place.type in _filters.value.shownPlaceTypes) {
                     selectPlace(place)
                 }
             }
@@ -285,9 +284,8 @@ class MapViewModel(
 
     private suspend fun refreshPlaces(coordinate: WorldCoordinate) {
         val all = placeRepository.nearby(coordinate, PLACE_MARKER_RADIUS_METERS)
-        val filters = _uiState.value.filters
         val (revealed, unrevealed) = all.partition { isRevealed(it) }
-        val shownRevealed = revealed.filter { it.type in filters.shownPlaceTypes }
+        val shownRevealed = revealed.filter { it.type in _filters.value.shownPlaceTypes }
         // 已揭示 + 类型被显示 → 彩色图标+名字；未探索 → 灰色 "?"（不受类型筛选影响）。
         mapRenderer.renderPlaces(
             shownRevealed.map { PlaceVisual(it.id, it.name, it.coordinate, it.type, revealed = true) } +
@@ -300,30 +298,41 @@ class MapViewModel(
         )
     }
 
-    /** 记忆标记：按筛选（是否显示 + 时间窗）决定画哪些。 */
+    /** 记忆标记：按筛选（是否显示 + 时间窗）决定画哪些；只带一个时间小字。 */
     private fun renderMemoriesNow() {
-        val f = _uiState.value.filters
-        if (!f.showMemories) {
+        if (!_filters.value.showMemories) {
             mapRenderer.renderMemories(emptyList())
             return
         }
-        val now = clock.now().toEpochMilli()
+        val nowMs = clock.now().toEpochMilli()
+        val timeFilter = _filters.value.memoryTimeFilter
         viewModelScope.launch {
-            val all = memoryRepository.latest(MEMORY_LIMIT)
-            val shown = all.filter { inTimeWindow(it.createdAtEpochMs, f.timeFilter, now) }
-            mapRenderer.renderMemories(shown.map { MemoryVisual(it.coordinate, it.mood) })
+            val shown = memoryRepository.latest(MEMORY_LIMIT)
+                .filter { inTimeWindow(it.createdAtEpochMs, timeFilter, nowMs) }
+            mapRenderer.renderMemories(
+                shown.map {
+                    MemoryVisual(
+                        coordinate = it.coordinate,
+                        mood = it.mood,
+                        timeLabel = MEMORY_TIME_FORMAT.format(
+                            java.time.Instant.ofEpochMilli(it.createdAtEpochMs).atZone(TRACK_ZONE),
+                        ),
+                    )
+                },
+            )
         }
     }
 
-    private fun inTimeWindow(tsMs: Long, filter: TimeFilter, nowMs: Long): Boolean = when (filter) {
-        TimeFilter.ALL -> true
-        TimeFilter.TODAY -> {
-            val dayStart = clock.now().atZone(TRACK_ZONE).toLocalDate()
-                .atStartOfDay(TRACK_ZONE).toInstant().toEpochMilli()
-            tsMs in dayStart..nowMs
+    private fun inTimeWindow(tsMs: Long, filter: MemoryTimeFilter, nowMs: Long): Boolean =
+        when (filter) {
+            MemoryTimeFilter.ALL -> true
+            MemoryTimeFilter.TODAY -> {
+                val dayStart = clock.now().atZone(TRACK_ZONE).toLocalDate()
+                    .atStartOfDay(TRACK_ZONE).toInstant().toEpochMilli()
+                tsMs in dayStart..nowMs
+            }
+            MemoryTimeFilter.THIS_WEEK -> tsMs in (nowMs - WEEK_MS)..nowMs
         }
-        TimeFilter.THIS_WEEK -> tsMs in (nowMs - WEEK_MS)..nowMs
-    }
 
     /**
      * 视口驱动渲染（分块掩膜）：
@@ -363,5 +372,7 @@ class MapViewModel(
         private const val MEMORY_LIMIT = 200
         private const val WEEK_MS = 7L * 24 * 60 * 60 * 1000
         private val TRACK_ZONE: ZoneId = ZoneId.of("Asia/Shanghai")
+        private val MEMORY_TIME_FORMAT: java.time.format.DateTimeFormatter =
+            java.time.format.DateTimeFormatter.ofPattern("HH:mm")
     }
 }

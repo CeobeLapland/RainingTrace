@@ -50,6 +50,8 @@ import com.rainingtrace.domain.map.PlaceActionType
 import com.rainingtrace.domain.map.PlaceType
 import com.rainingtrace.domain.map.distanceMetersTo
 import com.rainingtrace.domain.map.placeStyle
+import com.rainingtrace.domain.settings.MapFilterSettings
+import com.rainingtrace.domain.settings.MemoryTimeFilter
 import com.rainingtrace.platform.map.MapLibreAdapter
 import kotlinx.coroutines.delay
 import org.maplibre.android.maps.MapLibreMap
@@ -69,6 +71,7 @@ fun MapScreen(
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val filters by viewModel.filters.collectAsStateWithLifecycle()
     val world by worldStatus.uiState.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
     val mapViewRef = remember { mutableStateOf<MapView?>(null) }
@@ -238,7 +241,7 @@ fun MapScreen(
         // 图层筛选面板：地点类型 + 记忆 + 时间
         if (uiState.showFilterPanel) {
             MapFilterPanel(
-                filters = uiState.filters,
+                filters = filters,
                 onToggleType = viewModel::togglePlaceType,
                 onToggleMemories = viewModel::toggleMemories,
                 onSetTime = viewModel::setTimeFilter,
@@ -523,10 +526,10 @@ private fun actionLabel(action: PlaceActionType): String = when (action) {
 /** 图层筛选面板：地点类型开关 + 记忆 + 时间。逻辑隐藏语义在 VM 侧保证。 */
 @Composable
 private fun MapFilterPanel(
-    filters: MapFilterState,
+    filters: MapFilterSettings,
     onToggleType: (PlaceType) -> Unit,
     onToggleMemories: () -> Unit,
-    onSetTime: (TimeFilter) -> Unit,
+    onSetTime: (MemoryTimeFilter) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Card(modifier = modifier) {
@@ -575,10 +578,10 @@ private fun MapFilterPanel(
 
             Text("记忆时间", style = MaterialTheme.typography.labelMedium)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                TimeFilter.entries.forEach { tf ->
+                MemoryTimeFilter.entries.forEach { tf ->
                     TimeSegmentChip(
                         label = timeFilterLabel(tf),
-                        selected = filters.timeFilter == tf,
+                        selected = filters.memoryTimeFilter == tf,
                         onClick = { onSetTime(tf) },
                     )
                 }
@@ -640,8 +643,8 @@ private fun TimeSegmentChip(
     }
 }
 
-private fun timeFilterLabel(filter: TimeFilter): String = when (filter) {
-    TimeFilter.ALL -> "全部"
-    TimeFilter.TODAY -> "今天"
-    TimeFilter.THIS_WEEK -> "近一周"
+private fun timeFilterLabel(filter: MemoryTimeFilter): String = when (filter) {
+    MemoryTimeFilter.ALL -> "全部"
+    MemoryTimeFilter.TODAY -> "今天"
+    MemoryTimeFilter.THIS_WEEK -> "近一周"
 }

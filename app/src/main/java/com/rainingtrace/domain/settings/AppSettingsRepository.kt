@@ -15,4 +15,9 @@ interface AppSettingsRepository {
     val locationMode: Flow<LocationMode>
     suspend fun currentLocationMode(): LocationMode
     suspend fun setLocationMode(mode: LocationMode)
+
+    /** 地图图层筛选（地点类型/记忆/记忆时间），重启保留。 */
+    val mapFilter: Flow<MapFilterSettings>
+    suspend fun currentMapFilter(): MapFilterSettings
+    suspend fun setMapFilter(filter: MapFilterSettings)
 }

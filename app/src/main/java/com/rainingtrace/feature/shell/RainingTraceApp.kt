@@ -98,7 +98,7 @@ fun RainingTraceApp(container: AppContainer) {
                         explorationRepository = container.explorationRepository,
                         memoryRepository = container.memoryRepository,
                         debugMapTap = container.debugMapTap,
-                        locationModeFlow = container.locationModeFlow,
+                        settings = container.settingsRepository,
                         refreshLocation = container::refreshLocation,
                     )
                 }

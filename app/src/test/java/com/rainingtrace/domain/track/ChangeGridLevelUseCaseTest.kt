@@ -10,6 +10,7 @@ import com.rainingtrace.domain.map.LocationSource
 import com.rainingtrace.domain.map.WorldCoordinate
 import com.rainingtrace.domain.settings.AppSettingsRepository
 import com.rainingtrace.domain.settings.LocationMode
+import com.rainingtrace.domain.settings.MapFilterSettings
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
@@ -33,6 +34,9 @@ class ChangeGridLevelUseCaseTest {
         override suspend fun setLocationMode(mode: LocationMode) {
             this.mode = mode
         }
+        override val mapFilter: Flow<MapFilterSettings> = flowOf(MapFilterSettings())
+        override suspend fun currentMapFilter() = MapFilterSettings()
+        override suspend fun setMapFilter(filter: MapFilterSettings) = Unit
     }
 
     private class FakeExploration : ExplorationRepository {
