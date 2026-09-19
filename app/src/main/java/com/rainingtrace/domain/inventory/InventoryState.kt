@@ -237,6 +237,35 @@ class InMemoryResourceCatalog(
             description = "贴在桌边的一张便签，提醒自己别忘了带什么。",
         )
 
+        // ---- 自然（自然资源点：林/丛/菌） ----
+
+        val WILD_BERRY = ResourceDefinition(
+            id = "res.wild_berry",
+            name = "野莓",
+            category = ResourceCategory.NATURE,
+            rarity = Rarity.COMMON,
+            tags = setOf("berry", "bush"),
+            description = "灌木上摘下来的野莓，酸甜都靠运气。",
+        )
+
+        val WILD_MUSHROOM = ResourceDefinition(
+            id = "res.wild_mushroom",
+            name = "野菌",
+            category = ResourceCategory.NATURE,
+            rarity = Rarity.COMMON,
+            tags = setOf("mushroom", "rain"),
+            description = "雨后从树根边冒出来的菌子，只有湿润那几天好找。",
+        )
+
+        val GREEN_APPLE = ResourceDefinition(
+            id = "res.green_apple",
+            name = "青苹果",
+            category = ResourceCategory.NATURE,
+            rarity = Rarity.COMMON,
+            tags = setOf("apple", "orchard", "autumn"),
+            description = "果林里挂着的青苹果，秋天最沉。",
+        )
+
         // ---- 异常（条件罕见） ----
 
         val MIRROR_MOON_FISH_SHADOW = ResourceDefinition(
@@ -271,6 +300,9 @@ class InMemoryResourceCatalog(
             CANTEEN_MENU_TICKET,
             PLAZA_FLYER,
             DORM_NOTE_SCRAP,
+            WILD_BERRY,
+            WILD_MUSHROOM,
+            GREEN_APPLE,
             MIRROR_MOON_FISH_SHADOW,
             FROST_PATTERN,
         )

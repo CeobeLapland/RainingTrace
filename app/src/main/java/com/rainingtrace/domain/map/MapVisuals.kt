@@ -55,6 +55,36 @@ fun placeStyle(type: PlaceType): PlaceStyleSpec = when (type) {
     PlaceType.GARDEN -> PlaceStyleSpec(0xFF3E8E70.toInt(), "苑")
     PlaceType.PLAZA -> PlaceStyleSpec(0xFF5B8FB9.toInt(), "场")
     PlaceType.OTHER -> PlaceStyleSpec(0xFF8A93A6.toInt(), "点")
+    // 自然资源点：偏暖的自然色，与人文地点的蓝紫系拉开。
+    PlaceType.ORCHARD -> PlaceStyleSpec(0xFF6E9A2E.toInt(), "果")
+    PlaceType.BERRY_BUSH -> PlaceStyleSpec(0xFF9C3B62.toInt(), "莓")
+    PlaceType.MUSHROOM_PATCH -> PlaceStyleSpec(0xFF8A6A4A.toInt(), "菌")
+}
+
+/**
+ * 地图上要画哪些地点标记（06_地图专项 §7 POI 分层 + 筛选语义）。
+ *
+ * - 已揭示 + 类型没被筛掉 → 彩色图标 + 名字；
+ * - 未揭示的**人文地点** → 灰色 "?"（走过了才知道这儿有东西），这是既有的探索暗示；
+ * - 未揭示的**自然资源点** → 完全不画：给个 "?" 等于免费开图，资源点必须自己走近撞见。
+ */
+fun placeVisualsFor(
+    places: List<Place>,
+    isRevealed: (Place) -> Boolean,
+    shownTypes: Set<PlaceType>,
+): List<PlaceVisual> = buildList {
+    places.forEach { place ->
+        val revealed = isRevealed(place)
+        when {
+            revealed && place.type in shownTypes ->
+                add(PlaceVisual(place.id, place.name, place.coordinate, place.type, revealed = true))
+
+            !revealed && place.type.category == PlaceCategory.PLACE ->
+                add(PlaceVisual(place.id, "", place.coordinate, place.type, revealed = false))
+
+            else -> Unit
+        }
+    }
 }
 
 /**

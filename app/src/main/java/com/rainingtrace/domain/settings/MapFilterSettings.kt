@@ -23,3 +23,13 @@ data class MapFilterSettings(
     val showMemories: Boolean = true,
     val memoryTimeFilter: MemoryTimeFilter = MemoryTimeFilter.DEFAULT,
 )
+
+/**
+ * 由"隐藏集合"反推"显示集合"。
+ *
+ * 持久化存的应该是**隐藏项**而不是显示项：这样以后新增的地点类型默认可见。
+ * 如果存显示项，老安装升级后新类型不在那份集合里，会被莫名其妙地藏掉
+ * （而且筛选面板上还看不出来是"关着"的）。
+ */
+fun shownPlaceTypesFrom(hidden: Set<PlaceType>): Set<PlaceType> =
+    PlaceType.entries.filterNot { it in hidden }.toSet()

@@ -31,6 +31,9 @@ class FakePlaceRepository(
         // 可执行的动作集合：每个地点至少一个；产出由 domain 的规则表决定，这里只管"能不能做"。
         private val OBSERVE_AND_COLLECT = setOf(PlaceActionType.OBSERVE, PlaceActionType.COLLECT)
 
+        /** 自然资源点只给采集：它们是"去拿东西"的点，不是"看风景"的地点。 */
+        private val COLLECT_ONLY = setOf(PlaceActionType.COLLECT)
+
         // 北湖：校区中轴最北侧（公开资料参考值）
         val NORTH_LAKE = Place(
             id = "place.bit.north_lake",
@@ -87,8 +90,40 @@ class FakePlaceRepository(
             description = "晚上亮着许多窗，是回来的地方。桌边总贴着几张写到一半的便签。",
         )
 
+        // ---- 自然资源点 ----
+        // 现在是手工配的，所以坐标都挑在花园/湖边这些人真会走到的地方。
+        // 将来交给"世界状态 + 种子"生成时，位置约束（别落在马路上）是主要难点，不是技术问题。
+
+        val ORCHARD = Place(
+            id = "place.bit.orchard",
+            name = "果林",
+            type = PlaceType.ORCHARD,
+            coordinate = WorldCoordinate(39.7346, 116.1742),
+            actions = COLLECT_ONLY,
+            description = "花园北侧的一小片果木，秋天枝头最沉。",
+        )
+
+        val BERRY_BUSH = Place(
+            id = "place.bit.berry_bush",
+            name = "浆果丛",
+            type = PlaceType.BERRY_BUSH,
+            coordinate = WorldCoordinate(39.7341, 116.1726),
+            actions = COLLECT_ONLY,
+            description = "小径旁的一丛灌木，走过去顺手就能摘几颗。",
+        )
+
+        val MUSHROOM_PATCH = Place(
+            id = "place.bit.mushroom_patch",
+            name = "菌丛",
+            type = PlaceType.MUSHROOM_PATCH,
+            coordinate = WorldCoordinate(39.7334, 116.1738),
+            actions = COLLECT_ONLY,
+            description = "老树根边常冒菌子，下过雨那几天最好找。",
+        )
+
         val DEFAULT_PLACES = listOf(
             NORTH_LAKE, LIBRARY, CANTEEN, PLAZA, GARDEN, DORM,
+            ORCHARD, BERRY_BUSH, MUSHROOM_PATCH,
         )
     }
 }

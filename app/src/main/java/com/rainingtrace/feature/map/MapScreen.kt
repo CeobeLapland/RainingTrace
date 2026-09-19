@@ -52,6 +52,7 @@ import com.rainingtrace.core.ui.label
 import com.rainingtrace.domain.map.MapRendererAdapter
 import com.rainingtrace.domain.map.Place
 import com.rainingtrace.domain.map.PlaceActionType
+import com.rainingtrace.domain.map.PlaceCategory
 import com.rainingtrace.domain.map.PlaceType
 import com.rainingtrace.domain.map.distanceMetersTo
 import com.rainingtrace.domain.map.placeStyle
@@ -711,6 +712,9 @@ private fun placeTypeLabel(type: PlaceType): String = when (type) {
     PlaceType.GARDEN -> "花园"
     PlaceType.PLAZA -> "广场"
     PlaceType.OTHER -> "地点"
+    PlaceType.ORCHARD -> "果林"
+    PlaceType.BERRY_BUSH -> "浆果丛"
+    PlaceType.MUSHROOM_PATCH -> "菌丛"
 }
 
 private fun actionLabel(action: PlaceActionType): String = when (action) {
@@ -737,7 +741,22 @@ private fun MapFilterPanel(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                PlaceType.entries.forEach { type ->
+                PlaceType.entries.filter { it.category == PlaceCategory.PLACE }.forEach { type ->
+                    PlaceTypeChip(
+                        type = type,
+                        selected = type in filters.shownPlaceTypes,
+                        onClick = { onToggleType(type) },
+                    )
+                }
+            }
+
+            // 自然资源点单独一行：它们不是"地点"，而是"什么时候有东西可采"的点。
+            Text("自然采集点", style = MaterialTheme.typography.labelMedium)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                PlaceType.entries.filter { it.category == PlaceCategory.RESOURCE }.forEach { type ->
                     PlaceTypeChip(
                         type = type,
                         selected = type in filters.shownPlaceTypes,

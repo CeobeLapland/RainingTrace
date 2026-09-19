@@ -23,9 +23,11 @@ import com.rainingtrace.domain.map.MapViewport
 import com.rainingtrace.domain.map.MemoryVisual
 import com.rainingtrace.domain.map.Place
 import com.rainingtrace.domain.map.PlaceActionType
+import com.rainingtrace.domain.map.PlaceCategory
 import com.rainingtrace.domain.map.PlaceRepository
 import com.rainingtrace.domain.map.PlaceType
 import com.rainingtrace.domain.map.PlaceVisual
+import com.rainingtrace.domain.map.placeVisualsFor
 import com.rainingtrace.domain.map.PlayerMarkerVisual
 import com.rainingtrace.domain.map.WorldCoordinate
 import com.rainingtrace.domain.map.distanceMetersTo
@@ -451,16 +453,22 @@ class MapViewModel(
 
     private suspend fun refreshPlaces(coordinate: WorldCoordinate) {
         val all = placeRepository.nearby(coordinate, PLACE_MARKER_RADIUS_METERS)
-        val (revealed, unrevealed) = all.partition { isRevealed(it) }
-        val shownRevealed = revealed.filter { it.type in _filters.value.shownPlaceTypes }
-        // 已揭示 + 类型被显示 → 彩色图标+名字；未探索 → 灰色 "?"（不受类型筛选影响）。
+        // 画什么由 domain 决定（已揭示/筛选/资源点未揭示不画），见 placeVisualsFor。
         mapRenderer.renderPlaces(
-            shownRevealed.map { PlaceVisual(it.id, it.name, it.coordinate, it.type, revealed = true) } +
-                unrevealed.map { PlaceVisual(it.id, "", it.coordinate, it.type, revealed = false) },
+            placeVisualsFor(
+                places = all,
+                isRevealed = ::isRevealed,
+                shownTypes = _filters.value.shownPlaceTypes,
+            ),
         )
+        // 附近列表只列人文地点：自然资源点会有很多，塞进来会把地点淹没。
+        // 资源点靠地图图标点选（走进去就看见了）。
         _uiState.value = _uiState.value.copy(
-            nearbyPlaces = shownRevealed.filter {
-                it.coordinate.distanceMetersTo(coordinate) <= PLACE_CARD_RADIUS_METERS
+            nearbyPlaces = all.filter { place ->
+                place.type.category == PlaceCategory.PLACE &&
+                    place.type in _filters.value.shownPlaceTypes &&
+                    isRevealed(place) &&
+                    place.coordinate.distanceMetersTo(coordinate) <= PLACE_CARD_RADIUS_METERS
             },
         )
     }

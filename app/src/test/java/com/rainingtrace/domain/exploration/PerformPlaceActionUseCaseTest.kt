@@ -67,6 +67,23 @@ class PerformPlaceActionUseCaseTest {
         actions = setOf(PlaceActionType.OBSERVE),
     )
 
+    /** 自然资源点：只给采集动作。 */
+    private val mushroomPatch = Place(
+        id = "place.mushroom_patch",
+        name = "菌丛",
+        type = PlaceType.MUSHROOM_PATCH,
+        coordinate = origin,
+        actions = setOf(PlaceActionType.COLLECT),
+    )
+
+    private val orchard = Place(
+        id = "place.orchard",
+        name = "果林",
+        type = PlaceType.ORCHARD,
+        coordinate = origin,
+        actions = setOf(PlaceActionType.COLLECT),
+    )
+
     // 16:00 (+08:00) → DAY
     private val clock = FakeWorldClock(Instant.parse("2026-09-13T08:00:00Z"))
 
@@ -388,6 +405,46 @@ class PerformPlaceActionUseCaseTest {
         val result = f.collect(lake)
         result as PlaceActionResult.Success
         assertEquals("res.night_water_sound", result.resourceId)
+    }
+
+    // ---- 自然资源点（手工配置的采集点） ----
+
+    @Test
+    fun `rain doubles the mushroom yield at a mushroom patch`() = runTest {
+        val dry = fixture(world = worldOf(WeatherKind.CLEAR))
+        val dryResult = dry.collect(mushroomPatch)
+        dryResult as PlaceActionResult.Success
+        assertEquals("res.wild_mushroom", dryResult.resourceId)
+        assertEquals(1, dryResult.amount)
+
+        val wet = fixture(world = worldOf(WeatherKind.LIGHT_RAIN))
+        val wetResult = wet.collect(mushroomPatch)
+        wetResult as PlaceActionResult.Success
+        assertEquals(2, wetResult.amount)
+    }
+
+    @Test
+    fun `autumn doubles the apple yield at an orchard`() = runTest {
+        val summer = fixture(world = worldOf(season = Season.SUMMER))
+        val summerResult = summer.collect(orchard)
+        summerResult as PlaceActionResult.Success
+        assertEquals("res.green_apple", summerResult.resourceId)
+        assertEquals(1, summerResult.amount)
+
+        val autumn = fixture(world = worldOf(season = Season.AUTUMN))
+        val autumnResult = autumn.collect(orchard)
+        autumnResult as PlaceActionResult.Success
+        assertEquals(2, autumnResult.amount)
+    }
+
+    @Test
+    fun `resource nodes support collect only`() = runTest {
+        val f = fixture()
+
+        assertEquals(
+            PlaceActionRejectReason.ACTION_NOT_AVAILABLE,
+            (f.observe(mushroomPatch) as PlaceActionResult.Rejected).reason,
+        )
     }
 
     // ---- 此刻产出预览（地点卡提示） ----

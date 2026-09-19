@@ -16,6 +16,7 @@ import com.rainingtrace.domain.settings.LocationMode
 import com.rainingtrace.domain.settings.MapFilterSettings
 import com.rainingtrace.domain.settings.MemoryTimeFilter
 import com.rainingtrace.domain.settings.TrackingSettings
+import com.rainingtrace.domain.settings.shownPlaceTypesFrom
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -56,12 +57,16 @@ class DataStoreSettingsRepository(
 
     override val mapFilter: Flow<MapFilterSettings> =
         context.settingsDataStore.data.map { prefs ->
-            val types = prefs[KEY_SHOWN_PLACE_TYPES]
-                ?.mapNotNull { runCatching { PlaceType.valueOf(it) }.getOrNull() }
-                ?.toSet()
+            // 只认"隐藏集合"；首次升级时从旧的"显示集合"反算一次，之后不再写旧键。
+            val hidden = prefs[KEY_HIDDEN_PLACE_TYPES]
+                ?: prefs[KEY_SHOWN_PLACE_TYPES]?.let { stored ->
+                    PlaceType.entries.map { it.name }.filterNot { it in stored }.toSet()
+                }
+                ?: emptySet()
             MapFilterSettings(
-                // 未存过（old）或解析为空时，回退到"全部显示"，避免首次进入把所有地点藏掉。
-                shownPlaceTypes = types ?: PlaceType.entries.toSet(),
+                shownPlaceTypes = shownPlaceTypesFrom(
+                    hidden.mapNotNull { runCatching { PlaceType.valueOf(it) }.getOrNull() }.toSet(),
+                ),
                 showMemories = prefs[KEY_SHOW_MEMORIES] ?: true,
                 memoryTimeFilter = prefs[KEY_MEMORY_TIME]
                     ?.let { runCatching { MemoryTimeFilter.valueOf(it) }.getOrNull() }
@@ -73,7 +78,9 @@ class DataStoreSettingsRepository(
 
     override suspend fun setMapFilter(filter: MapFilterSettings) {
         context.settingsDataStore.edit { prefs ->
-            prefs[KEY_SHOWN_PLACE_TYPES] = filter.shownPlaceTypes.map { it.name }.toSet()
+            // 存隐藏项：新增类型默认可见（见 shownPlaceTypesFrom 的说明）。
+            prefs[KEY_HIDDEN_PLACE_TYPES] =
+                PlaceType.entries.filterNot { it in filter.shownPlaceTypes }.map { it.name }.toSet()
             prefs[KEY_SHOW_MEMORIES] = filter.showMemories
             prefs[KEY_MEMORY_TIME] = filter.memoryTimeFilter.name
         }
@@ -116,7 +123,10 @@ class DataStoreSettingsRepository(
     private companion object {
         val KEY_GRID_LEVEL = stringPreferencesKey("grid_level")
         val KEY_LOCATION_MODE = stringPreferencesKey("location_mode")
+        /** 旧键：存的是"显示集合"。只用于一次性反算，不再写入（见 mapFilter）。 */
         val KEY_SHOWN_PLACE_TYPES = stringSetPreferencesKey("shown_place_types")
+        /** 新键：存"隐藏集合"，新增类型才会默认可见。 */
+        val KEY_HIDDEN_PLACE_TYPES = stringSetPreferencesKey("hidden_place_types")
         val KEY_SHOW_MEMORIES = booleanPreferencesKey("show_memories")
         val KEY_MEMORY_TIME = stringPreferencesKey("memory_time")
         val KEY_TRACKING_ENABLED = booleanPreferencesKey("tracking_enabled")

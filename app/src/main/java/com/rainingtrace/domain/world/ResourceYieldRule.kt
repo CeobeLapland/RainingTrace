@@ -219,6 +219,50 @@ class InMemoryResourceYieldRuleCatalog(
             cooldownMs = 45 * 60 * 1000L,
         )
 
+        // ---- 采集：自然资源点（林 / 丛 / 菌） ----
+
+        val COLLECT_BERRY = ResourceYieldRule(
+            id = "rule.collect.berry",
+            resourceId = InMemoryResourceCatalog.WILD_BERRY.id,
+            action = PlaceActionType.COLLECT,
+            placeType = PlaceType.BERRY_BUSH,
+        )
+
+        /** 菌子的保底（干的天气也能翻出一两个）。 */
+        val COLLECT_MUSHROOM = ResourceYieldRule(
+            id = "rule.collect.mushroom",
+            resourceId = InMemoryResourceCatalog.WILD_MUSHROOM.id,
+            action = PlaceActionType.COLLECT,
+            placeType = PlaceType.MUSHROOM_PATCH,
+        )
+
+        /** 雨后菌子多：同一处能翻出两份。 */
+        val COLLECT_MUSHROOM_AFTER_RAIN = ResourceYieldRule(
+            id = "rule.collect.mushroom_after_rain",
+            resourceId = InMemoryResourceCatalog.WILD_MUSHROOM.id,
+            action = PlaceActionType.COLLECT,
+            placeType = PlaceType.MUSHROOM_PATCH,
+            conditions = listOf(RAINY_WEATHER),
+            amount = 2,
+        )
+
+        val COLLECT_APPLE = ResourceYieldRule(
+            id = "rule.collect.apple",
+            resourceId = InMemoryResourceCatalog.GREEN_APPLE.id,
+            action = PlaceActionType.COLLECT,
+            placeType = PlaceType.ORCHARD,
+        )
+
+        /** 秋天果子沉：一次能摘两个。 */
+        val COLLECT_APPLE_AUTUMN = ResourceYieldRule(
+            id = "rule.collect.apple_autumn",
+            resourceId = InMemoryResourceCatalog.GREEN_APPLE.id,
+            action = PlaceActionType.COLLECT,
+            placeType = PlaceType.ORCHARD,
+            conditions = listOf(WorldCondition.SeasonIn(setOf(Season.AUTUMN))),
+            amount = 2,
+        )
+
         val DEFAULT = listOf(
             OBSERVE_BASE,
             OBSERVE_RAINY_LAKE,
@@ -236,6 +280,11 @@ class InMemoryResourceYieldRuleCatalog(
             COLLECT_PLAZA_FLYER,
             COLLECT_DORM_SCRAP,
             COLLECT_NIGHT_WATER_SOUND,
+            COLLECT_BERRY,
+            COLLECT_MUSHROOM,
+            COLLECT_MUSHROOM_AFTER_RAIN,
+            COLLECT_APPLE,
+            COLLECT_APPLE_AUTUMN,
         )
     }
 }
