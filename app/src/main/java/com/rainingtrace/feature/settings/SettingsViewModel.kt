@@ -52,8 +52,12 @@ class SettingsViewModel(
         ?.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), mutableWeather.weather.value.kind)
         ?: MutableStateFlow(null)
 
-    /** 当前季节；null = 未确定（季节限定的产出不会触发）。 */
+    /** 当前生效季节（手动覆盖优先，否则按节气推导）。 */
     val season: StateFlow<Season?> = seasonSource?.season
+        ?: MutableStateFlow(null)
+
+    /** 季节手动覆盖值；null = 按节气推导（UI 的"自动"行）。 */
+    val seasonOverride: StateFlow<Season?> = seasonSource?.manualOverride
         ?: MutableStateFlow(null)
 
     /** 时段覆盖；null = 按真实时间推导。 */

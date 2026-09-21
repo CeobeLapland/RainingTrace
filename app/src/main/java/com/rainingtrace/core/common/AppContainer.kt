@@ -6,6 +6,7 @@ import com.rainingtrace.core.time.SystemWorldClock
 import com.rainingtrace.core.time.WorldClock
 import com.rainingtrace.data.local.RainingTraceDatabase
 import com.rainingtrace.data.repository.FakePlaceRepository
+import com.rainingtrace.data.repository.FakeNpcRepository
 import com.rainingtrace.data.repository.RoomExplorationRepository
 import com.rainingtrace.data.repository.RoomFootprintRepository
 import com.rainingtrace.data.repository.RoomInventoryRepository
@@ -30,6 +31,9 @@ import com.rainingtrace.domain.memory.AudioNoteController
 import com.rainingtrace.domain.memory.CreateMemoryUseCase
 import com.rainingtrace.domain.memory.MemoryFocusRequest
 import com.rainingtrace.domain.memory.MemoryRepository
+import com.rainingtrace.domain.npc.NpcPresenceUseCase
+import com.rainingtrace.domain.npc.NpcRepository
+import com.rainingtrace.domain.npc.RecordNpcEncounterUseCase
 import com.rainingtrace.domain.settings.AppSettingsRepository
 import com.rainingtrace.domain.settings.LocationMode
 import com.rainingtrace.domain.track.ChangeGridLevelUseCase
@@ -39,9 +43,9 @@ import com.rainingtrace.domain.track.RevealFogFromPointUseCase
 import com.rainingtrace.domain.track.TrackDayFocusRequest
 import com.rainingtrace.domain.track.TrackRepository
 import com.rainingtrace.domain.track.TrackingController
+import com.rainingtrace.domain.world.DerivedSeasonSource
 import com.rainingtrace.domain.world.FakeWeatherProvider
 import com.rainingtrace.domain.world.InMemoryResourceYieldRuleCatalog
-import com.rainingtrace.domain.world.ManualSeasonSource
 import com.rainingtrace.domain.world.ManualTimeOfDaySource
 import com.rainingtrace.domain.world.MutableWeatherProvider
 import com.rainingtrace.domain.world.ResourceYieldRuleCatalog
@@ -188,6 +192,19 @@ class AppContainer(
 
     val placeRepository: PlaceRepository by lazy { FakePlaceRepository() }
 
+    /** NPC 档案：和地点一样是只读配置（手工编写，将来由内容资产/服务端下发）。 */
+    val npcRepository: NpcRepository by lazy { FakeNpcRepository() }
+
+    /** NPC 此刻在哪：位置是时间的纯函数，不落库。 */
+    val npcPresence: NpcPresenceUseCase by lazy {
+        NpcPresenceUseCase(npcRepository, placeRepository)
+    }
+
+    /** 走到 NPC 跟前 → 记一次"第一次遇见"（真相在 footprint 事件里）。 */
+    val recordNpcEncounter: RecordNpcEncounterUseCase by lazy {
+        RecordNpcEncounterUseCase(clock, footprintRepository, worldStateProvider)
+    }
+
     val explorationRepository: ExplorationRepository by lazy {
         RoomExplorationRepository(database.explorationDao(), gridManager)
     }
@@ -216,10 +233,10 @@ class AppContainer(
     val mutableWeatherProvider: MutableWeatherProvider? get() = weatherProvider as? MutableWeatherProvider
 
     /**
-     * 季节来源：推导口径未定，当前是手动（设置页调试区）设定。
-     * 将来接日历规则时换实现，产出条件不用改。
+     * 季节来源：**按节气推导**（立春/立夏/立秋/立冬），设置页调试区可手动覆盖。
+     * 产出条件（SeasonIn）不用改。
      */
-    val seasonSource: SeasonSource by lazy { ManualSeasonSource() }
+    val seasonSource: SeasonSource by lazy { DerivedSeasonSource(clock, applicationScope) }
 
     /** 时段来源：默认按真实时间；调试区可固定成某时段，验证黎明/夜晚限定内容。 */
     val timeOfDaySource: TimeOfDaySource by lazy { ManualTimeOfDaySource() }

@@ -59,6 +59,8 @@ import com.rainingtrace.domain.map.placeStyle
 import com.rainingtrace.domain.exploration.PlaceActionRejectReason
 import com.rainingtrace.domain.exploration.PlaceYieldPreview
 import com.rainingtrace.domain.memory.MemoryNode
+import com.rainingtrace.domain.npc.NpcPresence
+import com.rainingtrace.domain.npc.NpcProfile
 import com.rainingtrace.domain.settings.MapFilterSettings
 import com.rainingtrace.domain.settings.MemoryTimeFilter
 import com.rainingtrace.platform.map.MapLibreAdapter
@@ -137,6 +139,9 @@ fun MapScreen(
                         }
                         adapter.onPlaceTap { placeId ->
                             viewModel.onPlaceTapped(placeId)
+                        }
+                        adapter.onNpcTap { npcId ->
+                            viewModel.onNpcTapped(npcId)
                         }
                         adapter.onViewportChanged { viewport ->
                             viewModel.onViewportChanged(viewport)
@@ -268,10 +273,11 @@ fun MapScreen(
             )
         }
 
-        // 底部信息优先级：聚焦记忆 → 聚焦某天轨迹 → 选中地点 → 附近地点列表。
+        // 底部信息优先级：聚焦记忆 → 聚焦某天轨迹 → 选中地点 → 选中 NPC → 附近地点列表。
         val focusedMemory = uiState.focusedMemory
         val focusedDay = uiState.focusedTrackDay
         val selected = uiState.selectedPlace
+        val selectedNpc = uiState.selectedNpc
         when {
             focusedMemory != null -> MemoryFocusCard(
                 memory = focusedMemory,
@@ -297,6 +303,15 @@ fun MapScreen(
                 previews = uiState.actionPreviews,
                 onAction = viewModel::onPlaceAction,
                 onClose = viewModel::clearSelection,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(16.dp),
+            )
+
+            selectedNpc != null -> NpcDetailCard(
+                presence = selectedNpc,
+                profile = uiState.selectedNpcProfile,
+                onClose = viewModel::clearNpcSelection,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(16.dp),
@@ -620,6 +635,72 @@ private fun PlaceDetailCard(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * NPC 只读卡片：名字、一句话人设、此刻在哪、在做什么。
+ *
+ * 没有交互按钮——对话/任务/购物属于后面的切片。位置与"在做什么"由作息算出，
+ * 卡片会在 NPC 换地点或开始走路时跟着更新（见 MapViewModel.syncSelectedNpc）。
+ */
+@Composable
+private fun NpcDetailCard(
+    presence: NpcPresence,
+    profile: NpcProfile?,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(modifier = modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = profile?.name ?: presence.npcName,
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(
+                        text = if (presence.walking) {
+                            "正在往「${presence.placeName}」走"
+                        } else {
+                            "此刻在「${presence.placeName}」"
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .clickable(onClick = onClose),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_close),
+                        contentDescription = "关闭",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+            profile?.oneLiner?.takeIf { it.isNotBlank() }?.let { line ->
+                Text(
+                    text = line,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 10.dp),
+                )
+            }
+            if (presence.activity.isNotBlank()) {
+                Text(
+                    text = "现在：${presence.activity}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.padding(top = 10.dp),
+                )
             }
         }
     }

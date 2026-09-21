@@ -14,11 +14,13 @@ import com.rainingtrace.domain.map.MapCamera
 import com.rainingtrace.domain.map.MapLayer
 import com.rainingtrace.domain.map.MapRendererAdapter
 import com.rainingtrace.domain.map.MemoryVisual
+import com.rainingtrace.domain.map.NpcVisual
 import com.rainingtrace.domain.map.PlaceStyleSpec
 import com.rainingtrace.domain.map.PlaceType
 import com.rainingtrace.domain.map.PlaceVisual
 import com.rainingtrace.domain.map.PlayerMarkerVisual
 import com.rainingtrace.domain.map.WorldCoordinate
+import com.rainingtrace.domain.map.npcStyle
 import com.rainingtrace.domain.map.placeStyle
 import com.rainingtrace.domain.memory.Mood
 import org.maplibre.android.geometry.LatLng
@@ -54,6 +56,7 @@ class MapLibreAdapter : MapRendererAdapter {
     private var pendingCells: List<HexCellVisual>? = null
     private var pendingPlayer: PlayerMarkerVisual? = null
     private var pendingPlaces: List<PlaceVisual>? = null
+    private var pendingNpcs: List<NpcVisual>? = null
     private var pendingMemories: List<MemoryVisual>? = null
     private var pendingFocus: WorldCoordinate? = null
     private var pendingTrack: List<WorldCoordinate>? = null
@@ -63,6 +66,7 @@ class MapLibreAdapter : MapRendererAdapter {
 
     private var tapListener: ((WorldCoordinate) -> Unit)? = null
     private var placeTapListener: ((String) -> Unit)? = null
+    private var npcTapListener: ((String) -> Unit)? = null
     private var viewportListener: ((com.rainingtrace.domain.map.MapViewport) -> Unit)? = null
     private var cameraIdleListener: MapLibreMap.OnCameraIdleListener? = null
 
@@ -125,14 +129,33 @@ class MapLibreAdapter : MapRendererAdapter {
         placeTapListener = listener
     }
 
+    /** 点击 NPC 图标记回调 NPC id；优先于地点与背景点击。 */
+    fun onNpcTap(listener: (String) -> Unit) {
+        npcTapListener = listener
+    }
+
     /**
-     * 先命中地点标记（图标/地名层）→ 报地点 id；否则当作裸地图点击 → 报坐标。
+     * 先命中 NPC 标记 → 报 NPC id；再命中地点标记 → 报地点 id；
+     * 都没有则当作裸地图点击 → 报坐标。
+     *
+     * 三个查询必须用同一批图层 id，否则会"看起来点中了却穿透成背景点击"。
      */
     private fun handleTap(mapLibreMap: MapLibreMap, latLng: LatLng) {
         val screen = mapLibreMap.projection.toScreenLocation(latLng)
         val features = runCatching {
-            mapLibreMap.queryRenderedFeatures(screen, *placeLayerIds().toTypedArray())
+            mapLibreMap.queryRenderedFeatures(
+                screen,
+                *(npcLayerIds() + placeLayerIds()).toTypedArray(),
+            )
         }.getOrNull()
+        val npcId = features
+            ?.mapNotNull { f -> runCatching { f.getStringProperty(PROP_NPC_ID) }.getOrNull() }
+            ?.firstOrNull { it.isNotBlank() }
+        if (!npcId.isNullOrBlank()) {
+            Log.d(TAG, "npc tap $npcId")
+            npcTapListener?.invoke(npcId)
+            return
+        }
         val placeId = features
             ?.mapNotNull { f -> runCatching { f.getStringProperty(PROP_PLACE_ID) }.getOrNull() }
             ?.firstOrNull { it.isNotBlank() }
@@ -227,6 +250,34 @@ class MapLibreAdapter : MapRendererAdapter {
         )
     }
 
+    /**
+     * NPC 标记：**只写 rt-npcs 这一个 source**，不要碰 cells/places/memories/track/focus。
+     * 这个方法会被 NPC ticker 每隔几秒调用一次，多写一个 source 就是白白的整层重绘。
+     */
+    override fun renderNpcs(npcs: List<NpcVisual>) {
+        val loaded = style
+        if (loaded == null) {
+            pendingNpcs = npcs
+            return
+        }
+        val source = loaded.safeSource(NPC_SOURCE)
+            ?: run { pendingNpcs = npcs; return }
+        source.setGeoJson(
+            FeatureCollection.fromFeatures(
+                npcs.map {
+                    Feature.fromGeometry(toPoint(it.coordinate)).apply {
+                        addStringProperty(PROP_NPC_ID, it.npcId)
+                        addStringProperty(PROP_NPC_NAME, it.npcName)
+                        addStringProperty(
+                            PROP_NPC_POSE,
+                            if (it.walking) NPC_POSE_WALK else NPC_POSE_STAY,
+                        )
+                    }
+                },
+            ),
+        )
+    }
+
     override fun renderMemories(memories: List<MemoryVisual>) {
         val loaded = style
         if (loaded == null) {
@@ -311,6 +362,7 @@ class MapLibreAdapter : MapRendererAdapter {
             MapLayer.CELLS -> renderCells(emptyList())
             MapLayer.PLAYER -> renderPlayer(null)
             MapLayer.PLACES -> renderPlaces(emptyList())
+            MapLayer.NPCS -> renderNpcs(emptyList())
             MapLayer.MEMORY -> renderMemories(emptyList())
             MapLayer.TRACK -> renderTrack(emptyList())
             MapLayer.FOG_MASK -> Unit // FOG 是 UNKNOWN/DISCOVERED 格填充，随 renderCells 刷新
@@ -322,6 +374,7 @@ class MapLibreAdapter : MapRendererAdapter {
         pendingCells?.let { renderCells(it); pendingCells = null }
         pendingPlayer?.let { renderPlayer(it); pendingPlayer = null }
         pendingPlaces?.let { renderPlaces(it); pendingPlaces = null }
+        pendingNpcs?.let { renderNpcs(it); pendingNpcs = null }
         pendingMemories?.let { renderMemories(it); pendingMemories = null }
         pendingFocus?.let { renderFocus(it); pendingFocus = null }
         pendingTrack?.let { renderTrack(it); pendingTrack = null }
@@ -342,6 +395,7 @@ class MapLibreAdapter : MapRendererAdapter {
         MapLayer.CELLS -> CellFogState.entries.map { "fill_${it.name}" } + "cells_outline"
         MapLayer.PLAYER -> listOf(PLAYER_LAYER)
         MapLayer.PLACES -> placeLayerIds()
+        MapLayer.NPCS -> npcLayerIds()
         MapLayer.MEMORY -> memoryLayerIds()
         MapLayer.TRACK -> listOf(TRACK_LAYER)
         // 迷雾开关只遮暗未知/见过格；到过格的苔绿/琥珀染色属于"已发现"，保持可见。
@@ -355,6 +409,7 @@ class MapLibreAdapter : MapRendererAdapter {
         loaded.addSource(GeoJsonSource(CELLS_SOURCE, EMPTY_FC))
         loaded.addSource(GeoJsonSource(PLAYER_SOURCE, EMPTY))
         loaded.addSource(GeoJsonSource(PLACES_SOURCE, EMPTY_FC))
+        loaded.addSource(GeoJsonSource(NPC_SOURCE, EMPTY_FC))
         loaded.addSource(GeoJsonSource(MEMORY_SOURCE, EMPTY_FC))
         loaded.addSource(GeoJsonSource(FOCUS_SOURCE, EMPTY_FC))
         loaded.addSource(GeoJsonSource(TRACKS_SOURCE, EMPTY_FC))
@@ -365,6 +420,13 @@ class MapLibreAdapter : MapRendererAdapter {
             runCatching { loaded.addImage(placeImageName(type), placePinBitmap(spec)) }
         }
         runCatching { loaded.addImage(UNREVEALED_IMAGE, unrevealedPinBitmap()) }
+
+        // NPC 位图：停在某处 / 正在走路两种姿态各一张。
+        NPC_POSES.forEach { pose ->
+            runCatching {
+                loaded.addImage(npcImageName(pose), placePinBitmap(npcStyle(pose == NPC_POSE_WALK)))
+            }
+        }
 
         // 战争迷雾 = 铺满视口的六边形格填充：
         // UNKNOWN 深夜色浓雾，DISCOVERED 薄雾（见过没到过），
@@ -455,6 +517,23 @@ class MapLibreAdapter : MapRendererAdapter {
                 )
             },
         )
+        // NPC 层：两种姿态各一个静态图标层（与地点层同构，避开 icon-image(match) 的坑）。
+        // 不画 NPC 名字：NPC 常站在地点上，再加一层文字会和地点名叠在一起。
+        NPC_POSES.forEach { pose ->
+            loaded.addLayer(
+                SymbolLayer(npcLayerId(pose), NPC_SOURCE).apply {
+                    setFilter(
+                        Expression.eq(Expression.get(PROP_NPC_POSE), Expression.literal(pose)),
+                    )
+                    setProperties(
+                        PropertyFactory.iconImage(npcImageName(pose)),
+                        PropertyFactory.iconSize(iconSizeExpr()),
+                        PropertyFactory.iconAnchor(Property.ICON_ANCHOR_BOTTOM),
+                        PropertyFactory.iconAllowOverlap(true),
+                    )
+                },
+            )
+        }
         // 记忆标记：每种心情一个静态颜色层（同样避开数据驱动 circle-color）。
         MEMORY_COLOR.forEach { (mood, color) ->
             loaded.addLayer(memoryLayer(mood, color))
@@ -512,10 +591,16 @@ class MapLibreAdapter : MapRendererAdapter {
 
     private fun placeLayerId(type: PlaceType): String = "$PLACES_LAYER_PREFIX-${type.name.lowercase()}"
 
+    private fun npcImageName(pose: String): String = "$NPC_IMAGE_PREFIX$pose"
+
+    private fun npcLayerId(pose: String): String = "$NPC_LAYER_PREFIX-$pose"
+
     private fun memoryLayerId(mood: Mood?): String =
         "$MEMORY_LAYER_PREFIX-${mood?.name?.lowercase() ?: NONE_MOOD_KEY}"
 
     private fun placeLayerIds(): List<String> = PlaceType.entries.map(::placeLayerId) + UNREVEALED_LAYER
+
+    private fun npcLayerIds(): List<String> = NPC_POSES.map(::npcLayerId)
 
     private fun memoryLayerIds(): List<String> =
         MEMORY_COLOR.keys.map { memoryLayerId(it) } + memoryLayerId(null) + MEMORY_TIME_LABEL_LAYER
@@ -657,6 +742,14 @@ class MapLibreAdapter : MapRendererAdapter {
         private const val TRACK_LAYER = "rt-track-line"
         private const val PLACE_IMAGE_PREFIX = "rt-pin-"
         private const val UNREVEALED_IMAGE = "rt-pin-unrevealed"
+        private const val NPC_SOURCE = "rt-npcs"
+        private const val NPC_LAYER_PREFIX = "rt-npc"
+        private const val NPC_IMAGE_PREFIX = "rt-npc-pin-"
+
+        /** NPC 的两种姿态：停在某处 / 正在走路（各一个静态图标层）。 */
+        private const val NPC_POSE_STAY = "stay"
+        private const val NPC_POSE_WALK = "walk"
+        private val NPC_POSES = listOf(NPC_POSE_STAY, NPC_POSE_WALK)
         private const val UNREVEALED_KEY = "__unrevealed__"
         private const val NONE_MOOD_KEY = "none"
         private const val UNREVEALED_PIN_COLOR = 0x55_8A93A6
@@ -664,6 +757,9 @@ class MapLibreAdapter : MapRendererAdapter {
         private const val PROP_PLACE_ID = "placeId"
         private const val PROP_PLACE_NAME = "placeName"
         private const val PROP_PLACE_TYPE = "placeType"
+        private const val PROP_NPC_ID = "npcId"
+        private const val PROP_NPC_NAME = "npcName"
+        private const val PROP_NPC_POSE = "npcPose"
         private const val PROP_MEMORY_MOOD = "memoryMood"
         private const val PLACE_LABEL_SIZE = 13f
         private const val PLACE_LABEL_HALO = 1.6f

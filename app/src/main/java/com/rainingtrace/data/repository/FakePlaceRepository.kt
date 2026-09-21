@@ -27,6 +27,8 @@ class FakePlaceRepository(
             .sortedBy { (_, d) -> d }
             .map { (place, _) -> place }
 
+    override suspend fun all(): List<Place> = DEFAULT_PLACES
+
     companion object {
         // 可执行的动作集合：每个地点至少一个；产出由 domain 的规则表决定，这里只管"能不能做"。
         private val OBSERVE_AND_COLLECT = setOf(PlaceActionType.OBSERVE, PlaceActionType.COLLECT)

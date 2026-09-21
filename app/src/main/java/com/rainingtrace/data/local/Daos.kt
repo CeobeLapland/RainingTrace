@@ -84,6 +84,13 @@ interface FootprintDao {
     )
     suspend fun eventsBetween(fromMs: Long, toMs: Long): List<FootprintEventEntity>
 
+    @Query(
+        "SELECT * FROM footprint_events " +
+            "WHERE eventType = :eventType " +
+            "ORDER BY timestampEpochMs ASC",
+    )
+    suspend fun eventsOfType(eventType: String): List<FootprintEventEntity>
+
     @Query("SELECT COUNT(*) FROM footprint_events")
     suspend fun count(): Int
 }

@@ -66,4 +66,7 @@ interface PlaceRepository {
 
     /** 半径内地点，按距离升序。 */
     suspend fun nearby(coordinate: WorldCoordinate, radiusMeters: Double): List<Place>
+
+    /** 全部地点；给"按 id 解析坐标"的离线用途（如 NPC 作息），不是玩法查询。 */
+    suspend fun all(): List<Place>
 }

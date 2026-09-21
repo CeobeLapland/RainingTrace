@@ -74,6 +74,7 @@ fun SettingsRoute(
     val tracking by viewModel.tracking.collectAsStateWithLifecycle()
     val weatherKind by viewModel.weatherKind.collectAsStateWithLifecycle()
     val season by viewModel.season.collectAsStateWithLifecycle()
+    val seasonOverride by viewModel.seasonOverride.collectAsStateWithLifecycle()
     val timeOfDayOverride by viewModel.timeOfDayOverride.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
@@ -287,7 +288,7 @@ fun SettingsRoute(
                     }
                 }
 
-                // 季节推导口径（节气 vs 月份）还没定，先手动设定，服务"季节限定"内容的验证。
+                // 季节按节气推导；手动选择只是开发者模式下的覆盖，用来验证"季节限定"内容。
                 if (viewModel.canSetSeason) {
                     Text(
                         text = "季节",
@@ -296,23 +297,24 @@ fun SettingsRoute(
                         modifier = Modifier.padding(start = 20.dp, top = 12.dp),
                     )
                     Text(
-                        text = "还没有按日期推导（口径未定），先手动切；未确定时季节性产出不会触发。",
+                        text = "按节气推导（立春/立夏/立秋/立冬 为界）。当前：${season.label()}。" +
+                            "手动选择只是覆盖，用来提前验证季节性内容。",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 20.dp),
                     )
                     Spacer(Modifier.height(6.dp))
                     OptionRow(
-                        title = "未确定",
-                        hint = "季节条件一律不满足",
-                        selected = season == null,
+                        title = "自动",
+                        hint = "按节气推导",
+                        selected = seasonOverride == null,
                         onClick = { viewModel.setSeason(null) },
                     )
                     Season.entries.forEach { entry ->
                         OptionRow(
                             title = entry.label(),
                             hint = seasonHint(entry),
-                            selected = season == entry,
+                            selected = seasonOverride == entry,
                             onClick = { viewModel.setSeason(entry) },
                         )
                     }

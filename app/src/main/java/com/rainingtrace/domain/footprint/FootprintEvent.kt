@@ -15,6 +15,9 @@ enum class FootprintEventType {
     RESOURCE_ACQUIRED,
     MEMORY_CREATED,
     PHOTO_CAPTURED,
+
+    /** 第一次遇见某个 NPC；payload 带 npcId，用于"见过谁"的去重。 */
+    NPC_MET,
 }
 
 /** 默认仅自己可见；公开范围策略属于 P1 社交层。 */
@@ -38,4 +41,12 @@ interface FootprintRepository {
 
     /** 按时间区间取事件，时间升序。 */
     suspend fun eventsBetween(fromEpochMs: Long, toEpochMs: Long): List<FootprintEvent>
+
+    /**
+     * 按类型取事件，时间升序。
+     *
+     * payload 在库里是单列编码，SQL 没法按 key 过滤，所以只按类型粗筛，
+     * 具体的 payload 判定留给调用方（如"这个 NPC 见过没有"）。
+     */
+    suspend fun eventsOfType(type: FootprintEventType): List<FootprintEvent>
 }

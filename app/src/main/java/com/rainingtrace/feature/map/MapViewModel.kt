@@ -21,6 +21,7 @@ import com.rainingtrace.domain.map.MapLayer
 import com.rainingtrace.domain.map.MapRendererAdapter
 import com.rainingtrace.domain.map.MapViewport
 import com.rainingtrace.domain.map.MemoryVisual
+import com.rainingtrace.domain.map.NpcVisual
 import com.rainingtrace.domain.map.Place
 import com.rainingtrace.domain.map.PlaceActionType
 import com.rainingtrace.domain.map.PlaceCategory
@@ -34,6 +35,12 @@ import com.rainingtrace.domain.map.distanceMetersTo
 import com.rainingtrace.domain.memory.MemoryFocusRequest
 import com.rainingtrace.domain.memory.MemoryNode
 import com.rainingtrace.domain.memory.MemoryRepository
+import com.rainingtrace.domain.npc.NpcEncounterResult
+import com.rainingtrace.domain.npc.NpcPresence
+import com.rainingtrace.domain.npc.NpcPresenceUseCase
+import com.rainingtrace.domain.npc.NpcProfile
+import com.rainingtrace.domain.npc.NpcRepository
+import com.rainingtrace.domain.npc.RecordNpcEncounterUseCase
 import com.rainingtrace.domain.settings.AppSettingsRepository
 import com.rainingtrace.domain.settings.LocationMode
 import com.rainingtrace.domain.settings.MapFilterSettings
@@ -49,6 +56,8 @@ import com.rainingtrace.domain.track.dayEndEpochMs
 import com.rainingtrace.domain.track.dayStartEpochMs
 import com.rainingtrace.domain.track.trackCamera
 import com.rainingtrace.domain.track.trackLengthMeters
+import com.rainingtrace.domain.world.WorldStateProvider
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -63,6 +72,10 @@ data class MapUiState(
     val lastFix: WorldCoordinate? = null,
     /** 已选中的地点（点图标/附近列表选中）→ 详情卡。 */
     val selectedPlace: Place? = null,
+    /** 已选中的 NPC → 只读卡片（与 [selectedPlace] 互斥）。 */
+    val selectedNpc: NpcPresence? = null,
+    /** 选中 NPC 的档案（名字/一句话）；[selectedNpc] 不为空时才有值。 */
+    val selectedNpcProfile: NpcProfile? = null,
     /** 日记「在地图查看」跳过来的记忆 → 聚焦卡 + 高亮环。 */
     val focusedMemory: MemoryNode? = null,
     /** 轨迹日历跳过来的某一天 → 底部摘要卡 + 画那天的轨迹（空 = 画今天）。 */
@@ -113,6 +126,13 @@ class MapViewModel(
     private val memoryFocus: MemoryFocusRequest,
     /** 轨迹日历「在地图查看」的一次性聚焦请求。 */
     private val trackDayFocus: TrackDayFocusRequest,
+    /** NPC：按作息算出此刻在哪（纯函数，不落库）。 */
+    private val npcPresence: NpcPresenceUseCase,
+    private val npcRepository: NpcRepository,
+    /** 走到 NPC 跟前时记一次"第一次遇见"。 */
+    private val recordNpcEncounter: RecordNpcEncounterUseCase,
+    /** NPC 位置与世界状态（时段）同源：都用它现算，避免读到过期 tick。 */
+    private val worldState: WorldStateProvider,
     /** 前后台状态：后台不跑迷雾/渲染/查地点（省电边界）。 */
     private val foregroundState: AppForegroundState,
     /** Fake 模式下点击地图移动；GPS 模式内部忽略。 */
@@ -177,6 +197,30 @@ class MapViewModel(
                 if (!foregroundState.isForeground.value) return@collect
                 onLocationFix(fix)
             }
+            launch { runNpcTicker() }
+        }
+    }
+
+    /**
+     * NPC 的刷新循环：位置是时间的纯函数，所以要"看到人在走"只能周期性重渲。
+     *
+     * 三重门控（顺序不能变，否则会破坏省电口径）：
+     * 1. 前台——不可见时不查、不画；
+     * 2. 有人在走**且**在视口内——都停着就什么都不做；
+     * 3. 只写 rt-npcs 一个 source（见 [MapRendererAdapter.renderNpcs] 的约定）。
+     *
+     * 10s 一步：校园相邻地点 150~300m / 10~20 分钟路程 ≈ 每步挪 2~5m，
+     * 视觉上是"在挪动"而不是瞬移。
+     */
+    private suspend fun runNpcTicker() {
+        while (true) {
+            delay(NPC_TICK_MS)
+            if (!foregroundState.isForeground.value) continue
+            val viewport = this.viewport ?: continue
+            val presences = npcPresence.presencesAt(worldState.current())
+            if (presences.none { it.walking && viewport.contains(it.coordinate) }) continue
+            mapRenderer.renderNpcs(presences.map(::toNpcVisual))
+            syncSelectedNpc(presences)
         }
     }
 
@@ -196,6 +240,8 @@ class MapViewModel(
     fun onViewportChanged(viewport: MapViewport) {
         this.viewport = viewport
         renderViewport()
+        // 拖到别处后 NPC 不该等到下一个 tick 才出现。
+        viewModelScope.launch { renderNpcsNow() }
     }
 
     /**
@@ -215,6 +261,7 @@ class MapViewModel(
                 refreshPlaces(coordinate)
             }
             refreshTrack()
+            renderNpcsNow()
             mapRenderer.setLayerVisible(MapLayer.TRACK, _uiState.value.showTrack)
             mapRenderer.setLayerVisible(MapLayer.FOG_MASK, _uiState.value.showFog)
             // MapView 重建后高亮环也没了，补一次。
@@ -341,14 +388,63 @@ class MapViewModel(
             clearSelection()
             return
         }
-        // 先清空旧提示，避免显示上一个地点的产出。
-        _uiState.value = _uiState.value.copy(selectedPlace = place, actionPreviews = emptyMap())
+        // 先清空旧提示，避免显示上一个地点的产出；地点卡与 NPC 卡互斥。
+        _uiState.value = _uiState.value.copy(
+            selectedPlace = place,
+            selectedNpc = null,
+            selectedNpcProfile = null,
+            actionPreviews = emptyMap(),
+        )
         viewModelScope.launch { refreshActionPreviews() }
     }
 
     fun clearSelection() {
         _uiState.value = _uiState.value.copy(selectedPlace = null, actionPreviews = emptyMap())
     }
+
+    /** 点地图上的 NPC 图标：只读卡片，显示此刻在哪、在做什么。 */
+    fun onNpcTapped(npcId: String) {
+        if (_uiState.value.selectedNpc?.npcId == npcId) {
+            clearNpcSelection()
+            return
+        }
+        viewModelScope.launch {
+            val presence = npcPresence.presenceOf(npcId, worldState.current()) ?: return@launch
+            _uiState.value = _uiState.value.copy(
+                selectedNpc = presence,
+                selectedNpcProfile = npcRepository.byId(npcId),
+                selectedPlace = null,
+                actionPreviews = emptyMap(),
+            )
+        }
+    }
+
+    fun clearNpcSelection() {
+        _uiState.value = _uiState.value.copy(selectedNpc = null, selectedNpcProfile = null)
+    }
+
+    /** 立即按当前时刻重算并渲染 NPC（切回本屏 / 视口变化时用）。 */
+    private suspend fun renderNpcsNow() {
+        val presences = npcPresence.presencesAt(worldState.current())
+        mapRenderer.renderNpcs(presences.map(::toNpcVisual))
+        syncSelectedNpc(presences)
+    }
+
+    /** 选中的 NPC 可能刚换了地点或开始走路，卡片内容要跟着刷新。 */
+    private fun syncSelectedNpc(presences: List<NpcPresence>) {
+        val selected = _uiState.value.selectedNpc ?: return
+        val updated = presences.firstOrNull { it.npcId == selected.npcId } ?: return
+        if (updated != selected) {
+            _uiState.value = _uiState.value.copy(selectedNpc = updated)
+        }
+    }
+
+    private fun toNpcVisual(presence: NpcPresence) = NpcVisual(
+        npcId = presence.npcId,
+        npcName = presence.npcName,
+        coordinate = presence.coordinate,
+        walking = presence.walking,
+    )
 
     /** 关闭聚焦卡：清掉高亮环并消费请求（避免返回地图时又跳一次）。 */
     fun clearMemoryFocus() {
@@ -361,6 +457,8 @@ class MapViewModel(
         _uiState.value = _uiState.value.copy(
             focusedMemory = memory,
             selectedPlace = null,
+            selectedNpc = null,
+            selectedNpcProfile = null,
             actionPreviews = emptyMap(),
         )
         mapRenderer.renderFocus(memory.coordinate)
@@ -393,6 +491,23 @@ class MapViewModel(
             revealedCount = explorationState.revealedCount(),
             lastFix = coordinate,
         )
+        recordNpcEncounters(coordinate)
+    }
+
+    /**
+     * 走到 NPC 跟前就记一次"第一次遇见"（只记第一次）。
+     *
+     * 放在定位回包里而不是 NPC ticker 里：这里已有稳定坐标，而且不受"有没有人在走"影响。
+     * [RecordNpcEncounterUseCase] 先判距离再查库，所以常态下没有额外查询。
+     */
+    private suspend fun recordNpcEncounters(playerCoordinate: WorldCoordinate) {
+        val presences = npcPresence.presencesAt(worldState.current())
+        presences.forEach { presence ->
+            val result = recordNpcEncounter(playerCoordinate, presence)
+            if (result is NpcEncounterResult.Met) {
+                showToast("第一次遇见「${result.npcName}」")
+            }
+        }
     }
 
     /** 关闭轨迹日历的聚焦卡：回到"今天"的轨迹，并消费请求。 */
@@ -417,6 +532,8 @@ class MapViewModel(
                 endLabel = points.lastOrNull()?.let(::timeLabelOf) ?: "--:--",
             ),
             selectedPlace = null,
+            selectedNpc = null,
+            selectedNpcProfile = null,
             actionPreviews = emptyMap(),
         )
         mapRenderer.renderTrack(points.map { it.coordinate })
@@ -548,6 +665,9 @@ class MapViewModel(
         private const val FOG_EXPAND_FACTOR = 1.35
         private const val MEMORY_LIMIT = 200
         private const val WEEK_MS = 7L * 24 * 60 * 60 * 1000
+
+        /** NPC 重渲间隔：见 [runNpcTicker] 的取舍（10s 一步刚好"在挪动"）。 */
+        private const val NPC_TICK_MS = 10_000L
         private val MEMORY_TIME_FORMAT: java.time.format.DateTimeFormatter =
             java.time.format.DateTimeFormatter.ofPattern("HH:mm")
     }

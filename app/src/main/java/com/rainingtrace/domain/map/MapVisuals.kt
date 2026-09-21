@@ -42,6 +42,20 @@ data class MemoryVisual(
 )
 
 /**
+ * NPC 的地图标记：坐标 + 是否在走动。
+ *
+ * 位置是时间的函数（见 `domain/npc/ResolvedSchedule.presenceAt`），所以同一个
+ * [NpcVisual] 只代表"这一刻"。刻意不带名字：NPC 常站在地点上，地图上再画一层
+ * 文字会和地点名叠在一起；名字放在点击后的卡片里。
+ */
+data class NpcVisual(
+    val npcId: String,
+    val npcName: String,
+    val coordinate: WorldCoordinate,
+    val walking: Boolean,
+)
+
+/**
  * 地点呈现规格：颜色 + 标记字。
  * 纯数据（ARGB Int），platform 画位图、feature 画缩略图共用，避免两处配色漂移。
  */
@@ -59,6 +73,16 @@ fun placeStyle(type: PlaceType): PlaceStyleSpec = when (type) {
     PlaceType.ORCHARD -> PlaceStyleSpec(0xFF6E9A2E.toInt(), "果")
     PlaceType.BERRY_BUSH -> PlaceStyleSpec(0xFF9C3B62.toInt(), "莓")
     PlaceType.MUSHROOM_PATCH -> PlaceStyleSpec(0xFF8A6A4A.toInt(), "菌")
+}
+
+/**
+ * NPC 标记规格：停在某处 vs 正在走路用两种颜色与字形区分。
+ * 配色集中在这里，将来换美术只改这一个函数。
+ */
+fun npcStyle(walking: Boolean): PlaceStyleSpec = if (walking) {
+    PlaceStyleSpec(0xFFC98A2B.toInt(), "行")
+} else {
+    PlaceStyleSpec(0xFF2F7D6B.toInt(), "人")
 }
 
 /**
@@ -134,6 +158,7 @@ enum class MapLayer {
     CELLS,
     PLAYER,
     PLACES,
+    NPCS,
     TRACK,
     FOG_MASK,
     MEMORY,
@@ -144,6 +169,9 @@ interface MapRendererAdapter {
     fun renderCells(cells: List<HexCellVisual>)
     fun renderPlayer(marker: PlayerMarkerVisual?)
     fun renderPlaces(places: List<PlaceVisual>)
+
+    /** NPC 标记（按作息算出的此刻位置）；空列表时清空。 */
+    fun renderNpcs(npcs: List<NpcVisual>)
 
     /** 记忆标记点；空列表时清空。 */
     fun renderMemories(memories: List<MemoryVisual>)

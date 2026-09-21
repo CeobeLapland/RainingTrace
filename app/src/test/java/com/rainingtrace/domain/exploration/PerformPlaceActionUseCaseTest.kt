@@ -103,6 +103,8 @@ class PerformPlaceActionUseCaseTest {
         }
         override suspend fun eventsBetween(fromEpochMs: Long, toEpochMs: Long): List<FootprintEvent> =
             events.filter { it.timestampEpochMs in fromEpochMs..toEpochMs }
+        override suspend fun eventsOfType(type: FootprintEventType): List<FootprintEvent> =
+            events.filter { it.eventType == type }
     }
 
     /** 一次动作所需的一切：用例 + 两个假仓储，避免测试里重复拼装。 */

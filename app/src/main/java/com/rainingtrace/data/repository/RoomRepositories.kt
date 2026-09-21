@@ -171,16 +171,19 @@ class RoomFootprintRepository(
     }
 
     override suspend fun eventsBetween(fromEpochMs: Long, toEpochMs: Long): List<FootprintEvent> =
-        dao.eventsBetween(fromEpochMs, toEpochMs).map {
-            FootprintEvent(
-                id = it.id,
-                timestampEpochMs = it.timestampEpochMs,
-                coordinate = WorldCoordinate(it.lat, it.lng),
-                eventType = FootprintEventType.valueOf(it.eventType),
-                payload = it.payloadKeyValues.decodePayload(),
-                visibility = TraceVisibility.valueOf(it.visibility),
-            )
-        }
+        dao.eventsBetween(fromEpochMs, toEpochMs).map { it.toDomain() }
+
+    override suspend fun eventsOfType(type: FootprintEventType): List<FootprintEvent> =
+        dao.eventsOfType(type.name).map { it.toDomain() }
+
+    private fun FootprintEventEntity.toDomain() = FootprintEvent(
+        id = id,
+        timestampEpochMs = timestampEpochMs,
+        coordinate = WorldCoordinate(lat, lng),
+        eventType = FootprintEventType.valueOf(eventType),
+        payload = payloadKeyValues.decodePayload(),
+        visibility = TraceVisibility.valueOf(visibility),
+    )
 }
 
 class RoomInventoryRepository(
