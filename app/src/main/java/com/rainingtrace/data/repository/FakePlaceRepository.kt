@@ -127,5 +127,29 @@ class FakePlaceRepository(
             NORTH_LAKE, LIBRARY, CANTEEN, PLAZA, GARDEN, DORM,
             ORCHARD, BERRY_BUSH, MUSHROOM_PATCH,
         )
+
+        /**
+         * 地点的口语别名 → placeId，给 NPC 消息解析用（玩家不会说"湖心花园"的全名）。
+         *
+         * 放这里而不是 domain：别名属于内容，和地点配置一起维护；
+         * 匹配时要**先长后短**（"湖心花园"必须先于"花园"和"湖"命中）。
+         */
+        val PLACE_ALIASES: Map<String, String> = mapOf(
+            "北湖" to NORTH_LAKE.id,
+            "湖边" to NORTH_LAKE.id,
+            "湖" to NORTH_LAKE.id,
+            "图书馆" to LIBRARY.id,
+            "馆里" to LIBRARY.id,
+            "食堂一" to CANTEEN.id,
+            "食堂" to CANTEEN.id,
+            "中心广场" to PLAZA.id,
+            "广场" to PLAZA.id,
+            "湖心花园" to GARDEN.id,
+            "花园" to GARDEN.id,
+            "宿舍" to DORM.id,
+            "果林" to ORCHARD.id,
+            "浆果丛" to BERRY_BUSH.id,
+            "菌丛" to MUSHROOM_PATCH.id,
+        )
     }
 }

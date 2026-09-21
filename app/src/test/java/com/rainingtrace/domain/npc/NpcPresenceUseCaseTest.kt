@@ -5,11 +5,13 @@ import com.rainingtrace.domain.map.PlaceActionType
 import com.rainingtrace.domain.map.PlaceRepository
 import com.rainingtrace.domain.map.PlaceType
 import com.rainingtrace.domain.map.WorldCoordinate
+import com.rainingtrace.domain.settings.NpcClockOffset
 import com.rainingtrace.domain.world.WeatherKind
 import com.rainingtrace.domain.world.WeatherState
 import com.rainingtrace.domain.world.deriveWorldState
 import java.time.LocalDate
 import java.time.ZoneOffset
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -91,5 +93,37 @@ class NpcPresenceUseCaseTest {
     @Test
     fun `unknown npc id returns null`() = runTest {
         assertNull(useCase.presenceOf("npc.nobody", stateAt(10, 30)))
+    }
+
+    @Test
+    fun `debug offset shifts which place the npc is at`() = runTest {
+        val offset = MutableStateFlow(NpcClockOffset.NONE)
+        val shifted = NpcPresenceUseCase(
+            FakeNpcRepository(npcs),
+            FakePlaceRepository(places),
+            offset,
+        )
+
+        // 真实 20:15：他已经在 b 了
+        assertEquals("b", shifted.presenceOf("npc.a", stateAt(20, 15))!!.placeId)
+
+        // 往回挪 3 小时 → 17:15，那时他还在 a
+        offset.value = NpcClockOffset.MINUS_3H
+        assertEquals("a", shifted.presenceOf("npc.a", stateAt(20, 15))!!.placeId)
+    }
+
+    @Test
+    fun `debug offset wraps around midnight`() = runTest {
+        val shifted = NpcPresenceUseCase(
+            FakeNpcRepository(npcs),
+            FakePlaceRepository(places),
+            MutableStateFlow(NpcClockOffset.PLUS_6H),
+        )
+
+        // 真实 20:15 + 6h = 次日 02:15；作息按天环，所以结果应等于"02:15"那次的求值
+        assertEquals(
+            useCase.presenceOf("npc.a", stateAt(2, 15))!!.placeId,
+            shifted.presenceOf("npc.a", stateAt(20, 15))!!.placeId,
+        )
     }
 }

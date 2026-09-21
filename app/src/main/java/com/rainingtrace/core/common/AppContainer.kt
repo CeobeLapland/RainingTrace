@@ -5,12 +5,15 @@ import com.rainingtrace.core.lifecycle.AppForegroundState
 import com.rainingtrace.core.time.SystemWorldClock
 import com.rainingtrace.core.time.WorldClock
 import com.rainingtrace.data.local.RainingTraceDatabase
-import com.rainingtrace.data.repository.FakePlaceRepository
+import com.rainingtrace.data.repository.FakeNpcProactiveRuleCatalog
 import com.rainingtrace.data.repository.FakeNpcRepository
+import com.rainingtrace.data.repository.FakePlaceRepository
 import com.rainingtrace.data.repository.RoomExplorationRepository
 import com.rainingtrace.data.repository.RoomFootprintRepository
 import com.rainingtrace.data.repository.RoomInventoryRepository
 import com.rainingtrace.data.repository.RoomMemoryRepository
+import com.rainingtrace.data.repository.RoomNpcMessageRepository
+import com.rainingtrace.data.repository.RoomNpcStateRepository
 import com.rainingtrace.data.repository.RoomTrackRepository
 import com.rainingtrace.data.settings.DataStoreSettingsRepository
 import com.rainingtrace.domain.exploration.ExplorationRepository
@@ -31,11 +34,21 @@ import com.rainingtrace.domain.memory.AudioNoteController
 import com.rainingtrace.domain.memory.CreateMemoryUseCase
 import com.rainingtrace.domain.memory.MemoryFocusRequest
 import com.rainingtrace.domain.memory.MemoryRepository
+import com.rainingtrace.domain.npc.NarrativeService
+import com.rainingtrace.domain.npc.NpcMessageParser
+import com.rainingtrace.domain.npc.NpcMessageRepository
 import com.rainingtrace.domain.npc.NpcPresenceUseCase
+import com.rainingtrace.domain.npc.NpcProactiveMessageUseCase
+import com.rainingtrace.domain.npc.NpcProactiveRuleCatalog
 import com.rainingtrace.domain.npc.NpcRepository
+import com.rainingtrace.domain.npc.NpcStateRepository
 import com.rainingtrace.domain.npc.RecordNpcEncounterUseCase
+import com.rainingtrace.domain.npc.RuleBasedNpcMessageParser
+import com.rainingtrace.domain.npc.SendNpcMessageUseCase
+import com.rainingtrace.domain.npc.TemplateNarrativeService
 import com.rainingtrace.domain.settings.AppSettingsRepository
 import com.rainingtrace.domain.settings.LocationMode
+import com.rainingtrace.domain.settings.NpcClockOffset
 import com.rainingtrace.domain.track.ChangeGridLevelUseCase
 import com.rainingtrace.domain.track.RebuildFogFromTrackUseCase
 import com.rainingtrace.domain.track.RecordTrackPointUseCase
@@ -49,7 +62,9 @@ import com.rainingtrace.domain.world.InMemoryResourceYieldRuleCatalog
 import com.rainingtrace.domain.world.ManualTimeOfDaySource
 import com.rainingtrace.domain.world.MutableWeatherProvider
 import com.rainingtrace.domain.world.ResourceYieldRuleCatalog
+import com.rainingtrace.domain.world.RandomSource
 import com.rainingtrace.domain.world.SeasonSource
+import com.rainingtrace.domain.world.SeededRandomSource
 import com.rainingtrace.domain.world.SystemWorldStateProvider
 import com.rainingtrace.domain.world.TimeOfDaySource
 import com.rainingtrace.domain.world.WeatherProvider
@@ -63,6 +78,8 @@ import com.rainingtrace.platform.map.MapLibreAdapter
 import com.rainingtrace.platform.location.AndroidLocationProvider
 import com.rainingtrace.platform.location.SwitchableLocationProvider
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -169,6 +186,26 @@ class AppContainer(
                     syncTrackingService(enabled, mode, foreground)
                 }
         }
+        // NPC 调试时间偏移：DataStore → 内存镜像（见 npcClockOffset 的说明）。
+        applicationScope.launch {
+            settingsRepository.npcClockOffset.collect { npcClockOffset.value = it }
+        }
+
+        // NPC 主动消息：前台可见时每分钟检查一次。
+        // 熄屏不生成（HANDOFF_4 §6「后台服务只写库」+ Android 14 的后台限制），
+        // 回前台再补算一次即可——tick 幂等（水位 + 冷却 + 每日上限），漏不掉也不重发。
+        applicationScope.launch {
+            while (true) {
+                delay(NPC_PROACTIVE_TICK_MS)
+                if (!foregroundState.isForeground.value) continue
+                runCatching { npcProactiveMessages() }
+            }
+        }
+        applicationScope.launch {
+            // StateFlow 本来就只发变化，不需要（也不该）再 distinctUntilChanged。
+            foregroundState.isForeground
+                .collect { foreground -> if (foreground) runCatching { npcProactiveMessages() } }
+        }
     }
 
     /** 定位权限状态变化后重新尝试拉起 GPS 采集（并重新评估足迹记录服务）。 */
@@ -195,14 +232,81 @@ class AppContainer(
     /** NPC 档案：和地点一样是只读配置（手工编写，将来由内容资产/服务端下发）。 */
     val npcRepository: NpcRepository by lazy { FakeNpcRepository() }
 
+    /**
+     * NPC 调试时间偏移：DataStore 是真相，这里放一份内存镜像，
+     * 让 [NpcPresenceUseCase] 每次求值不必读磁盘（它会被 10s ticker 频繁调用）。
+     */
+    private val npcClockOffset = MutableStateFlow(NpcClockOffset.DEFAULT)
+
     /** NPC 此刻在哪：位置是时间的纯函数，不落库。 */
     val npcPresence: NpcPresenceUseCase by lazy {
-        NpcPresenceUseCase(npcRepository, placeRepository)
+        NpcPresenceUseCase(npcRepository, placeRepository, npcClockOffset)
     }
 
     /** 走到 NPC 跟前 → 记一次"第一次遇见"（真相在 footprint 事件里）。 */
     val recordNpcEncounter: RecordNpcEncounterUseCase by lazy {
         RecordNpcEncounterUseCase(clock, footprintRepository, worldStateProvider)
+    }
+
+    /** NPC 消息（Room v5）：会话列表 / 未读 / 线程。 */
+    val npcMessageRepository: NpcMessageRepository by lazy {
+        RoomNpcMessageRepository(database.npcMessageDao())
+    }
+
+    /** NPC 关系与情绪（Room v5）：好感、情绪、上次互动。 */
+    val npcStateRepository: NpcStateRepository by lazy {
+        RoomNpcStateRepository(database.npcStateDao())
+    }
+
+    /**
+     * 台词变体选择的随机源。用启动时刻做 seed：同一次运行里可复现，
+     * 跨次启动有变化（固定 seed 会让每次开 app 说同样的话）。
+     */
+    private val npcRandom: RandomSource by lazy { SeededRandomSource(clock.now().toEpochMilli()) }
+
+    /** 规则版意图解析。将来接 AI 只换这一个实现（Prompt 08）。 */
+    private val npcMessageParser: NpcMessageParser by lazy { RuleBasedNpcMessageParser() }
+
+    /** 模板叙事。将来接 LLM 只换这一个实现，玩法与状态计算都不用动。 */
+    private val npcNarrative: NarrativeService by lazy { TemplateNarrativeService(npcRandom) }
+
+    /** 玩家发消息 → NPC 回复（含好感/情绪结算与足迹留档）。 */
+    val sendNpcMessage: SendNpcMessageUseCase by lazy {
+        SendNpcMessageUseCase(
+            clock = clock,
+            npcRepository = npcRepository,
+            placeRepository = placeRepository,
+            npcPresence = npcPresence,
+            parser = npcMessageParser,
+            narrative = npcNarrative,
+            messageRepository = npcMessageRepository,
+            stateRepository = npcStateRepository,
+            footprintRepository = footprintRepository,
+            worldState = worldStateProvider,
+            random = npcRandom,
+            placeAliases = FakePlaceRepository.PLACE_ALIASES,
+        )
+    }
+
+    /** 主动消息规则表：内容放 data，和 NPC/地点的 id 一起维护。 */
+    private val npcProactiveRules: NpcProactiveRuleCatalog by lazy {
+        FakeNpcProactiveRuleCatalog(FakeNpcProactiveRuleCatalog.DEFAULT)
+    }
+
+    /** NPC 主动发消息：一次检查最多一条（冷却 + 每日上限 + 免打扰）。 */
+    val npcProactiveMessages: NpcProactiveMessageUseCase by lazy {
+        NpcProactiveMessageUseCase(
+            clock = clock,
+            npcRepository = npcRepository,
+            placeRepository = placeRepository,
+            npcPresence = npcPresence,
+            rules = npcProactiveRules,
+            messageRepository = npcMessageRepository,
+            stateRepository = npcStateRepository,
+            footprintRepository = footprintRepository,
+            worldState = worldStateProvider,
+            settings = settingsRepository,
+        )
     }
 
     val explorationRepository: ExplorationRepository by lazy {
@@ -332,3 +436,9 @@ class AppContainer(
         )
     }
 }
+
+/**
+ * NPC 主动消息的检查间隔。一分钟一次足够——他不可能比这更频繁地"想起你"，
+ * 而且每次检查只是几条本地查询。
+ */
+private const val NPC_PROACTIVE_TICK_MS = 60_000L

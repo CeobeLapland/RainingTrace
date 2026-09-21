@@ -78,3 +78,48 @@ data class InventoryItemEntity(
     val firstAcquiredAtEpochMs: Long,
     val lastAcquiredAtEpochMs: Long,
 )
+
+/**
+ * NPC 消息（append-only；只有未读标记会被更新）。
+ *
+ * 复合索引 `(npcId, createdAtEpochMs)` 同时服务两件事：会话列表按 npcId 分组取最后一条、
+ * 聊天线程按 npcId 分页排序。单列 `npcId` 索引被它前缀覆盖，不要再建。
+ */
+@Entity(
+    tableName = "npc_messages",
+    indices = [Index(value = ["npcId", "createdAtEpochMs"])],
+)
+data class NpcMessageEntity(
+    @PrimaryKey val id: String,
+    val npcId: String,
+    /** PLAYER / NPC。 */
+    val speaker: String,
+    val text: String,
+    val createdAtEpochMs: Long,
+    /** NPC 发来的未读消息（玩家自己发的一律已读）。 */
+    val isRead: Boolean,
+    /** PLAYER / TEMPLATE / AI：给将来的 LLM 留的口子。 */
+    val source: String,
+    /** 解析出的话题名，可空。 */
+    val topic: String?,
+    /** 主动消息是哪条规则发的，可空。 */
+    val ruleId: String?,
+)
+
+/**
+ * 玩家与某个 NPC 之间的**可变**状态（每个 NPC 一行）。
+ *
+ * "见过几次/上次在哪遇见"不在这里——那些从 `NPC_MET` / `NPC_TALKED` 足迹派生。
+ */
+@Entity(tableName = "npc_states")
+data class NpcStateEntity(
+    @PrimaryKey val npcId: String,
+    val affection: Int,
+    /** 最近一次**事件**情绪名；基线情绪不落库（由世界状态派生）。 */
+    val mood: String,
+    val moodSinceEpochMs: Long,
+    val lastInteractionAtEpochMs: Long?,
+    val todayAffectionGain: Int,
+    val todayDateKey: String,
+    val updatedAtEpochMs: Long,
+)

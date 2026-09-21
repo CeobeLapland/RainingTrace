@@ -15,6 +15,9 @@ import com.rainingtrace.domain.settings.DayWindow
 import com.rainingtrace.domain.settings.LocationMode
 import com.rainingtrace.domain.settings.MapFilterSettings
 import com.rainingtrace.domain.settings.MemoryTimeFilter
+import com.rainingtrace.domain.settings.NpcClockOffset
+import com.rainingtrace.domain.settings.NpcMessageSettings
+import com.rainingtrace.domain.settings.ProactiveLevel
 import com.rainingtrace.domain.settings.TrackingSettings
 import com.rainingtrace.domain.settings.shownPlaceTypesFrom
 import kotlinx.coroutines.flow.Flow
@@ -120,6 +123,38 @@ class DataStoreSettingsRepository(
         }
     }
 
+    override val npcClockOffset: Flow<NpcClockOffset> =
+        context.settingsDataStore.data.map { prefs ->
+            prefs[KEY_NPC_CLOCK_OFFSET]?.let { NpcClockOffset.fromKey(it) } ?: NpcClockOffset.DEFAULT
+        }
+
+    override suspend fun currentNpcClockOffset(): NpcClockOffset = npcClockOffset.first()
+
+    override suspend fun setNpcClockOffset(offset: NpcClockOffset) {
+        context.settingsDataStore.edit { prefs ->
+            prefs[KEY_NPC_CLOCK_OFFSET] = offset.key
+        }
+    }
+
+    override val npcMessages: Flow<NpcMessageSettings> =
+        context.settingsDataStore.data.map { prefs ->
+            NpcMessageSettings(
+                proactiveLevel = prefs[KEY_NPC_PROACTIVE_LEVEL]
+                    ?.let { ProactiveLevel.fromKey(it) }
+                    ?: ProactiveLevel.DEFAULT,
+                showAffection = prefs[KEY_NPC_SHOW_AFFECTION] ?: true,
+            )
+        }
+
+    override suspend fun currentNpcMessages(): NpcMessageSettings = npcMessages.first()
+
+    override suspend fun setNpcMessages(settings: NpcMessageSettings) {
+        context.settingsDataStore.edit { prefs ->
+            prefs[KEY_NPC_PROACTIVE_LEVEL] = settings.proactiveLevel.name
+            prefs[KEY_NPC_SHOW_AFFECTION] = settings.showAffection
+        }
+    }
+
     private companion object {
         val KEY_GRID_LEVEL = stringPreferencesKey("grid_level")
         val KEY_LOCATION_MODE = stringPreferencesKey("location_mode")
@@ -134,5 +169,8 @@ class DataStoreSettingsRepository(
         val KEY_DAYTIME_ONLY = booleanPreferencesKey("tracking_daytime_only")
         val KEY_DAY_WINDOW = stringPreferencesKey("tracking_day_window")
         val KEY_FOG_WATERMARK = longPreferencesKey("fog_watermark_ms")
+        val KEY_NPC_CLOCK_OFFSET = stringPreferencesKey("npc_clock_offset")
+        val KEY_NPC_PROACTIVE_LEVEL = stringPreferencesKey("npc_proactive_level")
+        val KEY_NPC_SHOW_AFFECTION = booleanPreferencesKey("npc_show_affection")
     }
 }

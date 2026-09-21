@@ -11,6 +11,8 @@ import com.rainingtrace.domain.map.WorldCoordinate
 import com.rainingtrace.domain.settings.AppSettingsRepository
 import com.rainingtrace.domain.settings.LocationMode
 import com.rainingtrace.domain.settings.MapFilterSettings
+import com.rainingtrace.domain.settings.NpcClockOffset
+import com.rainingtrace.domain.settings.NpcMessageSettings
 import com.rainingtrace.domain.settings.TrackingSettings
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
@@ -50,6 +52,12 @@ class ChangeGridLevelUseCaseTest {
         override suspend fun setFogWatermarkMs(epochMs: Long) {
             watermarkMs = epochMs
         }
+        override val npcClockOffset: Flow<NpcClockOffset> = flowOf(NpcClockOffset.DEFAULT)
+        override suspend fun currentNpcClockOffset() = NpcClockOffset.DEFAULT
+        override suspend fun setNpcClockOffset(offset: NpcClockOffset) = Unit
+        override val npcMessages: Flow<NpcMessageSettings> = flowOf(NpcMessageSettings())
+        override suspend fun currentNpcMessages() = NpcMessageSettings()
+        override suspend fun setNpcMessages(settings: NpcMessageSettings) = Unit
     }
 
     private class FakeExploration : ExplorationRepository {

@@ -3,6 +3,8 @@ package com.rainingtrace.data.repository
 import com.rainingtrace.domain.npc.NpcProfile
 import com.rainingtrace.domain.npc.NpcRepository
 import com.rainingtrace.domain.npc.NpcScheduleEntry
+import com.rainingtrace.domain.npc.NpcTopic
+import com.rainingtrace.domain.npc.NpcTrait
 
 /**
  * Fake 实现：手工配置的几位校园 NPC（GDD §14）。
@@ -42,6 +44,11 @@ class FakeNpcRepository(
                 NpcScheduleEntry(at(12, 30), FakePlaceRepository.CANTEEN.id, travelMinutes = 15, activity = "排队打饭"),
                 NpcScheduleEntry(at(21, 30), FakePlaceRepository.DORM.id, travelMinutes = 25, activity = "回宿舍"),
             ),
+            role = "大二学生",
+            traits = setOf(NpcTrait.TACITURN, NpcTrait.PUNCTUAL),
+            topics = setOf(NpcTopic.BOOKS, NpcTopic.SELF),
+            favoriteTopic = NpcTopic.BOOKS,
+            backstory = listOf("以前在图书馆丢过一次伞，后来就一直放在储物柜里。"),
         )
 
         /** 作息三段：清晨在广场，白天在食堂，晚上回宿舍。 */
@@ -54,6 +61,11 @@ class FakeNpcRepository(
                 NpcScheduleEntry(at(11, 30), FakePlaceRepository.CANTEEN.id, travelMinutes = 20, activity = "在食堂帮忙"),
                 NpcScheduleEntry(at(21), FakePlaceRepository.DORM.id, travelMinutes = 20, activity = "回宿舍休息"),
             ),
+            role = "食堂帮工",
+            traits = setOf(NpcTrait.WARM, NpcTrait.TALKATIVE),
+            topics = setOf(NpcTopic.FOOD, NpcTopic.RUNNING, NpcTopic.WEATHER),
+            favoriteTopic = NpcTopic.RUNNING,
+            backstory = listOf("每天绕广场跑两圈，下雨也跑。"),
         )
 
         /** 只有一条作息：整天在湖边，永远不走路。 */
@@ -64,6 +76,11 @@ class FakeNpcRepository(
             schedule = listOf(
                 NpcScheduleEntry(at(0), FakePlaceRepository.NORTH_LAKE.id, activity = "在湖边画画"),
             ),
+            role = "画画的人",
+            traits = setOf(NpcTrait.DREAMY, NpcTrait.RESERVED),
+            topics = setOf(NpcTopic.ART, NpcTopic.WEATHER, NpcTopic.NIGHT),
+            favoriteTopic = NpcTopic.ART,
+            backstory = listOf("画架是旧的，说用了很多年，一直没换。"),
         )
 
         /** 作息跨零点：23:00 在花园，凌晨 2 点才回宿舍，早上又去图书馆。 */
@@ -76,6 +93,11 @@ class FakeNpcRepository(
                 NpcScheduleEntry(at(23), FakePlaceRepository.GARDEN.id, travelMinutes = 30, activity = "在花园里散步"),
                 NpcScheduleEntry(at(2), FakePlaceRepository.DORM.id, travelMinutes = 45, activity = "回去睡觉"),
             ),
+            role = "夜里走动的人",
+            traits = setOf(NpcTrait.RESERVED, NpcTrait.CURIOUS),
+            topics = setOf(NpcTopic.NIGHT, NpcTopic.BOOKS, NpcTopic.SELF),
+            favoriteTopic = NpcTopic.NIGHT,
+            backstory = listOf("习惯很晚还在外面走，说夜里安静。"),
         )
 
         /** 长时间在路上：在几个自然资源点之间巡。 */
@@ -88,6 +110,11 @@ class FakeNpcRepository(
                 NpcScheduleEntry(at(13), FakePlaceRepository.BERRY_BUSH.id, travelMinutes = 90, activity = "在浆果丛边蹲着"),
                 NpcScheduleEntry(at(19), FakePlaceRepository.MUSHROOM_PATCH.id, travelMinutes = 90, activity = "在树根边找菌子"),
             ),
+            role = "巡林的人",
+            traits = setOf(NpcTrait.PRACTICAL, NpcTrait.TACITURN),
+            topics = setOf(NpcTopic.PLANTS, NpcTopic.WEATHER, NpcTopic.FOOD),
+            favoriteTopic = NpcTopic.PLANTS,
+            backstory = listOf("总背着布袋在花园北边转，说是在看果子熟没熟。"),
         )
 
         val DEFAULT_NPCS = listOf(LIN, ZHOU, XU, HE, QI)

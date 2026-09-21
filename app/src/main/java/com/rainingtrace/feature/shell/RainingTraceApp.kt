@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -27,12 +29,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.rainingtrace.R
 import com.rainingtrace.core.common.AppContainer
 import com.rainingtrace.feature.ar.ArScreen
@@ -43,7 +48,8 @@ import com.rainingtrace.feature.journal.JournalRoute
 import com.rainingtrace.feature.map.MapScreen
 import com.rainingtrace.feature.map.MapViewModel
 import com.rainingtrace.feature.map.WorldStatusViewModel
-import com.rainingtrace.feature.messages.MessagesScreen
+import com.rainingtrace.feature.messages.ChatRoute
+import com.rainingtrace.feature.messages.MessagesRoute
 import com.rainingtrace.feature.profile.MeScreen
 import com.rainingtrace.feature.settings.SettingsRoute
 import com.rainingtrace.platform.ar.ArCoreController
@@ -70,7 +76,10 @@ fun RainingTraceApp(container: AppContainer) {
         },
         bottomBar = {
             if (showChrome) {
-                RainingTraceBottomBar(currentRoute = currentRoute) { route ->
+                RainingTraceBottomBar(
+                    container = container,
+                    currentRoute = currentRoute,
+                ) { route ->
                     navigateToTab(navController, route)
                 }
             }
@@ -132,7 +141,21 @@ fun RainingTraceApp(container: AppContainer) {
             }
 
             composable(Routes.MESSAGES) {
-                MessagesScreen()
+                MessagesRoute(
+                    container = container,
+                    onOpenChat = { npcId -> navController.navigate(npcChatRoute(npcId)) },
+                )
+            }
+
+            composable(
+                route = Routes.NPC_CHAT,
+                arguments = listOf(navArgument(ARG_NPC_ID) { type = NavType.StringType }),
+            ) { entry ->
+                ChatRoute(
+                    container = container,
+                    npcId = entry.arguments?.getString(ARG_NPC_ID).orEmpty(),
+                    onBack = { navController.popBackStack() },
+                )
             }
 
             composable(Routes.ME) {
@@ -232,11 +255,19 @@ private fun RainingTraceTopBar(title: String) {
     }
 }
 
+/**
+ * 底栏。**未读数在这里订阅**，而不是在 [RainingTraceApp] 顶层——
+ * 放顶层的话每来一条消息都会重建 Scaffold + NavHost，导航与滚动会抖。
+ */
 @Composable
 private fun RainingTraceBottomBar(
+    container: AppContainer,
     currentRoute: String?,
     onTab: (String) -> Unit,
 ) {
+    val unreadCount by container.npcMessageRepository.observeUnreadCount()
+        .collectAsStateWithLifecycle(initialValue = 0)
+
     NavigationBar(
         modifier = Modifier.navigationBarsPadding(),
         containerColor = MaterialTheme.colorScheme.surface,
@@ -274,11 +305,18 @@ private fun RainingTraceBottomBar(
                     selected = selected,
                     onClick = { if (!selected) onTab(tab.route) },
                     icon = {
-                        Icon(
-                            painter = painterResource(tab.iconRes),
-                            contentDescription = tab.label,
-                            modifier = Modifier.size(23.dp),
-                        )
+                        // 未读红点：不做的话玩家不知道 NPC 找过自己。
+                        if (tab.route == Routes.MESSAGES && unreadCount > 0) {
+                            BadgedBox(
+                                badge = {
+                                    Badge { Text(unreadCount.coerceAtMost(99).toString()) }
+                                },
+                            ) {
+                                TabIcon(tab)
+                            }
+                        } else {
+                            TabIcon(tab)
+                        }
                     },
                     label = { Text(tab.label, style = MaterialTheme.typography.labelMedium) },
                     colors = barItemColors(),
@@ -286,6 +324,15 @@ private fun RainingTraceBottomBar(
             }
         }
     }
+}
+
+@Composable
+private fun TabIcon(tab: TabSpec) {
+    Icon(
+        painter = painterResource(tab.iconRes),
+        contentDescription = tab.label,
+        modifier = Modifier.size(23.dp),
+    )
 }
 
 @Composable

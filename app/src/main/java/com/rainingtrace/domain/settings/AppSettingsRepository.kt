@@ -34,4 +34,17 @@ interface AppSettingsRepository {
      */
     suspend fun fogWatermarkMs(): Long?
     suspend fun setFogWatermarkMs(epochMs: Long)
+
+    /**
+     * NPC 调试时间偏移（开发者模式）：只改变"NPC 此刻在哪"，用来验证走动。
+     * 真实来源接上后这一项可以直接删掉，玩法不用改。
+     */
+    val npcClockOffset: Flow<NpcClockOffset>
+    suspend fun currentNpcClockOffset(): NpcClockOffset
+    suspend fun setNpcClockOffset(offset: NpcClockOffset)
+
+    /** NPC 消息偏好：主动程度 + 是否显示好感数值。 */
+    val npcMessages: Flow<NpcMessageSettings>
+    suspend fun currentNpcMessages(): NpcMessageSettings
+    suspend fun setNpcMessages(settings: NpcMessageSettings)
 }

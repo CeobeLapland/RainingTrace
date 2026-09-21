@@ -30,3 +30,21 @@ val RainBlueNight = Color(0xFF7FA3B3)
 val MossGreenNight = Color(0xFF74B89C)
 val AmberNight = Color(0xFFD9A95C)
 val NightOutline = Color(0xFF3A444B)
+
+/**
+ * NPC 头像色板。
+ *
+ * 还没有立绘资源，头像用"色块 + 姓氏字形"占位（和 PlaceThumb 同一种做法）。
+ * 颜色由 `npcId` 稳定映射（[String.hashCode] 有规范定义，跨设备一致），
+ * 所以同一个人在哪里都是同一个色。
+ */
+val NpcAvatarPalette = listOf(
+    Color(0xFF5B7E8F),
+    Color(0xFF4E9B7A),
+    Color(0xFFC9903B),
+    Color(0xFF7D5BA6),
+    Color(0xFFD06B3A),
+    Color(0xFF6E9A2E),
+    Color(0xFF9C3B62),
+    Color(0xFF8A6A4A),
+)

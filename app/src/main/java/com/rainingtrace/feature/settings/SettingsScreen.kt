@@ -48,6 +48,8 @@ import com.rainingtrace.domain.map.GridLevel
 import com.rainingtrace.domain.settings.BackgroundInterval
 import com.rainingtrace.domain.settings.DayWindow
 import com.rainingtrace.domain.settings.LocationMode
+import com.rainingtrace.domain.settings.NpcClockOffset
+import com.rainingtrace.domain.settings.ProactiveLevel
 import com.rainingtrace.domain.world.Season
 import com.rainingtrace.domain.world.TimeOfDay
 import com.rainingtrace.domain.world.WeatherKind
@@ -75,6 +77,8 @@ fun SettingsRoute(
     val weatherKind by viewModel.weatherKind.collectAsStateWithLifecycle()
     val season by viewModel.season.collectAsStateWithLifecycle()
     val seasonOverride by viewModel.seasonOverride.collectAsStateWithLifecycle()
+    val npcClockOffset by viewModel.npcClockOffset.collectAsStateWithLifecycle()
+    val npcMessages by viewModel.npcMessages.collectAsStateWithLifecycle()
     val timeOfDayOverride by viewModel.timeOfDayOverride.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
@@ -235,6 +239,35 @@ fun SettingsRoute(
                     }
                 }
 
+                // 消息：这是玩家偏好，不是调试项。
+                SectionLabel("消息")
+                Text(
+                    text = "他们会偶尔主动找你说话——按自己的作息、天气和你去过的地方。" +
+                        "选择你想要的频率，随时可以改。",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 20.dp),
+                )
+                Spacer(Modifier.height(8.dp))
+                ProactiveLevel.entries.forEach { level ->
+                    OptionRow(
+                        title = level.label,
+                        hint = when (level) {
+                            ProactiveLevel.QUIET -> "他们不会主动发消息，你去找他们就好"
+                            ProactiveLevel.NORMAL -> "每天最多 ${level.dailyLimit} 条，推荐"
+                            ProactiveLevel.ACTIVE -> "每天最多 ${level.dailyLimit} 条"
+                        },
+                        selected = npcMessages.proactiveLevel == level,
+                        onClick = { viewModel.setProactiveLevel(level) },
+                    )
+                }
+                ToggleRow(
+                    title = "显示好感数值",
+                    hint = "关掉后聊天页只显示关系阶段，不显示数字",
+                    checked = npcMessages.showAffection,
+                    onCheckedChange = viewModel::setShowAffection,
+                )
+
                 // 真实天气 API 接入前，靠这里手动切天气来验证"世界状态影响产出"。
                 if (viewModel.canSetWeather) {
                     SectionLabel("世界状态（调试）")
@@ -318,6 +351,30 @@ fun SettingsRoute(
                             onClick = { viewModel.setSeason(entry) },
                         )
                     }
+                }
+
+                // NPC 的位置读的是真实"当天第几分钟"，调试区只能覆盖"时段"四个桶，
+                // 所以想看 NPC 走路得真等到他的行走窗口。挪一下就能立刻看到。
+                SectionLabel("NPC（调试）")
+                Text(
+                    text = "只改变 NPC 此刻在哪，不影响你的轨迹、迷雾和世界状态。" +
+                        "想验证「有人在走路」时，切到某个人正在赶路的时段即可。",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 20.dp),
+                )
+                Spacer(Modifier.height(8.dp))
+                NpcClockOffset.entries.forEach { offset ->
+                    OptionRow(
+                        title = offset.label,
+                        hint = if (offset.minutes == 0) {
+                            "按真实时间算 NPC 的位置"
+                        } else {
+                            "NPC 的时间 ${if (offset.minutes > 0) "+" else "-"}${kotlin.math.abs(offset.minutes) / 60} 小时"
+                        },
+                        selected = npcClockOffset == offset,
+                        onClick = { viewModel.setNpcClockOffset(offset) },
+                    )
                 }
             }
         }

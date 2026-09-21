@@ -14,10 +14,24 @@ data class NpcProfile(
     val oneLiner: String,
     /** 作息表；可以只有一条（整天待在同一个地方）。 */
     val schedule: List<NpcScheduleEntry>,
+    /** 身份，例如"大二学生""食堂帮工"；主动消息与第三人称指代会用到。 */
+    val role: String = "",
+    /** 性格标签：驱动语气与偏好。 */
+    val traits: Set<NpcTrait> = emptySet(),
+    /** 愿意聊的话题。 */
+    val topics: Set<NpcTopic> = emptySet(),
+    /** 最喜欢的话题（好感加成与专属台词）；必须也是 [topics] 之一。 */
+    val favoriteTopic: NpcTopic? = null,
+    /** 他自己的经历片段（1~3 条），作为"自述"素材池。 */
+    val backstory: List<String> = emptyList(),
 ) {
     init {
         require(id.isNotBlank()) { "npc id must not be blank" }
         require(name.isNotBlank()) { "npc name must not be blank" }
+        // 内容写错时不该静默失效（专属台词会永远不出现），直接拦在构造期。
+        require(favoriteTopic == null || favoriteTopic in topics) {
+            "favoriteTopic must be one of topics: $favoriteTopic not in $topics"
+        }
     }
 }
 

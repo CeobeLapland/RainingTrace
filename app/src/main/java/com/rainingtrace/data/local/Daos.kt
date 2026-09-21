@@ -131,3 +131,43 @@ interface InventoryDao {
     @Query("DELETE FROM inventory_items")
     suspend fun deleteAll()
 }
+
+@Dao
+interface NpcMessageDao {
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insert(message: NpcMessageEntity)
+
+    /**
+     * 全量消息（时间升序）。会话列表用它一次性取回后在领域侧分组——
+     * 只有一个 Flow、没有失效漏报风险；NPC 只有几个、消息量级在数百条，
+     * 等真到万级再改成 GROUP BY 汇总。
+     */
+    @Query("SELECT * FROM npc_messages ORDER BY createdAtEpochMs ASC")
+    fun observeAll(): Flow<List<NpcMessageEntity>>
+
+    /** 某个 NPC 的最近 [limit] 条（时间倒序，领域侧再反转）。 */
+    @Query(
+        "SELECT * FROM npc_messages WHERE npcId = :npcId " +
+            "ORDER BY createdAtEpochMs DESC LIMIT :limit",
+    )
+    fun observeThread(npcId: String, limit: Int): Flow<List<NpcMessageEntity>>
+
+    /** 未读总数（只算 NPC 发来的），给底栏红点。 */
+    @Query("SELECT COUNT(*) FROM npc_messages WHERE isRead = 0 AND speaker = 'NPC'")
+    fun observeUnreadCount(): Flow<Int>
+
+    @Query("UPDATE npc_messages SET isRead = 1 WHERE npcId = :npcId AND isRead = 0")
+    suspend fun markRead(npcId: String)
+}
+
+@Dao
+interface NpcStateDao {
+    @Query("SELECT * FROM npc_states")
+    fun observeAll(): Flow<List<NpcStateEntity>>
+
+    @Query("SELECT * FROM npc_states WHERE npcId = :npcId")
+    suspend fun byId(npcId: String): NpcStateEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(state: NpcStateEntity)
+}

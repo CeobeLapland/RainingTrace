@@ -18,6 +18,12 @@ enum class FootprintEventType {
 
     /** 第一次遇见某个 NPC；payload 带 npcId，用于"见过谁"的去重。 */
     NPC_MET,
+
+    /** 和某个 NPC 聊过一次（每次聊天一条）；payload 带 npcId。 */
+    NPC_TALKED,
+
+    /** NPC 主动发来一条消息；payload 带 npcId 与 ruleId，用于规则冷却去重。 */
+    NPC_MESSAGE_SENT,
 }
 
 /** 默认仅自己可见；公开范围策略属于 P1 社交层。 */

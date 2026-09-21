@@ -7,6 +7,9 @@ import com.rainingtrace.domain.settings.AppSettingsRepository
 import com.rainingtrace.domain.settings.BackgroundInterval
 import com.rainingtrace.domain.settings.DayWindow
 import com.rainingtrace.domain.settings.LocationMode
+import com.rainingtrace.domain.settings.NpcClockOffset
+import com.rainingtrace.domain.settings.NpcMessageSettings
+import com.rainingtrace.domain.settings.ProactiveLevel
 import com.rainingtrace.domain.settings.TrackingSettings
 import com.rainingtrace.domain.track.ChangeGridLevelUseCase
 import com.rainingtrace.domain.world.MutableWeatherProvider
@@ -39,6 +42,14 @@ class SettingsViewModel(
 
     val tracking = settings.tracking
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TrackingSettings())
+
+    /** NPC 调试时间偏移（开发者模式）：只改变"NPC 此刻在哪"。 */
+    val npcClockOffset = settings.npcClockOffset
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), NpcClockOffset.DEFAULT)
+
+    /** 消息偏好：主动程度 + 是否显示好感数值。 */
+    val npcMessages = settings.npcMessages
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), NpcMessageSettings())
 
     val canSetWeather: Boolean get() = mutableWeather != null
 
@@ -93,6 +104,22 @@ class SettingsViewModel(
         updateTracking { it.copy(daytimeOnly = daytimeOnly) }
 
     fun setDayWindow(window: DayWindow) = updateTracking { it.copy(dayWindow = window) }
+
+    fun setNpcClockOffset(offset: NpcClockOffset) {
+        viewModelScope.launch { settings.setNpcClockOffset(offset) }
+    }
+
+    fun setProactiveLevel(level: ProactiveLevel) =
+        updateNpcMessages { it.copy(proactiveLevel = level) }
+
+    fun setShowAffection(show: Boolean) = updateNpcMessages { it.copy(showAffection = show) }
+
+    /** 与 tracking 同构：读改写整份设置，字段不会互相覆盖。 */
+    private fun updateNpcMessages(transform: (NpcMessageSettings) -> NpcMessageSettings) {
+        viewModelScope.launch {
+            settings.setNpcMessages(transform(settings.currentNpcMessages()))
+        }
+    }
 
     /** 读改写同一份设置：任何一项变化都整份落盘，字段不会互相覆盖。 */
     private fun updateTracking(transform: (TrackingSettings) -> TrackingSettings) {
