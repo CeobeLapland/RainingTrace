@@ -27,6 +27,12 @@ data class NpcDialogueContext(
     val recentMessages: List<NpcMessage> = emptyList(),
     /** 玩家问到"某个时刻"时的真实作息；没问就是 null。 */
     val scheduleFacts: ScheduleFacts? = null,
+    /**
+     * 这次对话涉及的一次约定（片 3）。
+     * [CommitmentFacts.agreed] = true 时**已经写进库了**，所以承诺词可以说；
+     * false 时只能说软拒绝。
+     */
+    val commitmentFacts: CommitmentFacts? = null,
     /** "他记得你"的句子素材（可能为空）。 */
     val memoryHooks: List<String> = emptyList(),
 )
@@ -40,24 +46,28 @@ data class GeneratedDialogue(
 /**
  * 回复文本的守门人。
  *
- * 片 1 没有承诺系统，所以**说了"等你"却不去就是骗人**——这里机械挡掉承诺词，
- * 而不是指望模板作者永远记得别写。校验不过就换确定性回落台词（Prompt 08 的 fallback）。
+ * 片 1 没有承诺系统，所以**说了"等你"却不去就是骗人**——这里机械挡掉承诺词。
+ * 片 3 之后承诺可以说了，但只有在 [allowPromises] 为真时才放行，
+ * 而调用方只有**已经把承诺写进库**才会传 true。所以"不骗人"不靠自觉，靠这一层。
+ *
+ * 注意：AI 生成的文本也过这里，所以将来接 LLM 时同样受约束（Prompt 08）。
  */
 object DialogueValidator {
 
     /** 一条消息的上限；再长就不像聊天了。 */
     const val MAX_LENGTH = 120
 
-    /** 承诺词：片 3 有了作息覆盖之后才允许出现。 */
+    /** 承诺词：只有在 [validate] 的 allowPromises 为真时才允许出现。 */
     private val PROMISE_WORDS = listOf("等你", "我一定", "答应你", "说好了", "不见不散", "保证")
 
     /** 回落台词：短、中性、不承诺。 */
     private val FALLBACK_LINES = listOf("嗯，我听着。", "……", "你说。", "嗯。")
 
-    fun validate(text: String): Boolean {
+    fun validate(text: String, allowPromises: Boolean = false): Boolean {
         val trimmed = text.trim()
         if (trimmed.isEmpty() || trimmed.length > MAX_LENGTH) return false
         if ('{' in trimmed || '}' in trimmed) return false
+        if (allowPromises) return true
         return PROMISE_WORDS.none { it in trimmed }
     }
 

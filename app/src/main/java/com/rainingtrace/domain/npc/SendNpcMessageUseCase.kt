@@ -8,6 +8,7 @@ import com.rainingtrace.domain.footprint.FootprintRepository
 import com.rainingtrace.domain.map.Place
 import com.rainingtrace.domain.map.PlaceRepository
 import com.rainingtrace.domain.world.RandomSource
+import com.rainingtrace.domain.world.WorldState
 import com.rainingtrace.domain.world.WorldStateProvider
 import com.rainingtrace.domain.world.footprintKeys
 import java.time.Instant
@@ -32,8 +33,10 @@ class SendNpcMessageUseCase(
     private val footprintRepository: FootprintRepository,
     private val worldState: WorldStateProvider,
     private val random: RandomSource,
-    /** 口语别名表（内容侧维护，避免 domain 硬编码 placeId）。 */
+    /** 写足迹时带上口语别名表（内容侧维护，避免 domain 硬编码 placeId）。 */
     private val placeAliases: Map<String, String> = emptyMap(),
+    /** 承诺仓储（片 3）：答应了才允许说承诺词，所以它是"不骗人"的另一半。 */
+    private val commitmentRepository: NpcCommitmentRepository? = null,
 ) {
 
     suspend operator fun invoke(npcId: String, text: String): SendMessageResult {
@@ -68,7 +71,10 @@ class SendNpcMessageUseCase(
             ParseContext(profile, places, placeAliases, world, presence),
         )
 
-        // ③ 状态先算完（在 narrative 之前）。
+        // ③ 约定判定（片 3）：想见面 + 说了时间 + 说了地点 → 按**真实作息**判他能不能答应。
+        val commitment = resolveCommitment(profile, placesById, parsed, world, nowInstant, now)
+
+        // ④ 状态先算完（在 narrative 之前）。
         val todayKey = dateKeyOf(nowInstant)
         val current = applyDailyReset(stateRepository.stateOf(npcId), todayKey)
         val delta = affectionDeltaFor(parsed, profile)
@@ -79,7 +85,7 @@ class SendNpcMessageUseCase(
         )
         val moodEvent = moodFor(parsed, profile, presence)
 
-        // ④ 拼上下文并生成文本。
+        // ⑤ 拼上下文并生成文本。
         val recent = messageRepository.recent(npcId, RECENT_LIMIT)
         val facts = if (parsed.timeHint != null && (parsed.asksAboutSchedule || parsed.wantsToMeet)) {
             scheduleFacts(profile, placesById, parsed.timeHint, world.minuteOfDay)
@@ -97,13 +103,15 @@ class SendNpcMessageUseCase(
             worldState = world,
             recentMessages = recent,
             scheduleFacts = facts,
+            commitmentFacts = commitment.facts,
             memoryHooks = memoryHooksFor(npcId, placesById, current, now),
         )
         val generated = narrative.respond(context)
 
-        // ⑤ 守门人：不合法（含承诺词、过长、占位符残留）就换确定性回落。
+        // ⑥ 守门人：不合法就换确定性回落。**承诺词只有在真的写了承诺之后才放行**——
+        //    传 allowPromises 的条件就是 commitment.saved，没有别的路径。
         val recentNpcTexts = recent.filter { it.fromNpc }.map { it.text }
-        val replyText = if (DialogueValidator.validate(generated.text)) {
+        val replyText = if (DialogueValidator.validate(generated.text, commitment.saved)) {
             generated.text
         } else {
             DialogueValidator.fallback(recentNpcTexts)
@@ -154,6 +162,61 @@ class SendNpcMessageUseCase(
 
         return SendMessageResult.Sent(reply)
     }
+
+    /**
+     * 判定并（如果答应）落库这次约定。
+     *
+     * **只有"想见面 + 说了时间 + 说了地点"才会走到这里**——说不清时间或地点时
+     * 他只是按片 1 的老样子软拒绝，绝不随口答应。
+     */
+    private suspend fun resolveCommitment(
+        profile: NpcProfile,
+        placesById: Map<String, Place>,
+        parsed: ParsedPlayerMessage,
+        world: WorldState,
+        nowInstant: Instant,
+        nowEpochMs: Long,
+    ): CommitmentResolution {
+        val timeHint = parsed.timeHint
+        val placeId = parsed.mentionedPlaceId
+        val repo = commitmentRepository
+        if (!parsed.wantsToMeet || timeHint == null || placeId == null || repo == null) {
+            return CommitmentResolution()
+        }
+
+        val placeName = placesById[placeId]?.name ?: placeId
+        val targetMinute = timeHint.resolveMinuteOfDay(world.minuteOfDay)
+        val answer = answerCommitment(profile, placesById, targetMinute, placeId)
+        val agreed = answer is CommitmentAnswer.Agree || answer is CommitmentAnswer.AlreadyThere
+        val facts = CommitmentFacts(
+            timeLabel = timeHint.label,
+            placeName = placeName,
+            agreed = agreed,
+        )
+        if (!agreed) return CommitmentResolution(facts = facts, saved = false)
+
+        repo.save(
+            NpcCommitment(
+                id = UUID.randomUUID().toString(),
+                npcId = profile.id,
+                placeId = placeId,
+                dateKey = timeHint.resolveDateKey(world.localDate),
+                startMinute = targetMinute,
+                // 不跨零点（NpcScheduleOverride 就是这么约定的）：太晚的约定窗口会被压到当天末尾。
+                endMinute = (targetMinute + COMMITMENT_WINDOW_MINUTES)
+                    .coerceAtMost(MINUTES_PER_DAY - 1),
+                travelMinutes = (answer as? CommitmentAnswer.Agree)?.travelMinutes ?: 0,
+                createdAtEpochMs = nowEpochMs,
+            ),
+        )
+        return CommitmentResolution(facts = facts, saved = true)
+    }
+
+    private data class CommitmentResolution(
+        val facts: CommitmentFacts? = null,
+        /** 承诺是否真的落库了；它决定承诺词能不能说。 */
+        val saved: Boolean = false,
+    )
 
     /**
      * "他记得你"的句子素材（最多两条，由叙事层随机取一条用）。

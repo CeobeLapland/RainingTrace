@@ -1,6 +1,7 @@
 package com.rainingtrace.domain.npc
 
 import com.rainingtrace.domain.map.Place
+import java.time.LocalDate
 
 /**
  * 玩家消息里的时间提示（粗粒度，够用即可——不做日期解析）。
@@ -11,21 +12,26 @@ import com.rainingtrace.domain.map.Place
  */
 enum class TimeHint(
     val label: String,
+    /** 相对今天往后几天；承诺就落在那一天的作息覆盖上。 */
+    val daysAhead: Int,
     /** 固定目标时刻（当天第几分钟）；null 表示相对"此刻"偏移。 */
     private val fixedMinuteOfDay: Int?,
     private val offsetMinutes: Int,
 ) {
-    NOW("现在", null, 0),
-    LATER_TODAY("过会儿", null, 120),
-    TONIGHT("今晚", 20 * 60, 0),
-    TOMORROW_MORNING("明天早上", 9 * 60, 0),
-    TOMORROW_AFTERNOON("明天下午", 14 * 60, 0),
-    TOMORROW_EVENING("明天晚上", 19 * 60, 0),
+    NOW("现在", 0, null, 0),
+    LATER_TODAY("过会儿", 0, null, 120),
+    TONIGHT("今晚", 0, 20 * 60, 0),
+    TOMORROW_MORNING("明天早上", 1, 9 * 60, 0),
+    TOMORROW_AFTERNOON("明天下午", 1, 14 * 60, 0),
+    TOMORROW_EVENING("明天晚上", 1, 19 * 60, 0),
     ;
 
     /** 目标"当天第几分钟"，按天回绕。 */
     fun resolveMinuteOfDay(nowMinuteOfDay: Int): Int =
         (fixedMinuteOfDay ?: (nowMinuteOfDay + offsetMinutes)).mod(MINUTES_PER_DAY)
+
+    /** 目标日期键（与 `NpcState.todayDateKey` 同一口径，yyyy-MM-dd）。 */
+    fun resolveDateKey(now: LocalDate): String = now.plusDays(daysAhead.toLong()).toString()
 }
 
 /**

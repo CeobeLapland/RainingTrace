@@ -79,6 +79,14 @@ class SendNpcMessageUseCaseTest {
             events.filter { it.eventType == type }
     }
 
+    private class FakeCommitments : NpcCommitmentRepository {
+        val all = mutableListOf<NpcCommitment>()
+        override suspend fun all(): List<NpcCommitment> = all
+        override suspend fun save(commitment: NpcCommitment) {
+            all += commitment
+        }
+    }
+
     private class FakeNpcs(private val npcs: List<NpcProfile>) : NpcRepository {
         override suspend fun all(): List<NpcProfile> = npcs
         override suspend fun byId(id: String): NpcProfile? = npcs.firstOrNull { it.id == id }
@@ -132,6 +140,7 @@ class SendNpcMessageUseCaseTest {
         messages: FakeMessages = FakeMessages(),
         states: FakeStates = FakeStates(),
         footprints: FakeFootprints = FakeFootprints(),
+        commitments: FakeCommitments = FakeCommitments(),
         narrative: NarrativeService = TemplateNarrativeService(SeededRandomSource(1L)),
     ) = SendNpcMessageUseCase(
         clock = clock,
@@ -145,6 +154,7 @@ class SendNpcMessageUseCaseTest {
         footprintRepository = footprints,
         worldState = worldState,
         random = SeededRandomSource(1L),
+        commitmentRepository = commitments,
     )
 
     private fun footprint(
@@ -265,5 +275,49 @@ class SendNpcMessageUseCaseTest {
         useCase(states = states)("npc.bit.lin", "今天在图书馆看书")
 
         assertEquals(nowInstant.toEpochMilli(), states.states.getValue(lin.id).lastInteractionAtEpochMs)
+    }
+
+    // ---- 片 3：约定 ----
+
+    @Test
+    fun `he agrees and the promise is actually written down`() = runTest {
+        val messages = FakeMessages()
+        val commitments = FakeCommitments()
+
+        // 他整天都在图书馆，所以"明天下午在图书馆见"他答应得了
+        useCase(messages = messages, commitments = commitments)(
+            "npc.bit.lin",
+            "明天下午在图书馆等我",
+        )
+
+        val saved = commitments.all.single()
+        assertEquals(lin.id, saved.npcId)
+        assertEquals(library.id, saved.placeId)
+        assertEquals("2026-09-22", saved.dateKey) // 明天
+        assertEquals(14 * 60, saved.startMinute)
+        assertEquals(NpcCommitmentStatus.AGREED, saved.status)
+
+        // 承诺词只有在真的写进库之后才被放行，所以这里能说到地点
+        val reply = messages.all.last()
+        assertTrue(reply.text, "图书馆" in reply.text)
+    }
+
+    @Test
+    fun `no commitment is written when the time or place is unclear`() = runTest {
+        val messages = FakeMessages()
+        val commitments = FakeCommitments()
+        val send = useCase(messages = messages, commitments = commitments)
+
+        // 没地点
+        send("npc.bit.lin", "明天下午来找我吧")
+        // 没时间
+        send("npc.bit.lin", "在图书馆等我")
+        // 只提到地点、不想见面
+        send("npc.bit.lin", "我今天在图书馆看书")
+
+        assertTrue(commitments.all.isEmpty())
+        messages.all.filter { it.fromNpc }.forEach {
+            assertFalse("不该出现承诺词：${it.text}", it.text.contains("说好了"))
+        }
     }
 }

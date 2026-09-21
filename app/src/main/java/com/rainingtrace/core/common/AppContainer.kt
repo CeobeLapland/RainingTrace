@@ -12,6 +12,7 @@ import com.rainingtrace.data.repository.RoomExplorationRepository
 import com.rainingtrace.data.repository.RoomFootprintRepository
 import com.rainingtrace.data.repository.RoomInventoryRepository
 import com.rainingtrace.data.repository.RoomMemoryRepository
+import com.rainingtrace.data.repository.RoomNpcCommitmentRepository
 import com.rainingtrace.data.repository.RoomNpcMessageRepository
 import com.rainingtrace.data.repository.RoomNpcStateRepository
 import com.rainingtrace.data.repository.RoomTrackRepository
@@ -35,8 +36,11 @@ import com.rainingtrace.domain.memory.CreateMemoryUseCase
 import com.rainingtrace.domain.memory.MemoryFocusRequest
 import com.rainingtrace.domain.memory.MemoryRepository
 import com.rainingtrace.domain.npc.NarrativeService
+import com.rainingtrace.domain.npc.NpcCommitmentRepository
+import com.rainingtrace.domain.npc.NpcCommitmentUseCase
 import com.rainingtrace.domain.npc.NpcMessageParser
 import com.rainingtrace.domain.npc.NpcMessageRepository
+import com.rainingtrace.domain.npc.NpcMessageWriter
 import com.rainingtrace.domain.npc.NpcPresenceUseCase
 import com.rainingtrace.domain.npc.NpcProactiveMessageUseCase
 import com.rainingtrace.domain.npc.NpcProactiveRuleCatalog
@@ -191,21 +195,34 @@ class AppContainer(
             settingsRepository.npcClockOffset.collect { npcClockOffset.value = it }
         }
 
-        // NPC 主动消息：前台可见时每分钟检查一次。
+        // NPC 主动消息 + 约定兑现：前台可见时每分钟检查一次。
         // 熄屏不生成（HANDOFF_4 §6「后台服务只写库」+ Android 14 的后台限制），
-        // 回前台再补算一次即可——tick 幂等（水位 + 冷却 + 每日上限），漏不掉也不重发。
+        // 回前台再补算一次即可——两个引擎都是幂等的，漏不掉也不重发。
+        // 玩家坐标用 locationProvider.latest 取快照，不额外订阅定位流。
         applicationScope.launch {
             while (true) {
                 delay(NPC_PROACTIVE_TICK_MS)
                 if (!foregroundState.isForeground.value) continue
-                runCatching { npcProactiveMessages() }
+                runCatching { tickNpcEngines() }
             }
         }
         applicationScope.launch {
             // StateFlow 本来就只发变化，不需要（也不该）再 distinctUntilChanged。
             foregroundState.isForeground
-                .collect { foreground -> if (foreground) runCatching { npcProactiveMessages() } }
+                .collect { foreground -> if (foreground) runCatching { tickNpcEngines() } }
         }
+    }
+
+    /**
+     * 两个 NPC 引擎共用一次 tick：先兑现约定，再考虑主动消息。
+     *
+     * 顺序有讲究——"他到了"是玩家刚做的事的直接反馈，优先级高于主动消息；
+     * 而且两者都自带限流，一轮最多各出一条。
+     */
+    private suspend fun tickNpcEngines() {
+        val coordinate = locationProvider.latest?.coordinate
+        npcCommitments.tick(coordinate)
+        npcProactiveMessages()
     }
 
     /** 定位权限状态变化后重新尝试拉起 GPS 采集（并重新评估足迹记录服务）。 */
@@ -240,7 +257,12 @@ class AppContainer(
 
     /** NPC 此刻在哪：位置是时间的纯函数，不落库。 */
     val npcPresence: NpcPresenceUseCase by lazy {
-        NpcPresenceUseCase(npcRepository, placeRepository, npcClockOffset)
+        NpcPresenceUseCase(
+            npcRepository,
+            placeRepository,
+            npcClockOffset,
+            commitments = npcCommitmentRepository,
+        )
     }
 
     /** 走到 NPC 跟前 → 记一次"第一次遇见"（真相在 footprint 事件里）。 */
@@ -256,6 +278,16 @@ class AppContainer(
     /** NPC 关系与情绪（Room v5）：好感、情绪、上次互动。 */
     val npcStateRepository: NpcStateRepository by lazy {
         RoomNpcStateRepository(database.npcStateDao())
+    }
+
+    /** 约定（Room v6）：他答应的事有落点，所以片 3 可以真的兑现。 */
+    val npcCommitmentRepository: NpcCommitmentRepository by lazy {
+        RoomNpcCommitmentRepository(database.npcCommitmentDao())
+    }
+
+    /** 片 2 与片 3 共用的"写消息 + 留足迹"。 */
+    private val npcMessageWriter: NpcMessageWriter by lazy {
+        NpcMessageWriter(npcMessageRepository, footprintRepository)
     }
 
     /**
@@ -285,6 +317,7 @@ class AppContainer(
             worldState = worldStateProvider,
             random = npcRandom,
             placeAliases = FakePlaceRepository.PLACE_ALIASES,
+            commitmentRepository = npcCommitmentRepository,
         )
     }
 
@@ -301,11 +334,24 @@ class AppContainer(
             placeRepository = placeRepository,
             npcPresence = npcPresence,
             rules = npcProactiveRules,
-            messageRepository = npcMessageRepository,
             stateRepository = npcStateRepository,
+            messageWriter = npcMessageWriter,
             footprintRepository = footprintRepository,
             worldState = worldStateProvider,
             settings = settingsRepository,
+        )
+    }
+
+    /** 约定兑现：他到了就发一句、你没来就记一次（片 3）。 */
+    val npcCommitments: NpcCommitmentUseCase by lazy {
+        NpcCommitmentUseCase(
+            clock = clock,
+            commitments = npcCommitmentRepository,
+            placeRepository = placeRepository,
+            messageWriter = npcMessageWriter,
+            stateRepository = npcStateRepository,
+            footprintRepository = footprintRepository,
+            worldState = worldStateProvider,
         )
     }
 

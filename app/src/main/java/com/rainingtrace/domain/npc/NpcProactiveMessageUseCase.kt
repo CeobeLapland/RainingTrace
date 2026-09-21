@@ -2,13 +2,11 @@ package com.rainingtrace.domain.npc
 
 import com.rainingtrace.core.time.WORLD_ZONE
 import com.rainingtrace.core.time.WorldClock
-import com.rainingtrace.domain.footprint.FootprintEvent
 import com.rainingtrace.domain.footprint.FootprintEventType
 import com.rainingtrace.domain.footprint.FootprintRepository
 import com.rainingtrace.domain.map.PlaceRepository
 import com.rainingtrace.domain.settings.AppSettingsRepository
 import com.rainingtrace.domain.world.WorldStateProvider
-import java.util.UUID
 
 /**
  * NPC 主动消息：一次检查最多发一条。
@@ -26,8 +24,9 @@ class NpcProactiveMessageUseCase(
     private val placeRepository: PlaceRepository,
     private val npcPresence: NpcPresenceUseCase,
     private val rules: NpcProactiveRuleCatalog,
-    private val messageRepository: NpcMessageRepository,
     private val stateRepository: NpcStateRepository,
+    /** 与片 3 共用的"写消息 + 留足迹"。 */
+    private val messageWriter: NpcMessageWriter,
     private val footprintRepository: FootprintRepository,
     private val worldState: WorldStateProvider,
     private val settings: AppSettingsRepository,
@@ -106,29 +105,15 @@ class NpcProactiveMessageUseCase(
         // 规则文案也过一遍守门人：内容写错不该把承诺词发出去。
         if (!DialogueValidator.validate(text)) return null
 
-        val message = NpcMessage(
-            id = UUID.randomUUID().toString(),
+        // 与片 3 共用同一套"写消息 + 留足迹"（冷却与每日上限都读这条足迹）。
+        return messageWriter.write(
             npcId = rule.npcId,
-            speaker = NpcMessageSpeaker.NPC,
+            coordinate = presence.coordinate,
             text = text,
-            createdAtEpochMs = now,
-            read = false,
-            source = NpcMessageSource.TEMPLATE,
-            ruleId = rule.id,
+            eventType = FootprintEventType.NPC_MESSAGE_SENT,
+            payload = mapOf("ruleId" to rule.id),
+            nowEpochMs = now,
         )
-        messageRepository.append(message)
-
-        // 留档：冷却与每日上限都读它，所以这一步不能省。
-        footprintRepository.append(
-            FootprintEvent(
-                id = UUID.randomUUID().toString(),
-                timestampEpochMs = now,
-                coordinate = presence.coordinate,
-                eventType = FootprintEventType.NPC_MESSAGE_SENT,
-                payload = mapOf("npcId" to rule.npcId, "ruleId" to rule.id),
-            ),
-        )
-        return message
     }
 
     /** 同一规则在冷却窗口内只发一次。 */

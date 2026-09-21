@@ -16,6 +16,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * v3：记忆支持一段语音（memories.audioRef）。**走显式迁移，不删库**。
  * v4：记忆带当时的世界状态（memories.weatherKind / season）。
  * v5：NPC 消息与关系/情绪状态（npc_messages / npc_states）。
+ * v6：约定（npc_commitments）——他答应了就真的会去。
  */
 @Database(
     entities = [
@@ -26,8 +27,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         InventoryItemEntity::class,
         NpcMessageEntity::class,
         NpcStateEntity::class,
+        NpcCommitmentEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 abstract class RainingTraceDatabase : RoomDatabase() {
@@ -38,6 +40,7 @@ abstract class RainingTraceDatabase : RoomDatabase() {
     abstract fun inventoryDao(): InventoryDao
     abstract fun npcMessageDao(): NpcMessageDao
     abstract fun npcStateDao(): NpcStateDao
+    abstract fun npcCommitmentDao(): NpcCommitmentDao
 
     companion object {
         const val NAME = "rainingtrace.db"
@@ -90,11 +93,28 @@ abstract class RainingTraceDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v6：约定表（片 3）。同样照 `schemas/.../6.json` 的 createSql 逐字抄。
+         * 无索引（表很小）。
+         */
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `npc_commitments` (`id` TEXT NOT NULL, " +
+                        "`npcId` TEXT NOT NULL, `placeId` TEXT NOT NULL, `dateKey` TEXT NOT NULL, " +
+                        "`startMinute` INTEGER NOT NULL, `endMinute` INTEGER NOT NULL, " +
+                        "`travelMinutes` INTEGER NOT NULL, `status` TEXT NOT NULL, " +
+                        "`createdAtEpochMs` INTEGER NOT NULL, `resolvedAtEpochMs` INTEGER, " +
+                        "PRIMARY KEY(`id`))",
+                )
+            }
+        }
+
         fun create(context: Context): RainingTraceDatabase =
             Room.databaseBuilder(context, RainingTraceDatabase::class.java, NAME)
                 // v1→v2 结构不兼容；用户已确认开发期删库重来。
                 // v2→v3 起改为显式 Migration：正式有用户数据后不允许再 destructive。
-                .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                 .fallbackToDestructiveMigration(false)
                 .build()
     }

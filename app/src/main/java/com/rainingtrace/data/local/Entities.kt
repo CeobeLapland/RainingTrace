@@ -123,3 +123,24 @@ data class NpcStateEntity(
     val todayDateKey: String,
     val updatedAtEpochMs: Long,
 )
+
+/**
+ * 约定（片 3）：玩家约了某个 NPC 见面，他答应了。
+ *
+ * 状态机就是 [status]（AGREED → KEPT/MISSED），所以不需要额外的去重记录。
+ * 表很小（同时只有几条 AGREED），因此不加索引、也不做增量查询。
+ */
+@Entity(tableName = "npc_commitments")
+data class NpcCommitmentEntity(
+    @PrimaryKey val id: String,
+    val npcId: String,
+    val placeId: String,
+    /** 约定日期（yyyy-MM-dd，世界时区）。 */
+    val dateKey: String,
+    val startMinute: Int,
+    val endMinute: Int,
+    val travelMinutes: Int,
+    val status: String,
+    val createdAtEpochMs: Long,
+    val resolvedAtEpochMs: Long?,
+)

@@ -35,12 +35,32 @@ data class ResolvedEntry(
 /**
  * 把档案里的作息解析成"能算位置"的形式。
  *
+ * [overrides] 是当天生效的**承诺覆盖**（片 3）：窗口内的基础作息条目会被替换掉，
+ * 于是他那天真的会出现在约定的地方——这是"答应的事一定做"的实现方式。
+ *
  * 两个修正：
  * - **引用了不存在地点的条目直接剔除**（内容写错了不该崩，只是这个人不会出现）；
  * - **行走时长夹紧到 `间隔 - 1`**，保证走路不吃掉整段停留；相邻条目同地点则不走。
  */
-fun resolveSchedule(profile: NpcProfile, places: Map<String, Place>): ResolvedSchedule {
-    val resolved = profile.schedule
+fun resolveSchedule(
+    profile: NpcProfile,
+    places: Map<String, Place>,
+    overrides: List<NpcScheduleOverride> = emptyList(),
+): ResolvedSchedule {
+    // 承诺覆盖：窗口内的基础条目让位给约定（覆盖条目可以带行走时长，于是他"走过去"）。
+    val baseEntries = profile.schedule.filterNot { entry ->
+        overrides.any { entry.startMinute in it.startMinute until it.endMinute }
+    }
+    val overrideEntries = overrides.map {
+        NpcScheduleEntry(
+            startMinute = it.startMinute,
+            placeId = it.placeId,
+            travelMinutes = it.travelMinutes,
+            activity = it.activity,
+        )
+    }
+
+    val resolved = (baseEntries + overrideEntries)
         .mapNotNull { entry ->
             val place = places[entry.placeId] ?: return@mapNotNull null
             ResolvedEntry(
@@ -125,5 +145,18 @@ class ResolvedSchedule(
             walking = true,
             progress = progress,
         )
+    }
+
+    /**
+     * 从这个时刻起到"下一条作息开始"还有多少分钟。
+     *
+     * 用来判断"他答应得了吗"：如果他马上要赶去别的地方，就走不开了。
+     * 无有效作息时返回 null。
+     */
+    fun minutesUntilNextEntry(minuteOfDay: Int): Int? {
+        if (entries.isEmpty()) return null
+        val nextIndex = (entries.indexOfLast { it.startMinute <= minuteOfDay }
+            .let { if (it >= 0) it else entries.size - 1 } + 1) % entries.size
+        return (entries[nextIndex].startMinute - minuteOfDay + MINUTES_PER_DAY) % MINUTES_PER_DAY
     }
 }

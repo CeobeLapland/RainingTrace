@@ -22,12 +22,33 @@ class TemplateNarrativeService(
         val recent = context.recentMessages.filter { it.fromNpc }.map { it.text }.takeLast(LOOKBACK)
 
         val dialogue = when {
-            // 想见面：片 1 不答应（没有承诺系统），只软拒绝 + 陈述真实作息
+            // 想见面：答应了就承诺（作息已被覆盖，所以这句话是真的）；
+            // 没答应（他有安排）就软拒绝 + 说明那时他在哪。
             context.parsed.wantsToMeet -> {
                 val lines = mutableListOf(pick(greetKey(context.stage), npcId, recent))
-                lines += pick(noMeetKey(context.profile), npcId, recent)
-                context.scheduleFacts?.let {
-                    lines += pick(scheduleKey(it), npcId, recent, scheduleSlots(it))
+                val commitment = context.commitmentFacts
+                when {
+                    commitment?.agreed == true -> lines += pick(
+                        "commitment",
+                        npcId,
+                        recent,
+                        mapOf("time" to commitment.timeLabel, "place" to commitment.placeName),
+                    )
+
+                    commitment != null -> lines += pick(
+                        "noMeet.busy",
+                        npcId,
+                        recent,
+                        mapOf("time" to commitment.timeLabel),
+                    )
+
+                    else -> lines += pick(noMeetKey(context.profile), npcId, recent)
+                }
+                // 没答应时把"那时他真在哪"补上，让拒绝也有信息量。
+                if (commitment?.agreed != true) {
+                    context.scheduleFacts?.let {
+                        lines += pick(scheduleKey(it), npcId, recent, scheduleSlots(it))
+                    }
                 }
                 lines += tail(context, npcId, recent)
                 lines

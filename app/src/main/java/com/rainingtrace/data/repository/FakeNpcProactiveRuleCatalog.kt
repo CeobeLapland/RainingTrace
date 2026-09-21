@@ -142,6 +142,22 @@ class FakeNpcProactiveRuleCatalog(
                 text = "有几天没见你了，食堂还是老样子。",
                 cooldownMs = 48 * HOUR_MS,
             ),
+
+            // 约好了没来（片 3）：他不生气，但会提一句。
+            NpcProactiveRule(
+                id = "rule.qi.missed_commitment",
+                npcId = FakeNpcRepository.QI.id,
+                condition = NpcTriggerCondition.PlayerMissedCommitment(FakeNpcRepository.QI.id),
+                text = "昨天在{place}等了一会儿，没见着你。没事，改天吧。",
+                cooldownMs = 48 * HOUR_MS,
+            ),
+            NpcProactiveRule(
+                id = "rule.zhou.missed_commitment",
+                npcId = FakeNpcRepository.ZHOU.id,
+                condition = NpcTriggerCondition.PlayerMissedCommitment(FakeNpcRepository.ZHOU.id),
+                text = "昨天答应你那事，我到了，你没来。下次提前说一声。",
+                cooldownMs = 48 * HOUR_MS,
+            ),
         )
     }
 }

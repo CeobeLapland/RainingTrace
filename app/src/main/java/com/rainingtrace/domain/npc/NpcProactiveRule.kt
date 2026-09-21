@@ -94,6 +94,20 @@ sealed interface NpcTriggerCondition {
         }
     }
 
+    /**
+     * 玩家上一次约好了却没来（片 3）。
+     *
+     * 这条让"你没去"有了后果：他下次会提一句，而不是当作没发生过。
+     */
+    data class PlayerMissedCommitment(val npcId: String) : NpcTriggerCondition {
+        override val specificity: Int get() = 2
+        override fun isSatisfiedBy(context: NpcTriggerContext): Boolean =
+            context.recentFootprints.any { event ->
+                event.eventType == FootprintEventType.NPC_COMMITMENT_MISSED &&
+                    event.payload["npcId"] == npcId
+            }
+    }
+
     /** 全部满足（AND）。 */
     data class All(val conditions: List<NpcTriggerCondition>) : NpcTriggerCondition {
         override val specificity: Int get() = conditions.sumOf { it.specificity }

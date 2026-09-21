@@ -24,6 +24,12 @@ enum class FootprintEventType {
 
     /** NPC 主动发来一条消息；payload 带 npcId 与 ruleId，用于规则冷却去重。 */
     NPC_MESSAGE_SENT,
+
+    /** 约定兑现了（玩家真的来了）。 */
+    NPC_COMMITMENT_KEPT,
+
+    /** 约好了但玩家没来；NPC 下次聊天会提一句。 */
+    NPC_COMMITMENT_MISSED,
 }
 
 /** 默认仅自己可见；公开范围策略属于 P1 社交层。 */

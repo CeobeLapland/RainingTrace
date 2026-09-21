@@ -171,3 +171,13 @@ interface NpcStateDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(state: NpcStateEntity)
 }
+
+@Dao
+interface NpcCommitmentDao {
+    /** 表很小（同时只有几条 AGREED），全量取回在领域侧筛，不做增量查询。 */
+    @Query("SELECT * FROM npc_commitments")
+    suspend fun all(): List<NpcCommitmentEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(commitment: NpcCommitmentEntity)
+}

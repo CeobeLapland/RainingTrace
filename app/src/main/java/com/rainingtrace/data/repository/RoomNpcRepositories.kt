@@ -1,9 +1,14 @@
 package com.rainingtrace.data.repository
 
+import com.rainingtrace.data.local.NpcCommitmentDao
+import com.rainingtrace.data.local.NpcCommitmentEntity
 import com.rainingtrace.data.local.NpcMessageDao
 import com.rainingtrace.data.local.NpcMessageEntity
 import com.rainingtrace.data.local.NpcStateDao
 import com.rainingtrace.data.local.NpcStateEntity
+import com.rainingtrace.domain.npc.NpcCommitment
+import com.rainingtrace.domain.npc.NpcCommitmentRepository
+import com.rainingtrace.domain.npc.NpcCommitmentStatus
 import com.rainingtrace.domain.npc.NpcConversation
 import com.rainingtrace.domain.npc.NpcMessage
 import com.rainingtrace.domain.npc.NpcMessageRepository
@@ -118,5 +123,45 @@ class RoomNpcStateRepository(
         todayAffectionGain = todayAffectionGain,
         todayDateKey = todayDateKey,
         updatedAtEpochMs = updatedAtEpochMs,
+    )
+}
+
+/** 约定的 Room 实现。 */
+class RoomNpcCommitmentRepository(
+    private val dao: NpcCommitmentDao,
+) : NpcCommitmentRepository {
+
+    override suspend fun all(): List<NpcCommitment> = dao.all().map { it.toDomain() }
+
+    override suspend fun save(commitment: NpcCommitment) {
+        dao.upsert(
+            NpcCommitmentEntity(
+                id = commitment.id,
+                npcId = commitment.npcId,
+                placeId = commitment.placeId,
+                dateKey = commitment.dateKey,
+                startMinute = commitment.startMinute,
+                endMinute = commitment.endMinute,
+                travelMinutes = commitment.travelMinutes,
+                status = commitment.status.name,
+                createdAtEpochMs = commitment.createdAtEpochMs,
+                resolvedAtEpochMs = commitment.resolvedAtEpochMs,
+            ),
+        )
+    }
+
+    private fun NpcCommitmentEntity.toDomain() = NpcCommitment(
+        id = id,
+        npcId = npcId,
+        placeId = placeId,
+        dateKey = dateKey,
+        startMinute = startMinute,
+        endMinute = endMinute,
+        travelMinutes = travelMinutes,
+        // 状态名读不出来时当成已失效，别让它永远挂在"等待中"。
+        status = runCatching { NpcCommitmentStatus.valueOf(status) }
+            .getOrDefault(NpcCommitmentStatus.MISSED),
+        createdAtEpochMs = createdAtEpochMs,
+        resolvedAtEpochMs = resolvedAtEpochMs,
     )
 }
