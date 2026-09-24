@@ -5,6 +5,7 @@ import com.rainingtrace.domain.footprint.FootprintEvent
 import com.rainingtrace.domain.footprint.FootprintEventType
 import com.rainingtrace.domain.footprint.FootprintRepository
 import com.rainingtrace.domain.inventory.AddItemToInventoryUseCase
+import com.rainingtrace.data.content.ShippedContent
 import com.rainingtrace.domain.inventory.InMemoryResourceCatalog
 import com.rainingtrace.domain.inventory.InventoryRepository
 import com.rainingtrace.domain.inventory.InventoryState
@@ -138,7 +139,7 @@ class PerformPlaceActionUseCaseTest {
         footprint: FakeFootprintRepository = FakeFootprintRepository(),
         world: FakeWorldStateProvider = worldOf(),
         rules: InMemoryResourceYieldRuleCatalog = InMemoryResourceYieldRuleCatalog(
-            InMemoryResourceYieldRuleCatalog.DEFAULT,
+            ShippedContent.yieldRules,
         ),
     ) = Fixture(
         perform = PerformPlaceActionUseCase(
@@ -146,7 +147,7 @@ class PerformPlaceActionUseCaseTest {
             inventoryRepository = inventory,
             addItem = AddItemToInventoryUseCase(clock),
             footprintRepository = footprint,
-            resourceCatalog = InMemoryResourceCatalog(InMemoryResourceCatalog.DEFAULT),
+            resourceCatalog = InMemoryResourceCatalog(ShippedContent.resources),
             worldState = world,
             rules = rules,
         ),

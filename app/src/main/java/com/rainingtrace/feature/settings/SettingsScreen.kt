@@ -44,6 +44,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rainingtrace.R
 import com.rainingtrace.core.common.AppContainer
 import com.rainingtrace.core.ui.label
+import com.rainingtrace.domain.content.ContentIndex
 import com.rainingtrace.domain.map.GridLevel
 import com.rainingtrace.domain.settings.BackgroundInterval
 import com.rainingtrace.domain.settings.DayWindow
@@ -69,6 +70,7 @@ fun SettingsRoute(
             mutableWeather = container.mutableWeatherProvider,
             seasonSource = container.seasonSource,
             timeOfDaySource = container.timeOfDaySource,
+            contentPanel = container.contentStore,
         )
     }
     val gridLevel by viewModel.gridLevel.collectAsStateWithLifecycle()
@@ -80,6 +82,7 @@ fun SettingsRoute(
     val npcClockOffset by viewModel.npcClockOffset.collectAsStateWithLifecycle()
     val npcMessages by viewModel.npcMessages.collectAsStateWithLifecycle()
     val timeOfDayOverride by viewModel.timeOfDayOverride.collectAsStateWithLifecycle()
+    val contentIndex by viewModel.contentIndex.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     val notificationLauncher = rememberLauncherForActivityResult(
@@ -376,6 +379,58 @@ fun SettingsRoute(
                         onClick = { viewModel.setNpcClockOffset(offset) },
                     )
                 }
+
+                // 内容全部来自 JSON：内置一份在 assets/content，你改的那份放 files/content。
+                if (viewModel.canEditContent) {
+                    SectionLabel("内容（开发者模式）")
+                    Text(
+                        text = "地点、资源、NPC、台词都从 JSON 读：内置的在 assets/content/*.json，" +
+                            "要改就把同名文件放进应用的 files/content/ 目录（adb push），" +
+                            "再点下面重新读取——不用重编译、也不用重装包。",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 20.dp),
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    contentIndex?.let { index ->
+                        Text(
+                            text = index.counts.entries.joinToString(" · ") { (kind, count) ->
+                                "${contentKindLabel(kind)} $count"
+                            },
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.padding(horizontal = 20.dp),
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        if (index.diagnostics.isEmpty()) {
+                            Text(
+                                text = "没有发现问题。",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 20.dp),
+                            )
+                        } else {
+                            index.diagnostics.forEach { diagnostic ->
+                                Text(
+                                    text = diagnostic.toString(),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = if (diagnostic.isError) {
+                                        MaterialTheme.colorScheme.error
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 2.dp),
+                                )
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    ActionRow(
+                        title = "重新读取内容",
+                        hint = "改完 files/content/*.json 之后点这里",
+                        onClick = viewModel::reloadContent,
+                    )
+                }
             }
         }
     }
@@ -547,4 +602,36 @@ private fun OptionRow(
             )
         }
     }
+}
+
+/** 立即执行的动作行（区别于 OptionRow：没有"选中"状态）。 */
+@Composable
+private fun ActionRow(
+    title: String,
+    hint: String,
+    onClick: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 10.dp),
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        Text(
+            text = hint,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/** 内容类型的中文名；没登记的 key 直接显示原名，不隐藏。 */
+private fun contentKindLabel(kind: String): String = when (kind) {
+    ContentIndex.PLACES -> "地点"
+    else -> kind
 }

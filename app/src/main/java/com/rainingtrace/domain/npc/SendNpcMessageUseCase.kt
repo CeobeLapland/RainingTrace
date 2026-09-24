@@ -33,8 +33,14 @@ class SendNpcMessageUseCase(
     private val footprintRepository: FootprintRepository,
     private val worldState: WorldStateProvider,
     private val random: RandomSource,
-    /** 写足迹时带上口语别名表（内容侧维护，避免 domain 硬编码 placeId）。 */
-    private val placeAliases: Map<String, String> = emptyMap(),
+    /**
+     * 口语别名表（内容侧维护，避免 domain 硬编码 placeId）。
+     *
+     * 按需取而不是构造时快照：开发者模式改了 `place_aliases.json`、
+     * 或者刚在地图上记下一个新地点并补了别名之后，应当立刻听得懂，
+     * 不该等重启。
+     */
+    private val placeAliases: () -> Map<String, String> = { emptyMap() },
     /** 承诺仓储（片 3）：答应了才允许说承诺词，所以它是"不骗人"的另一半。 */
     private val commitmentRepository: NpcCommitmentRepository? = null,
 ) {
@@ -68,7 +74,7 @@ class SendNpcMessageUseCase(
         // ② 解析。
         val parsed = parser.parse(
             trimmed,
-            ParseContext(profile, places, placeAliases, world, presence),
+            ParseContext(profile, places, placeAliases(), world, presence),
         )
 
         // ③ 约定判定（片 3）：想见面 + 说了时间 + 说了地点 → 按**真实作息**判他能不能答应。

@@ -40,6 +40,9 @@ android {
     buildFeatures {
         compose = true
     }
+    // 内置内容 JSON 同时作为单测的 classpath 资源：ShippedContentTest 读真实内容做完整性断言，
+    // 与生产读取路径（assets）语义一致，且不用依赖"工作目录相对路径"这种隐性脆弱点。
+    sourceSets["test"].resources.srcDir("src/main/assets")
 }
 
 kotlin {

@@ -2,6 +2,7 @@ package com.rainingtrace.domain.world
 
 import java.time.LocalDate
 import java.time.ZoneOffset
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -91,5 +92,40 @@ class WorldConditionTest {
         assertTrue(RAINY_WEATHER.isSatisfiedBy(state(12, WeatherKind.HEAVY_RAIN)))
         assertFalse(RAINY_WEATHER.isSatisfiedBy(state(12, WeatherKind.SNOW)))
         assertFalse(RAINY_WEATHER.isSatisfiedBy(state(12, WeatherKind.CLEAR)))
+    }
+
+    @Test
+    fun `not is a plain boolean negation`() {
+        val notRainy = WorldCondition.Not(WorldCondition.WeatherIn(WeatherKind.RAINY))
+
+        assertTrue(notRainy.isSatisfiedBy(state(12, WeatherKind.CLEAR)))
+        assertTrue(notRainy.isSatisfiedBy(state(12, WeatherKind.SNOW)))
+        assertFalse(notRainy.isSatisfiedBy(state(12, WeatherKind.LIGHT_RAIN)))
+    }
+
+    /**
+     * 这是唯一会让作者意外的地方，所以写死成测试：`Not` 不做三值逻辑，
+     * 季节未确定时 `Not(SeasonIn(AUTUMN))` 是**真**。
+     */
+    @Test
+    fun `not of an undetermined season is true`() {
+        val notAutumn = WorldCondition.Not(WorldCondition.SeasonIn(setOf(Season.AUTUMN)))
+
+        assertTrue(notAutumn.isSatisfiedBy(state(12, season = null)))
+        assertFalse(notAutumn.isSatisfiedBy(state(12, season = Season.AUTUMN)))
+        assertTrue(notAutumn.isSatisfiedBy(state(12, season = Season.WINTER)))
+    }
+
+    /**
+     * 否定条件的权重是 0：否则"不下雨"会和"雨天湖边"一样具体，
+     * 优先级方向就反了（见 ResourceYieldRule.specificity）。
+     */
+    @Test
+    fun `not weighs less than a positive condition`() {
+        val positive = WorldCondition.WeatherIn(WeatherKind.RAINY)
+        val negative = WorldCondition.Not(positive)
+
+        assertTrue(negative.weight < positive.weight)
+        assertEquals(0, negative.weight)
     }
 }

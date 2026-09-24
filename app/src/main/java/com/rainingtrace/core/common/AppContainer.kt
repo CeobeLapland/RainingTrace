@@ -5,9 +5,13 @@ import com.rainingtrace.core.lifecycle.AppForegroundState
 import com.rainingtrace.core.time.SystemWorldClock
 import com.rainingtrace.core.time.WorldClock
 import com.rainingtrace.data.local.RainingTraceDatabase
-import com.rainingtrace.data.repository.FakeNpcProactiveRuleCatalog
-import com.rainingtrace.data.repository.FakeNpcRepository
-import com.rainingtrace.data.repository.FakePlaceRepository
+import com.rainingtrace.data.content.ContentStore
+import com.rainingtrace.data.content.JsonPlaceWriter
+import com.rainingtrace.data.repository.ContentNpcProactiveRuleCatalog
+import com.rainingtrace.data.repository.ContentNpcRepository
+import com.rainingtrace.data.repository.ContentPlaceRepository
+import com.rainingtrace.data.repository.ContentResourceCatalog
+import com.rainingtrace.data.repository.ContentYieldRuleCatalog
 import com.rainingtrace.data.repository.RoomExplorationRepository
 import com.rainingtrace.data.repository.RoomFootprintRepository
 import com.rainingtrace.data.repository.RoomInventoryRepository
@@ -29,6 +33,7 @@ import com.rainingtrace.domain.map.HexGrid
 import com.rainingtrace.domain.map.LocationProvider
 import com.rainingtrace.domain.map.MapRendererAdapter
 import com.rainingtrace.domain.map.PlaceRepository
+import com.rainingtrace.domain.map.PlaceWriter
 import com.rainingtrace.domain.map.WorldCoordinate
 import com.rainingtrace.domain.ar.ArController
 import com.rainingtrace.domain.memory.AudioNoteController
@@ -104,6 +109,18 @@ class AppContainer(
 ) {
 
     private val appContext: Context = context.applicationContext
+
+    /**
+     * 内容（地点/NPC/资源/规则/台词）的唯一入口：内置 assets 默认 + 私有目录覆盖。
+     *
+     * 构造期就同步加载完（几毫秒的小文件读，口径同下面的 `gridManager`）：
+     * 内容被地图、设置、聊天、背包同时需要，懒加载失手会表现为"莫名其妙空掉的地图"。
+     */
+    val contentStore: ContentStore = ContentStore(appContext)
+
+    init {
+        contentStore.load()
+    }
 
     // 世界原点：北湖（参考坐标，真机试玩后校准）
     private val worldOrigin = WorldCoordinate(39.7326, 116.1712)
@@ -244,10 +261,19 @@ class AppContainer(
 
     val mapRenderer: MapRendererAdapter by lazy { MapLibreAdapter() }
 
-    val placeRepository: PlaceRepository by lazy { FakePlaceRepository() }
+    val placeRepository: PlaceRepository by lazy {
+        ContentPlaceRepository { contentStore.index.value }
+    }
+
+    /** 现场采点：把当前位置记成一个地点，写进 `files/content/places.json`。 */
+    val placeWriter: PlaceWriter by lazy {
+        JsonPlaceWriter(context = appContext, store = contentStore, clock = clock)
+    }
 
     /** NPC 档案：和地点一样是只读配置（手工编写，将来由内容资产/服务端下发）。 */
-    val npcRepository: NpcRepository by lazy { FakeNpcRepository() }
+    val npcRepository: NpcRepository by lazy {
+        ContentNpcRepository { contentStore.index.value }
+    }
 
     /**
      * NPC 调试时间偏移：DataStore 是真相，这里放一份内存镜像，
@@ -297,10 +323,20 @@ class AppContainer(
     private val npcRandom: RandomSource by lazy { SeededRandomSource(clock.now().toEpochMilli()) }
 
     /** 规则版意图解析。将来接 AI 只换这一个实现（Prompt 08）。 */
-    private val npcMessageParser: NpcMessageParser by lazy { RuleBasedNpcMessageParser() }
+    private val npcMessageParser: NpcMessageParser by lazy {
+        RuleBasedNpcMessageParser(rules = { contentStore.index.value.npcKeywords })
+    }
+
+    /** 地点口语别名来自内容（NPC 消息解析用），改完 JSON 重读即生效。 */
+    private fun placeAliases(): Map<String, String> = contentStore.index.value.placeAliases
 
     /** 模板叙事。将来接 LLM 只换这一个实现，玩法与状态计算都不用动。 */
-    private val npcNarrative: NarrativeService by lazy { TemplateNarrativeService(npcRandom) }
+    private val npcNarrative: NarrativeService by lazy {
+        TemplateNarrativeService(
+            random = npcRandom,
+            lines = { contentStore.index.value.npcLines },
+        )
+    }
 
     /** 玩家发消息 → NPC 回复（含好感/情绪结算与足迹留档）。 */
     val sendNpcMessage: SendNpcMessageUseCase by lazy {
@@ -316,14 +352,14 @@ class AppContainer(
             footprintRepository = footprintRepository,
             worldState = worldStateProvider,
             random = npcRandom,
-            placeAliases = FakePlaceRepository.PLACE_ALIASES,
+            placeAliases = ::placeAliases,
             commitmentRepository = npcCommitmentRepository,
         )
     }
 
     /** 主动消息规则表：内容放 data，和 NPC/地点的 id 一起维护。 */
     private val npcProactiveRules: NpcProactiveRuleCatalog by lazy {
-        FakeNpcProactiveRuleCatalog(FakeNpcProactiveRuleCatalog.DEFAULT)
+        ContentNpcProactiveRuleCatalog { contentStore.index.value }
     }
 
     /** NPC 主动发消息：一次检查最多一条（冷却 + 每日上限 + 免打扰）。 */
@@ -373,7 +409,7 @@ class AppContainer(
 
     /** 资源/图鉴目录：定义库存在这里，库存量只在 inventoryRepository。 */
     val resourceCatalog: ResourceCatalog by lazy {
-        InMemoryResourceCatalog(InMemoryResourceCatalog.DEFAULT)
+        ContentResourceCatalog { contentStore.index.value }
     }
 
     /** 世界天气状态：MVP 用 Fake（固定晴）；P1 换真实 API 适配器，条件与产出不用改。 */
@@ -407,7 +443,7 @@ class AppContainer(
 
     /** 产出规则表：加内容只加规则，不改用例。 */
     val resourceYieldRules: ResourceYieldRuleCatalog by lazy {
-        InMemoryResourceYieldRuleCatalog(InMemoryResourceYieldRuleCatalog.DEFAULT)
+        ContentYieldRuleCatalog { contentStore.index.value }
     }
 
     val addItem: AddItemToInventoryUseCase by lazy { AddItemToInventoryUseCase(clock) }

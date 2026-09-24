@@ -7,6 +7,7 @@ import com.rainingtrace.domain.map.WorldCoordinate
 import java.time.Instant
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -182,5 +183,20 @@ class RecordTrackPointUseCaseTest {
             RejectReason.NOT_MOVING_FORWARD,
             (result as RecordTrackResult.Rejected).reason,
         )
+    }
+
+    /**
+     * "原地没动"和"这个坐标不可信"必须能分开：前者可以按当前位置渲染（否则冷启动
+     * 地图会空白），后者连渲染都要丢掉（漂移保护）。
+     */
+    @Test
+    fun `standing still reasons differ from drift reasons`() {
+        assertTrue(RejectReason.TOO_CLOSE.isStandingStill())
+        assertTrue(RejectReason.NOT_MOVING_FORWARD.isStandingStill())
+
+        assertFalse(RejectReason.POOR_ACCURACY.isStandingStill())
+        assertFalse(RejectReason.STALE.isStandingStill())
+        assertFalse(RejectReason.FUTURE_TIMESTAMP.isStandingStill())
+        assertFalse(RejectReason.IMPLAUSIBLE_JUMP.isStandingStill())
     }
 }

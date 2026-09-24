@@ -25,9 +25,12 @@ import com.rainingtrace.domain.map.NpcVisual
 import com.rainingtrace.domain.map.Place
 import com.rainingtrace.domain.map.PlaceActionType
 import com.rainingtrace.domain.map.PlaceCategory
+import com.rainingtrace.domain.map.PlaceDraft
 import com.rainingtrace.domain.map.PlaceRepository
 import com.rainingtrace.domain.map.PlaceType
 import com.rainingtrace.domain.map.PlaceVisual
+import com.rainingtrace.domain.map.PlaceWriteResult
+import com.rainingtrace.domain.map.PlaceWriter
 import com.rainingtrace.domain.map.placeVisualsFor
 import com.rainingtrace.domain.map.PlayerMarkerVisual
 import com.rainingtrace.domain.map.WorldCoordinate
@@ -54,6 +57,7 @@ import com.rainingtrace.domain.track.TrackPoint
 import com.rainingtrace.domain.track.TrackRepository
 import com.rainingtrace.domain.track.dayEndEpochMs
 import com.rainingtrace.domain.track.dayStartEpochMs
+import com.rainingtrace.domain.track.isStandingStill
 import com.rainingtrace.domain.track.trackCamera
 import com.rainingtrace.domain.track.trackLengthMeters
 import com.rainingtrace.domain.world.WorldStateProvider
@@ -141,6 +145,8 @@ class MapViewModel(
     private val settings: AppSettingsRepository,
     /** 权限授予后重新拉起 GPS 采集。 */
     private val refreshLocation: () -> Unit,
+    /** 现场采点：把当前位置记成一个地点（写进内容覆盖层）。 */
+    private val placeWriter: PlaceWriter,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MapUiState())
@@ -366,6 +372,26 @@ class MapViewModel(
         }
     }
 
+    /**
+     * 现场采点：把当前位置记成一个地点。
+     *
+     * 成功后**立刻选中它**——新点若所在格还没被揭示，`placeVisualsFor` 不会画它，
+     * 详情卡就是唯一的即时确认。
+     */
+    fun captureCurrentPlace(draft: PlaceDraft) {
+        viewModelScope.launch {
+            when (val result = placeWriter.addPlace(draft)) {
+                is PlaceWriteResult.Added -> {
+                    showToast("已经记下「${draft.name.trim()}」")
+                    lastCoordinate?.let { refreshPlaces(it) }
+                    placeRepository.placeById(result.id)?.let { selectPlace(it) }
+                }
+
+                is PlaceWriteResult.Rejected -> showToast("没记下来：${result.reason}")
+            }
+        }
+    }
+
     /** 点地图地点图标：仅已揭示且类型被显示的地点才可选。 */
     fun onPlaceTapped(placeId: String) {
         viewModelScope.launch {
@@ -475,7 +501,16 @@ class MapViewModel(
     private suspend fun onLocationFix(fix: com.rainingtrace.domain.map.RawLocationFix) {
         // 去噪闸门：只有稳定点才成为轨迹、才开雾。被拒的漂移点不移动玩家。
         val result = recordTrackPoint(fix)
-        if (result !is RecordTrackResult.Accepted) return
+        if (result !is RecordTrackResult.Accepted) {
+            // 上一条轨迹点就在脚下（没走出 8m）时不会产生新点。若冷启动正好如此，
+            // 地图会整片空白——玩家标记、地点、附近卡片一个都不出现，看着像世界没了。
+            // 这里只补一次渲染：不落库、不重算迷雾，漂移保护（精度差 / 瞬移）不受影响。
+            if (lastCoordinate == null && (result as RecordTrackResult.Rejected).reason.isStandingStill()) {
+                mapRenderer.renderPlayer(PlayerMarkerVisual(fix.coordinate))
+                refreshPlaces(fix.coordinate)
+            }
+            return
+        }
 
         val coordinate = result.point.coordinate
         lastCoordinate = coordinate

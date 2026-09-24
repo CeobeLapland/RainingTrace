@@ -88,3 +88,14 @@ enum class RejectReason {
     TOO_CLOSE,
     IMPLAUSIBLE_JUMP,
 }
+
+/**
+ * 这个拒绝理由意味着"位置可信，只是原地没动"（或时钟没往前走），
+ * 而不是"这个坐标可能不可信"。
+ *
+ * 区分这两种情况很重要：漂移（精度差 / 瞬移）必须连渲染一起丢掉，
+ * 但"没动"只是没产生新轨迹点——调用方仍然可以按当前位置渲染，
+ * 否则冷启动时如果上一条点正好在脚下，地图会一片空白。
+ */
+fun RejectReason.isStandingStill(): Boolean =
+    this == RejectReason.TOO_CLOSE || this == RejectReason.NOT_MOVING_FORWARD

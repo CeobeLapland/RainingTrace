@@ -1,5 +1,6 @@
 package com.rainingtrace.domain.npc
 
+import com.rainingtrace.data.content.ShippedContent
 import com.rainingtrace.domain.map.Place
 import com.rainingtrace.domain.map.PlaceActionType
 import com.rainingtrace.domain.map.PlaceType
@@ -40,7 +41,7 @@ class RuleBasedNpcMessageParserTest {
 
     private val profile = NpcProfile(id = "npc.x", name = "甲", oneLiner = "", schedule = emptyList())
 
-    private val parser = RuleBasedNpcMessageParser()
+    private val parser = RuleBasedNpcMessageParser { ShippedContent.keywords }
 
     private fun context() = ParseContext(
         npc = profile,

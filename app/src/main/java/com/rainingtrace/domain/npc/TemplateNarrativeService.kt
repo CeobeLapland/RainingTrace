@@ -15,6 +15,14 @@ import com.rainingtrace.domain.world.RandomSource
  */
 class TemplateNarrativeService(
     private val random: RandomSource,
+    /**
+     * 台词表**按需取**，不在构造时快照。
+     *
+     * 开发者模式改完 `npc_lines.json` 点「重新读取内容」要立刻生效，
+     * 快照的话就得重启 App 才看得见——那是最容易被当成 bug 的那种半成品。
+     * 表本体住在 `assets/content/npc_lines.json`，这里默认空表。
+     */
+    private val lines: () -> Map<String, List<String>> = { emptyMap() },
 ) : NarrativeService {
 
     override suspend fun respond(context: NpcDialogueContext): GeneratedDialogue {
@@ -128,7 +136,7 @@ class TemplateNarrativeService(
 
     private fun tail(context: NpcDialogueContext, npcId: String, recent: Collection<String>): String {
         val key = "tail.${context.mood.name}"
-        return if (key in NpcLineCatalog.LINES) pick(key, npcId, recent) else ""
+        return if (key in lines()) pick(key, npcId, recent) else ""
     }
 
     /**
@@ -158,9 +166,15 @@ class TemplateNarrativeService(
         recent: Collection<String>,
         slots: Map<String, String> = emptyMap(),
     ): String {
-        val variants = NpcLineCatalog.LINES["$npcId.$key"]
-            ?: NpcLineCatalog.LINES[key]
-            ?: NpcLineCatalog.LINES.getValue("unparsed")
+        val table = lines()
+        val variants = (
+            table["$npcId.$key"]
+                ?: table[key]
+                ?: table[FALLBACK_KEY]
+            )
+            // 空列表等于没有：内容文件里写了个空数组不该让这里越界。
+            ?.takeIf { it.isNotEmpty() }
+            ?: FALLBACK_LINES
         val filled = variants.map { fill(it, slots) }
         val fresh = filled.filterNot { variant -> recent.any { it.contains(variant) } }
         val pool = fresh.ifEmpty { filled }
@@ -176,5 +190,14 @@ class TemplateNarrativeService(
     private companion object {
         /** 去重回看几条：3 条足够避开"连着说同一句"。 */
         const val LOOKBACK = 3
+
+        /**
+         * 结构性兜底：这段字属于"程序正确性"，不是内容。
+         *
+         * 台词表由内容提供（`unparsed` 是必需 key，`ShippedContentTest` 盯着它），
+         * 但万一内容里把它删空了，NPC 也不该张口就崩——返回这一句比抛异常好。
+         */
+        const val FALLBACK_KEY = "unparsed"
+        val FALLBACK_LINES: List<String> = listOf("……嗯？")
     }
 }

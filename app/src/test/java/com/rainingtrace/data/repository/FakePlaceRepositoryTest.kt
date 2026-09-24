@@ -1,5 +1,9 @@
 package com.rainingtrace.data.repository
 
+import com.rainingtrace.data.content.ShippedContent
+import com.rainingtrace.domain.map.Place
+import com.rainingtrace.domain.map.PlaceActionType
+import com.rainingtrace.domain.map.PlaceType
 import com.rainingtrace.domain.map.WorldCoordinate
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -9,7 +13,7 @@ import org.junit.Test
 
 class FakePlaceRepositoryTest {
 
-    private val repo = FakePlaceRepository()
+    private val repo = FakePlaceRepository(ShippedContent.places)
 
     @Test
     fun `north lake found by id`() = runTest {
@@ -38,13 +42,13 @@ class FakePlaceRepositoryTest {
     @Test
     fun `nearby sorted by distance`() = runTest {
         val extra = listOf(
-            FakePlaceRepository.NORTH_LAKE,
-            com.rainingtrace.domain.map.Place(
+            ShippedContent.place("place.bit.north_lake"),
+            Place(
                 id = "place.bit.plaza",
                 name = "中心广场",
-                type = com.rainingtrace.domain.map.PlaceType.PLAZA,
+                type = PlaceType.PLAZA,
                 coordinate = WorldCoordinate(39.7290, 116.1712),
-                actions = setOf(com.rainingtrace.domain.map.PlaceActionType.OBSERVE),
+                actions = setOf(PlaceActionType.OBSERVE),
             ),
         )
         val multiRepo = FakePlaceRepository(extra)

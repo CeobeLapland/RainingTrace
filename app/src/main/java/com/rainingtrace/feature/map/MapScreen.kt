@@ -25,6 +25,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,6 +34,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,7 +56,10 @@ import com.rainingtrace.domain.map.MapRendererAdapter
 import com.rainingtrace.domain.map.Place
 import com.rainingtrace.domain.map.PlaceActionType
 import com.rainingtrace.domain.map.PlaceCategory
+import com.rainingtrace.domain.map.PlaceDraft
 import com.rainingtrace.domain.map.PlaceType
+import com.rainingtrace.domain.map.WorldCoordinate
+import com.rainingtrace.domain.map.defaultActionsFor
 import com.rainingtrace.domain.map.distanceMetersTo
 import com.rainingtrace.domain.map.placeStyle
 import com.rainingtrace.domain.exploration.PlaceActionRejectReason
@@ -90,6 +96,10 @@ fun MapScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     val mapViewRef = remember { mutableStateOf<MapView?>(null) }
     val context = LocalContext.current
+
+    // 采点表单是**短暂的界面状态**（还没提交的草稿），不属于业务状态，
+    // 所以留在 Compose 里；提交动作才走 ViewModel。
+    var showCaptureForm by rememberSaveable { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
@@ -258,6 +268,12 @@ fun MapScreen(
                 active = uiState.showFilterPanel,
                 onClick = viewModel::toggleFilterPanel,
             )
+            LayerToggleButton(
+                iconRes = com.rainingtrace.R.drawable.ic_place,
+                label = "记点",
+                active = showCaptureForm,
+                onClick = { showCaptureForm = !showCaptureForm },
+            )
         }
 
         // 图层筛选面板：地点类型 + 记忆 + 时间
@@ -273,12 +289,24 @@ fun MapScreen(
             )
         }
 
-        // 底部信息优先级：聚焦记忆 → 聚焦某天轨迹 → 选中地点 → 选中 NPC → 附近地点列表。
+        // 底部信息优先级：采点表单 → 聚焦记忆 → 聚焦某天轨迹 → 选中地点 → 选中 NPC → 附近地点列表。
         val focusedMemory = uiState.focusedMemory
         val focusedDay = uiState.focusedTrackDay
         val selected = uiState.selectedPlace
         val selectedNpc = uiState.selectedNpc
         when {
+            showCaptureForm -> PlaceCaptureCard(
+                coordinate = uiState.lastFix,
+                onSubmit = { draft ->
+                    showCaptureForm = false
+                    viewModel.captureCurrentPlace(draft)
+                },
+                onClose = { showCaptureForm = false },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(16.dp),
+            )
+
             focusedMemory != null -> MemoryFocusCard(
                 memory = focusedMemory,
                 onClose = viewModel::clearMemoryFocus,
@@ -549,6 +577,128 @@ private fun TrackDayFocusCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 8.dp),
             )
+        }
+    }
+}
+
+/**
+ * 现场采点表单（GDD §21）。
+ *
+ * 只做"在当前位置新建一个地点/资源点"这一件事——那正是手机比电脑强的部分
+ * （批量写内容仍然在电脑上改 JSON）。所以刻意没有编辑/删除已有条目的入口。
+ */
+@Composable
+private fun PlaceCaptureCard(
+    coordinate: WorldCoordinate?,
+    onSubmit: (PlaceDraft) -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var name by rememberSaveable { mutableStateOf("") }
+    var type by rememberSaveable { mutableStateOf(PlaceType.OTHER) }
+    var description by rememberSaveable { mutableStateOf("") }
+
+    Card(modifier = modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "把这里记成一个地点",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .clickable(onClick = onClose),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_close),
+                        contentDescription = "关闭",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+            Text(
+                text = coordinate?.let {
+                    "坐标 %.5f, %.5f（就是你此刻站的地方）".format(it.latDegrees, it.lngDegrees)
+                } ?: "还没定位到你自己，等地图上出现位置标记再记。",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                singleLine = true,
+                label = { Text("叫什么") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 10.dp),
+            )
+
+            Text(
+                text = "是什么样的地方",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 10.dp),
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(top = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                PlaceType.entries.forEach { candidate ->
+                    TimeSegmentChip(
+                        label = placeTypeLabel(candidate),
+                        selected = candidate == type,
+                        onClick = { type = candidate },
+                    )
+                }
+            }
+
+            OutlinedTextField(
+                value = description,
+                onValueChange = { description = it },
+                singleLine = true,
+                label = { Text("一句话描述（可留空）") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 10.dp),
+            )
+
+            Text(
+                text = "动作按类型自动给：人文地点可以观察和采集，资源点只给采集。" +
+                    "记下之后想改细节，就去 files/content/places.json 里改。",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+
+            Button(
+                onClick = {
+                    onSubmit(
+                        PlaceDraft(
+                            name = name,
+                            type = type,
+                            coordinate = coordinate ?: return@Button,
+                            actions = defaultActionsFor(type),
+                            description = description,
+                        ),
+                    )
+                },
+                enabled = coordinate != null && name.isNotBlank(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp),
+            ) {
+                Text("记下这里")
+            }
         }
     }
 }

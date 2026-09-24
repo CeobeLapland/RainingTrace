@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "removedAliases": [],
+  "aliases": {
+    "北湖": "place.bit.north_lake",
+    "湖边": "place.bit.north_lake",
+    "湖": "place.bit.north_lake",
+    "图书馆": "place.bit.library",
+    "馆里": "place.bit.library",
+    "食堂一": "place.bit.canteen_one",
+    "食堂": "place.bit.canteen_one",
+    "中心广场": "place.bit.plaza",
+    "广场": "place.bit.plaza",
+    "湖心花园": "place.bit.garden",
+    "花园": "place.bit.garden",
+    "宿舍": "place.bit.dorm_3",
+    "果林": "place.bit.orchard",
+    "浆果丛": "place.bit.berry_bush",
+    "菌丛": "place.bit.mushroom_patch"
+  }
+}

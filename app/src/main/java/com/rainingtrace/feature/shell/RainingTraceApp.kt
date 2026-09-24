@@ -116,6 +116,7 @@ fun RainingTraceApp(container: AppContainer) {
                         debugMapTap = container.debugMapTap,
                         settings = container.settingsRepository,
                         refreshLocation = container::refreshLocation,
+                        placeWriter = container.placeWriter,
                     )
                 }
                 MapScreen(

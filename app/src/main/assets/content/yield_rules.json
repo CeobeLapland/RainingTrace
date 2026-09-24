@@ -1,0 +1,218 @@
+{
+  "schemaVersion": 1,
+  "removedIds": [],
+  "entries": [
+    {
+      "id": "rule.observe.base",
+      "resourceId": "res.observation_record",
+      "action": "OBSERVE",
+      "amount": 1,
+      "cooldownMs": 600000,
+      "conditions": []
+    },
+    {
+      "id": "rule.observe.rainy_lake",
+      "resourceId": "res.lake_memory_fragment",
+      "action": "OBSERVE",
+      "placeType": "LAKE",
+      "amount": 1,
+      "cooldownMs": 1800000,
+      "conditions": [
+        { "type": "weatherIn", "kinds": ["RAINY"] }
+      ]
+    },
+    {
+      "id": "rule.observe.mirror_moon_fish",
+      "resourceId": "res.mirror_moon_fish_shadow",
+      "action": "OBSERVE",
+      "placeType": "LAKE",
+      "amount": 1,
+      "cooldownMs": 7200000,
+      "conditions": [
+        { "type": "weatherIn", "kinds": ["RAINY"] },
+        { "type": "timeOfDayIn", "times": ["NIGHT"] }
+      ]
+    },
+    {
+      "id": "rule.collect.base",
+      "resourceId": "res.rain_moss",
+      "action": "COLLECT",
+      "placeType": "GARDEN",
+      "amount": 1,
+      "cooldownMs": 600000,
+      "conditions": []
+    },
+    {
+      "id": "rule.collect.rain_moss",
+      "resourceId": "res.rain_moss",
+      "action": "COLLECT",
+      "placeType": "GARDEN",
+      "amount": 2,
+      "cooldownMs": 600000,
+      "conditions": [
+        { "type": "weatherIn", "kinds": ["RAINY"] }
+      ]
+    },
+    {
+      "id": "rule.collect.reed",
+      "resourceId": "res.reed_leaf",
+      "action": "COLLECT",
+      "placeType": "LAKE",
+      "amount": 1,
+      "cooldownMs": 600000,
+      "conditions": []
+    },
+    {
+      "id": "rule.collect.pine_cone",
+      "resourceId": "res.pine_cone",
+      "action": "COLLECT",
+      "placeType": "GARDEN",
+      "amount": 2,
+      "cooldownMs": 600000,
+      "conditions": [
+        { "type": "seasonIn", "seasons": ["AUTUMN"] }
+      ]
+    },
+    {
+      "id": "rule.collect.petal",
+      "resourceId": "res.petal",
+      "action": "COLLECT",
+      "placeType": "GARDEN",
+      "amount": 2,
+      "cooldownMs": 600000,
+      "conditions": [
+        { "type": "seasonIn", "seasons": ["SPRING"] }
+      ]
+    },
+    {
+      "id": "rule.collect.dew_grass",
+      "resourceId": "res.dew_grass",
+      "action": "COLLECT",
+      "placeType": "GARDEN",
+      "amount": 1,
+      "cooldownMs": 600000,
+      "conditions": [
+        { "type": "timeOfDayIn", "times": ["DAWN"] }
+      ]
+    },
+    {
+      "id": "rule.collect.frost",
+      "resourceId": "res.frost_pattern",
+      "action": "COLLECT",
+      "placeType": "GARDEN",
+      "amount": 1,
+      "cooldownMs": 3600000,
+      "conditions": [
+        { "type": "weatherIn", "kinds": ["SNOW"] },
+        { "type": "seasonIn", "seasons": ["WINTER"] }
+      ]
+    },
+    {
+      "id": "rule.collect.shelf_card",
+      "resourceId": "res.shelf_card",
+      "action": "COLLECT",
+      "placeType": "LIBRARY",
+      "amount": 1,
+      "cooldownMs": 600000,
+      "conditions": []
+    },
+    {
+      "id": "rule.collect.reading_note",
+      "resourceId": "res.reading_note",
+      "action": "COLLECT",
+      "placeType": "LIBRARY",
+      "amount": 1,
+      "cooldownMs": 600000,
+      "conditions": [
+        { "type": "timeOfDayIn", "times": ["DAY", "DUSK"] }
+      ]
+    },
+    {
+      "id": "rule.collect.menu_ticket",
+      "resourceId": "res.menu_ticket",
+      "action": "COLLECT",
+      "placeType": "CANTEEN",
+      "amount": 1,
+      "cooldownMs": 600000,
+      "conditions": []
+    },
+    {
+      "id": "rule.collect.plaza_flyer",
+      "resourceId": "res.plaza_flyer",
+      "action": "COLLECT",
+      "placeType": "PLAZA",
+      "amount": 1,
+      "cooldownMs": 600000,
+      "conditions": []
+    },
+    {
+      "id": "rule.collect.dorm_scrap",
+      "resourceId": "res.dorm_scrap",
+      "action": "COLLECT",
+      "placeType": "DORM",
+      "amount": 1,
+      "cooldownMs": 600000,
+      "conditions": []
+    },
+    {
+      "id": "rule.collect.night_water_sound",
+      "resourceId": "res.night_water_sound",
+      "action": "COLLECT",
+      "placeType": "LAKE",
+      "amount": 1,
+      "cooldownMs": 2700000,
+      "conditions": [
+        { "type": "timeOfDayIn", "times": ["NIGHT"] }
+      ]
+    },
+    {
+      "id": "rule.collect.berry",
+      "resourceId": "res.wild_berry",
+      "action": "COLLECT",
+      "placeType": "BERRY_BUSH",
+      "amount": 1,
+      "cooldownMs": 600000,
+      "conditions": []
+    },
+    {
+      "id": "rule.collect.mushroom",
+      "resourceId": "res.wild_mushroom",
+      "action": "COLLECT",
+      "placeType": "MUSHROOM_PATCH",
+      "amount": 1,
+      "cooldownMs": 600000,
+      "conditions": []
+    },
+    {
+      "id": "rule.collect.mushroom_after_rain",
+      "resourceId": "res.wild_mushroom",
+      "action": "COLLECT",
+      "placeType": "MUSHROOM_PATCH",
+      "amount": 2,
+      "cooldownMs": 600000,
+      "conditions": [
+        { "type": "weatherIn", "kinds": ["RAINY"] }
+      ]
+    },
+    {
+      "id": "rule.collect.apple",
+      "resourceId": "res.green_apple",
+      "action": "COLLECT",
+      "placeType": "ORCHARD",
+      "amount": 1,
+      "cooldownMs": 600000,
+      "conditions": []
+    },
+    {
+      "id": "rule.collect.apple_autumn",
+      "resourceId": "res.green_apple",
+      "action": "COLLECT",
+      "placeType": "ORCHARD",
+      "amount": 2,
+      "cooldownMs": 600000,
+      "conditions": [
+        { "type": "seasonIn", "seasons": ["AUTUMN"] }
+      ]
+    }
+  ]
+}

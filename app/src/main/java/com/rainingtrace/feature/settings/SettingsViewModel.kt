@@ -2,6 +2,8 @@ package com.rainingtrace.feature.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.rainingtrace.domain.content.ContentIndex
+import com.rainingtrace.domain.content.ContentPanel
 import com.rainingtrace.domain.map.GridLevel
 import com.rainingtrace.domain.settings.AppSettingsRepository
 import com.rainingtrace.domain.settings.BackgroundInterval
@@ -32,6 +34,8 @@ class SettingsViewModel(
     private val mutableWeather: MutableWeatherProvider? = null,
     private val seasonSource: SeasonSource? = null,
     private val timeOfDaySource: TimeOfDaySource? = null,
+    /** 内容源（开发者模式）：传空则整个「内容」分区隐藏。 */
+    private val contentPanel: ContentPanel? = null,
 ) : ViewModel() {
 
     val gridLevel = settings.gridLevel
@@ -56,6 +60,22 @@ class SettingsViewModel(
     val canSetSeason: Boolean get() = seasonSource != null
 
     val canSetTimeOfDay: Boolean get() = timeOfDaySource != null
+
+    val canEditContent: Boolean get() = contentPanel != null
+
+    /**
+     * 当前内容的条数与诊断（开发者模式）。初始值直接取已加载的快照，
+     * 所以进设置页不会先闪一下空列表。
+     */
+    val contentIndex: StateFlow<ContentIndex?> = contentPanel
+        ?.let { panel ->
+            panel.index.stateIn(
+                viewModelScope,
+                SharingStarted.WhileSubscribed(5_000),
+                panel.index.value,
+            )
+        }
+        ?: MutableStateFlow<ContentIndex?>(null)
 
     /** 当前天气：地图 chip、产出条件都跟着它走。 */
     val weatherKind: StateFlow<WeatherKind?> = mutableWeather?.weather
@@ -107,6 +127,11 @@ class SettingsViewModel(
 
     fun setNpcClockOffset(offset: NpcClockOffset) {
         viewModelScope.launch { settings.setNpcClockOffset(offset) }
+    }
+
+    /** 重读 assets + files/content 覆盖层（改完 JSON 不用重装包）。 */
+    fun reloadContent() {
+        contentPanel?.reload()
     }
 
     fun setProactiveLevel(level: ProactiveLevel) =

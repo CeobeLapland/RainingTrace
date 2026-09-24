@@ -13,6 +13,16 @@ sealed interface WorldCondition {
 
     fun isSatisfiedBy(state: WorldState): Boolean
 
+    /**
+     * 这条条件的"具体度"权重：条件越具体，产出规则的优先级越高
+     * （见 `ResourceYieldRule.specificity`）。
+     *
+     * [Not] 覆写为 0：否定条件说的是"不要什么"，比正向条件**更不具体**。
+     * 不这样做的话，`Not(雨天)` 会和"雨天湖边"拿同样的分甚至压过它，
+     * 优先级方向就完全反了。
+     */
+    val weight: Int get() = 1
+
     /** 天气属于给定集合。 */
     data class WeatherIn(val kinds: Set<WeatherKind>) : WorldCondition {
         init {
@@ -74,6 +84,20 @@ sealed interface WorldCondition {
     data class All(val conditions: List<WorldCondition>) : WorldCondition {
         override fun isSatisfiedBy(state: WorldState): Boolean =
             conditions.all { it.isSatisfiedBy(state) }
+    }
+
+    /**
+     * 取反（GDD §21：内容要能配"不下雨的时候"）。
+     *
+     * 语义就是布尔取反，**不做三值逻辑**：`Not(SeasonIn(AUTUMN))` 在
+     * 季节未确定（`season == null`）时为**真**。这是唯一会让作者意外的地方，写死在这里。
+     *
+     * 权重为 0（见 [weight]），所以否定条件不会抢过正向限定。
+     */
+    data class Not(val condition: WorldCondition) : WorldCondition {
+        override val weight: Int get() = 0
+
+        override fun isSatisfiedBy(state: WorldState): Boolean = !condition.isSatisfiedBy(state)
     }
 }
 

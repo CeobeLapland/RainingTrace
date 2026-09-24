@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "topics": {
+    "BOOKS": ["书", "看书", "读", "自习", "复习", "考试", "作业", "论文", "图书馆"],
+    "ART": ["画", "写生", "素描", "颜料", "颜色"],
+    "RUNNING": ["跑步", "跑", "运动", "锻炼", "操场"],
+    "FOOD": ["吃", "饭", "食堂", "菜", "面", "夜宵", "早饭", "早餐"],
+    "WEATHER": ["天气", "下雨", "雨", "晴", "雪", "雾", "风", "冷", "热", "阴天"],
+    "NIGHT": ["夜", "晚上", "半夜", "熬夜", "星星", "月亮"],
+    "PLANTS": ["花", "树", "草", "果子", "菌", "叶子", "苔", "松果"],
+    "SELF": ["你是谁", "名字", "住在", "做什么的", "忙什么", "哪里人", "哪儿人"]
+  },
+  "times": [
+    { "text": "明天下午", "hint": "TOMORROW_AFTERNOON" },
+    { "text": "明天早上", "hint": "TOMORROW_MORNING" },
+    { "text": "明天晚上", "hint": "TOMORROW_EVENING" },
+    { "text": "明天", "hint": "TOMORROW_AFTERNOON" },
+    { "text": "今天晚上", "hint": "TONIGHT" },
+    { "text": "今晚", "hint": "TONIGHT" },
+    { "text": "待会儿", "hint": "LATER_TODAY" },
+    { "text": "待会", "hint": "LATER_TODAY" },
+    { "text": "过会儿", "hint": "LATER_TODAY" },
+    { "text": "等会", "hint": "LATER_TODAY" },
+    { "text": "现在", "hint": "NOW" }
+  ],
+  "meet": ["等我", "等一", "见面", "见一面", "一起", "来找我", "陪我", "碰头"],
+  "scheduleQuestions": ["在哪", "去哪里", "有空", "有没空", "忙不忙", "干嘛", "在做什么", "干什么"],
+  "questionMarkers": ["？", "?", "吗", "呢", "在不在", "有没有", "是不是"]
+}

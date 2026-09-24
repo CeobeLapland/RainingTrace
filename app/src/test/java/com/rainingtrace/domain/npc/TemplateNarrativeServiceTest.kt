@@ -1,5 +1,6 @@
 package com.rainingtrace.domain.npc
 
+import com.rainingtrace.data.content.ShippedContent
 import com.rainingtrace.domain.world.SeededRandomSource
 import com.rainingtrace.domain.world.WeatherKind
 import com.rainingtrace.domain.world.WeatherState
@@ -15,7 +16,7 @@ import org.junit.Test
 
 class TemplateNarrativeServiceTest {
 
-    private val service = TemplateNarrativeService(SeededRandomSource(42L))
+    private val service = TemplateNarrativeService(SeededRandomSource(42L)) { ShippedContent.lines }
 
     private fun profile(
         traits: Set<NpcTrait> = emptySet(),
@@ -77,8 +78,10 @@ class TemplateNarrativeServiceTest {
     fun `same seed produces the same reply`() = runTest {
         val parsed = ParsedPlayerMessage(raw = "书", topics = setOf(NpcTopic.BOOKS))
 
-        val a = TemplateNarrativeService(SeededRandomSource(7L)).respond(context(parsed)).text
-        val b = TemplateNarrativeService(SeededRandomSource(7L)).respond(context(parsed)).text
+        val a = TemplateNarrativeService(SeededRandomSource(7L)) { ShippedContent.lines }
+            .respond(context(parsed)).text
+        val b = TemplateNarrativeService(SeededRandomSource(7L)) { ShippedContent.lines }
+            .respond(context(parsed)).text
 
         assertEquals(a, b)
     }
@@ -148,9 +151,9 @@ class TemplateNarrativeServiceTest {
     fun `relationship stage changes the tone`() = runTest {
         val parsed = ParsedPlayerMessage(raw = "书", topics = setOf(NpcTopic.BOOKS))
 
-        val stranger = TemplateNarrativeService(SeededRandomSource(3L))
+        val stranger = TemplateNarrativeService(SeededRandomSource(3L)) { ShippedContent.lines }
             .respond(context(parsed, stage = RelationshipStage.STRANGER)).text
-        val friend = TemplateNarrativeService(SeededRandomSource(3L))
+        val friend = TemplateNarrativeService(SeededRandomSource(3L)) { ShippedContent.lines }
             .respond(context(parsed, stage = RelationshipStage.FRIEND)).text
 
         assertNotEquals(stranger, friend)

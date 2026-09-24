@@ -1,6 +1,7 @@
 package com.rainingtrace.domain.npc
 
 import com.rainingtrace.core.time.FakeWorldClock
+import com.rainingtrace.data.content.ShippedContent
 import com.rainingtrace.domain.footprint.FootprintEvent
 import com.rainingtrace.domain.footprint.FootprintEventType
 import com.rainingtrace.domain.footprint.FootprintRepository
@@ -141,13 +142,15 @@ class SendNpcMessageUseCaseTest {
         states: FakeStates = FakeStates(),
         footprints: FakeFootprints = FakeFootprints(),
         commitments: FakeCommitments = FakeCommitments(),
-        narrative: NarrativeService = TemplateNarrativeService(SeededRandomSource(1L)),
+        narrative: NarrativeService = TemplateNarrativeService(
+            SeededRandomSource(1L),
+        ) { ShippedContent.lines },
     ) = SendNpcMessageUseCase(
         clock = clock,
         npcRepository = npcs,
         placeRepository = places,
         npcPresence = NpcPresenceUseCase(npcs, places),
-        parser = RuleBasedNpcMessageParser(),
+        parser = RuleBasedNpcMessageParser { ShippedContent.keywords },
         narrative = narrative,
         messageRepository = messages,
         stateRepository = states,

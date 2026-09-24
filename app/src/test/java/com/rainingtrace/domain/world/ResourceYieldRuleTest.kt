@@ -1,5 +1,6 @@
 package com.rainingtrace.domain.world
 
+import com.rainingtrace.data.content.ShippedContent
 import com.rainingtrace.domain.inventory.InMemoryResourceCatalog
 import com.rainingtrace.domain.map.Place
 import com.rainingtrace.domain.map.PlaceActionType
@@ -15,7 +16,7 @@ import org.junit.Test
 class ResourceYieldRuleTest {
 
     private val origin = WorldCoordinate(39.7326, 116.1712)
-    private val catalog = InMemoryResourceYieldRuleCatalog(InMemoryResourceYieldRuleCatalog.DEFAULT)
+    private val catalog = InMemoryResourceYieldRuleCatalog(ShippedContent.yieldRules)
 
     private fun place(type: PlaceType, id: String = "place.x") = Place(
         id = id,
@@ -32,16 +33,42 @@ class ResourceYieldRuleTest {
 
     @Test
     fun `base rule matches any place when there is no condition`() {
-        val rule = InMemoryResourceYieldRuleCatalog.OBSERVE_BASE
+        val rule = ShippedContent.rule("rule.observe.base")
 
         assertTrue(rule.matches(place(PlaceType.LAKE), state(12, WeatherKind.CLEAR)))
         assertTrue(rule.matches(place(PlaceType.LIBRARY), state(12, WeatherKind.SNOW)))
         assertEquals(0, rule.specificity)
     }
 
+    /**
+     * 否定条件（`Not`）说的是"不要什么"，比正向条件更不具体。
+     * 如果按条件条数算具体度，"不下雨的湖边"会压过"雨天的湖边"——方向就反了。
+     */
+    @Test
+    fun `a negated condition does not outrank the positive one`() {
+        val rainy = ResourceYieldRule(
+            id = "rule.rainy",
+            resourceId = "res.x",
+            action = PlaceActionType.OBSERVE,
+            placeType = PlaceType.LAKE,
+            conditions = listOf(RAINY_WEATHER),
+        )
+        val notRainy = ResourceYieldRule(
+            id = "rule.not_rainy",
+            resourceId = "res.x",
+            action = PlaceActionType.OBSERVE,
+            placeType = PlaceType.LAKE,
+            conditions = listOf(WorldCondition.Not(RAINY_WEATHER)),
+        )
+
+        assertTrue(notRainy.specificity < rainy.specificity)
+        // "不下雨的湖边"确实在晴天成立 —— 语义和第二半句一致。
+        assertTrue(notRainy.matches(place(PlaceType.LAKE), state(12, WeatherKind.CLEAR)))
+    }
+
     @Test
     fun `conditional rule matches only its place type and weather`() {
-        val rule = InMemoryResourceYieldRuleCatalog.OBSERVE_RAINY_LAKE
+        val rule = ShippedContent.rule("rule.observe.rainy_lake")
 
         assertTrue(rule.matches(place(PlaceType.LAKE), state(12, WeatherKind.LIGHT_RAIN)))
         // 天气对但地点不对
@@ -52,8 +79,8 @@ class ResourceYieldRuleTest {
 
     @Test
     fun `conditional rule is more specific than the base rule`() {
-        val base = InMemoryResourceYieldRuleCatalog.OBSERVE_BASE
-        val conditional = InMemoryResourceYieldRuleCatalog.OBSERVE_RAINY_LAKE
+        val base = ShippedContent.rule("rule.observe.base")
+        val conditional = ShippedContent.rule("rule.observe.rainy_lake")
 
         assertTrue(conditional.specificity > base.specificity)
     }
@@ -74,11 +101,15 @@ class ResourceYieldRuleTest {
         )
     }
 
+    /**
+     * 引用完整性：规则指向的资源必须存在。
+     * 这条原来靠编译期常量，现在靠真实 JSON —— `ShippedContent` 读的就是内置文件。
+     */
     @Test
-    fun `every default rule yields a resource that exists in the catalog`() {
-        val resources = InMemoryResourceCatalog(InMemoryResourceCatalog.DEFAULT)
+    fun `every shipped rule yields a resource that exists in the catalog`() {
+        val resources = InMemoryResourceCatalog(ShippedContent.resources)
 
-        InMemoryResourceYieldRuleCatalog.DEFAULT.forEach { rule ->
+        ShippedContent.yieldRules.forEach { rule ->
             assertTrue(
                 "missing resource definition for ${rule.resourceId}",
                 resources.definition(rule.resourceId) != null,
@@ -88,8 +119,8 @@ class ResourceYieldRuleTest {
 
     @Test
     fun `default catalog keeps the conditional rule's cooldown longer than the base`() {
-        val base = InMemoryResourceYieldRuleCatalog.OBSERVE_BASE
-        val conditional = InMemoryResourceYieldRuleCatalog.OBSERVE_RAINY_LAKE
+        val base = ShippedContent.rule("rule.observe.base")
+        val conditional = ShippedContent.rule("rule.observe.rainy_lake")
 
         assertTrue(conditional.cooldownMs > base.cooldownMs)
     }

@@ -1,0 +1,150 @@
+{
+  "schemaVersion": 1,
+  "removedIds": [],
+  "entries": [
+    {
+      "id": "res.observation_record",
+      "name": "观察记录",
+      "category": "KNOWLEDGE",
+      "rarity": "COMMON",
+      "tags": ["observe", "lake"],
+      "description": "在某个地点认真看过之后留下的记录。"
+    },
+    {
+      "id": "res.lake_memory_fragment",
+      "name": "湖泊记忆碎片",
+      "category": "MEMORY",
+      "rarity": "UNCOMMON",
+      "tags": ["lake", "memory", "rain"],
+      "description": "关于北湖的一段记忆凝结成的碎片。雨天在水边最容易捡到。"
+    },
+    {
+      "id": "res.rain_moss",
+      "name": "雨生苔痕",
+      "category": "NATURE",
+      "rarity": "COMMON",
+      "tags": ["moss", "rain", "garden"],
+      "description": "雨后才舒展的苔藓，摸上去凉而软。"
+    },
+    {
+      "id": "res.reed_leaf",
+      "name": "芦苇叶",
+      "category": "NATURE",
+      "rarity": "COMMON",
+      "tags": ["reed", "lake"],
+      "description": "湖岸的芦苇叶，晒干可以编点什么。"
+    },
+    {
+      "id": "res.pine_cone",
+      "name": "松果",
+      "category": "NATURE",
+      "rarity": "COMMON",
+      "tags": ["pine", "garden", "autumn"],
+      "description": "落在小径上的松果，秋天尤其多。"
+    },
+    {
+      "id": "res.petal",
+      "name": "花瓣",
+      "category": "NATURE",
+      "rarity": "COMMON",
+      "tags": ["flower", "garden", "spring"],
+      "description": "刚落下不久的花瓣，颜色还很新。"
+    },
+    {
+      "id": "res.dew_grass",
+      "name": "带露的草叶",
+      "category": "NATURE",
+      "rarity": "COMMON",
+      "tags": ["grass", "dawn"],
+      "description": "天刚亮时草叶上挂着的露水，一碰就碎。"
+    },
+    {
+      "id": "res.night_water_sound",
+      "name": "夜水声",
+      "category": "CULTURE",
+      "rarity": "UNCOMMON",
+      "tags": ["lake", "night", "sound"],
+      "description": "入夜后湖面才有的那种细碎水声，听过就记住了。"
+    },
+    {
+      "id": "res.shelf_card",
+      "name": "书目卡",
+      "category": "KNOWLEDGE",
+      "rarity": "COMMON",
+      "tags": ["library", "book"],
+      "description": "从书脊间抽出的一张旧书目卡，字迹已经发淡。"
+    },
+    {
+      "id": "res.reading_note",
+      "name": "阅读随记",
+      "category": "KNOWLEDGE",
+      "rarity": "COMMON",
+      "tags": ["library", "note"],
+      "description": "在图书馆坐下来读完一段之后写下的几行字。"
+    },
+    {
+      "id": "res.menu_ticket",
+      "name": "今日菜签",
+      "category": "CULTURE",
+      "rarity": "COMMON",
+      "tags": ["canteen", "food"],
+      "description": "食堂窗口挂着的小菜签，每天都不一样。"
+    },
+    {
+      "id": "res.plaza_flyer",
+      "name": "活动传单",
+      "category": "CULTURE",
+      "rarity": "COMMON",
+      "tags": ["plaza", "event"],
+      "description": "广场角落落下的传单，写着某场社团活动。"
+    },
+    {
+      "id": "res.dorm_scrap",
+      "name": "宿舍便签",
+      "category": "CULTURE",
+      "rarity": "COMMON",
+      "tags": ["dorm", "note"],
+      "description": "贴在桌边的一张便签，提醒自己别忘了带什么。"
+    },
+    {
+      "id": "res.wild_berry",
+      "name": "野莓",
+      "category": "NATURE",
+      "rarity": "COMMON",
+      "tags": ["berry", "bush"],
+      "description": "灌木上摘下来的野莓，酸甜都靠运气。"
+    },
+    {
+      "id": "res.wild_mushroom",
+      "name": "野菌",
+      "category": "NATURE",
+      "rarity": "COMMON",
+      "tags": ["mushroom", "rain"],
+      "description": "雨后从树根边冒出来的菌子，只有湿润那几天好找。"
+    },
+    {
+      "id": "res.green_apple",
+      "name": "青苹果",
+      "category": "NATURE",
+      "rarity": "COMMON",
+      "tags": ["apple", "orchard", "autumn"],
+      "description": "果林里挂着的青苹果，秋天最沉。"
+    },
+    {
+      "id": "res.mirror_moon_fish_shadow",
+      "name": "镜月鱼影",
+      "category": "ANOMALY",
+      "rarity": "ANOMALY",
+      "tags": ["lake", "night", "rain", "anomaly"],
+      "description": "雨夜里湖面反光里多出来的那条鱼影。说不清是什么。"
+    },
+    {
+      "id": "res.frost_pattern",
+      "name": "霜纹",
+      "category": "ANOMALY",
+      "rarity": "RARE",
+      "tags": ["winter", "snow", "garden", "anomaly"],
+      "description": "雪天窗面上结出的花纹，形状像是被人画上去的。"
+    }
+  ]
+}

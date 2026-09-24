@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 1,
+  "removedIds": [],
+  "entries": [
+    {
+      "id": "rule.lin.rain_library",
+      "npcId": "npc.bit.lin",
+      "text": "下雨了，{place}这边人少，挺安静的。",
+      "cooldownMs": 43200000,
+      "priority": 0,
+      "condition": {
+        "type": "all",
+        "conditions": [
+          { "type": "weatherBecame", "kinds": ["RAINY"] },
+          { "type": "world", "condition": { "type": "timeOfDayIn", "times": ["DAY"] } }
+        ]
+      }
+    },
+    {
+      "id": "rule.zhou.plaza_morning",
+      "npcId": "npc.bit.zhou",
+      "text": "刚跑完两圈。这两天没见着你，是不是起晚了。",
+      "cooldownMs": 86400000,
+      "priority": 0,
+      "condition": {
+        "type": "all",
+        "conditions": [
+          { "type": "world", "condition": { "type": "betweenMinutes", "start": 360, "end": 480 } },
+          { "type": "playerIdleFor", "days": 2 }
+        ]
+      }
+    },
+    {
+      "id": "rule.xu.lake_dusk",
+      "npcId": "npc.bit.xu",
+      "text": "你刚去过湖边吧。那会儿的光最好，我正好收了画架。",
+      "cooldownMs": 28800000,
+      "priority": 0,
+      "condition": {
+        "type": "all",
+        "conditions": [
+          { "type": "playerEnteredPlace", "placeType": "LAKE" },
+          { "type": "world", "condition": { "type": "timeOfDayIn", "times": ["DUSK"] } }
+        ]
+      }
+    },
+    {
+      "id": "rule.he.night_fog",
+      "npcId": "npc.bit.he",
+      "text": "起雾了。这个点出来走，雾里几乎看不见人。",
+      "cooldownMs": 43200000,
+      "priority": 0,
+      "condition": {
+        "type": "all",
+        "conditions": [
+          { "type": "world", "condition": { "type": "timeOfDayIn", "times": ["NIGHT"] } },
+          { "type": "weatherBecame", "kinds": ["FOG"] }
+        ]
+      }
+    },
+    {
+      "id": "rule.qi.orchard_autumn",
+      "npcId": "npc.bit.qi",
+      "text": "{place}这边的果子快熟了，再等几天。",
+      "cooldownMs": 86400000,
+      "priority": 0,
+      "condition": {
+        "type": "all",
+        "conditions": [
+          { "type": "world", "condition": { "type": "seasonIn", "seasons": ["AUTUMN"] } },
+          { "type": "world", "condition": { "type": "timeOfDayIn", "times": ["DAY"] } }
+        ]
+      }
+    },
+    {
+      "id": "rule.qi.heard_about_he",
+      "npcId": "npc.bit.qi",
+      "text": "听说你今天碰到何了。他话不多，人不坏。",
+      "cooldownMs": 86400000,
+      "priority": 0,
+      "condition": { "type": "playerMetNpc", "npcId": "npc.bit.he" }
+    },
+    {
+      "id": "rule.xu.spring_rain",
+      "npcId": "npc.bit.xu",
+      "text": "春天的雨最有意思，湖面上全是圈。",
+      "cooldownMs": 43200000,
+      "priority": 0,
+      "condition": {
+        "type": "all",
+        "conditions": [
+          { "type": "weatherBecame", "kinds": ["RAINY"] },
+          { "type": "world", "condition": { "type": "seasonIn", "seasons": ["SPRING"] } }
+        ]
+      }
+    },
+    {
+      "id": "rule.zhou.idle_3d",
+      "npcId": "npc.bit.zhou",
+      "text": "有几天没见你了，食堂还是老样子。",
+      "cooldownMs": 172800000,
+      "priority": 0,
+      "condition": { "type": "playerIdleFor", "days": 3 }
+    },
+    {
+      "id": "rule.qi.missed_commitment",
+      "npcId": "npc.bit.qi",
+      "text": "昨天在{place}等了一会儿，没见着你。没事，改天吧。",
+      "cooldownMs": 172800000,
+      "priority": 0,
+      "condition": { "type": "playerMissedCommitment", "npcId": "npc.bit.qi" }
+    },
+    {
+      "id": "rule.zhou.missed_commitment",
+      "npcId": "npc.bit.zhou",
+      "text": "昨天答应你那事，我到了，你没来。下次提前说一声。",
+      "cooldownMs": 172800000,
+      "priority": 0,
+      "condition": { "type": "playerMissedCommitment", "npcId": "npc.bit.zhou" }
+    }
+  ]
+}

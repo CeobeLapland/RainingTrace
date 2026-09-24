@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "removedIds": [],
+  "entries": [
+    {
+      "id": "npc.bit.lin",
+      "name": "林",
+      "oneLiner": "总在图书馆靠窗那排的人，桌上永远摊着两本书。",
+      "role": "大二学生",
+      "traits": ["TACITURN", "PUNCTUAL"],
+      "topics": ["BOOKS", "SELF"],
+      "favoriteTopic": "BOOKS",
+      "backstory": ["以前在图书馆丢过一次伞，后来就一直放在储物柜里。"],
+      "schedule": [
+        { "startMinute": 420, "placeId": "place.bit.dorm_3", "travelMinutes": 0, "activity": "刚起床，收拾书包" },
+        { "startMinute": 540, "placeId": "place.bit.library", "travelMinutes": 20, "activity": "在靠窗的位置自习" },
+        { "startMinute": 750, "placeId": "place.bit.canteen_one", "travelMinutes": 15, "activity": "排队打饭" },
+        { "startMinute": 1290, "placeId": "place.bit.dorm_3", "travelMinutes": 25, "activity": "回宿舍" }
+      ]
+    },
+    {
+      "id": "npc.bit.zhou",
+      "name": "周",
+      "oneLiner": "每天绕广场跑两圈，然后去食堂帮忙收餐盘。",
+      "role": "食堂帮工",
+      "traits": ["WARM", "TALKATIVE"],
+      "topics": ["FOOD", "RUNNING", "WEATHER"],
+      "favoriteTopic": "RUNNING",
+      "backstory": ["每天绕广场跑两圈，下雨也跑。"],
+      "schedule": [
+        { "startMinute": 360, "placeId": "place.bit.plaza", "travelMinutes": 0, "activity": "在广场上慢跑" },
+        { "startMinute": 690, "placeId": "place.bit.canteen_one", "travelMinutes": 20, "activity": "在食堂帮忙" },
+        { "startMinute": 1260, "placeId": "place.bit.dorm_3", "travelMinutes": 20, "activity": "回宿舍休息" }
+      ]
+    },
+    {
+      "id": "npc.bit.xu",
+      "name": "徐",
+      "oneLiner": "在湖边支着画架，一坐就是一下午。",
+      "role": "画画的人",
+      "traits": ["DREAMY", "RESERVED"],
+      "topics": ["ART", "WEATHER", "NIGHT"],
+      "favoriteTopic": "ART",
+      "backstory": ["画架是旧的，说用了很多年，一直没换。"],
+      "schedule": [
+        { "startMinute": 0, "placeId": "place.bit.north_lake", "travelMinutes": 0, "activity": "在湖边画画" }
+      ]
+    },
+    {
+      "id": "npc.bit.he",
+      "name": "何",
+      "oneLiner": "习惯很晚还在外面走，说夜里安静。",
+      "role": "夜里走动的人",
+      "traits": ["RESERVED", "CURIOUS"],
+      "topics": ["NIGHT", "BOOKS", "SELF"],
+      "favoriteTopic": "NIGHT",
+      "backstory": ["习惯很晚还在外面走，说夜里安静。"],
+      "schedule": [
+        { "startMinute": 480, "placeId": "place.bit.library", "travelMinutes": 30, "activity": "在图书馆翻旧书目卡" },
+        { "startMinute": 1380, "placeId": "place.bit.garden", "travelMinutes": 30, "activity": "在花园里散步" },
+        { "startMinute": 120, "placeId": "place.bit.dorm_3", "travelMinutes": 45, "activity": "回去睡觉" }
+      ]
+    },
+    {
+      "id": "npc.bit.qi",
+      "name": "齐",
+      "oneLiner": "总背着布袋在花园北边转，说是在看果子熟没熟。",
+      "role": "巡林的人",
+      "traits": ["PRACTICAL", "TACITURN"],
+      "topics": ["PLANTS", "WEATHER", "FOOD"],
+      "favoriteTopic": "PLANTS",
+      "backstory": ["总背着布袋在花园北边转，说是在看果子熟没熟。"],
+      "schedule": [
+        { "startMinute": 420, "placeId": "place.bit.orchard", "travelMinutes": 60, "activity": "在果林里转" },
+        { "startMinute": 780, "placeId": "place.bit.berry_bush", "travelMinutes": 90, "activity": "在浆果丛边蹲着" },
+        { "startMinute": 1140, "placeId": "place.bit.mushroom_patch", "travelMinutes": 90, "activity": "在树根边找菌子" }
+      ]
+    }
+  ]
+}
