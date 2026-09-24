@@ -1,6 +1,7 @@
 package com.rainingtrace.data.content
 
 import com.rainingtrace.domain.content.ContentReport
+import com.rainingtrace.domain.craft.Recipe
 import com.rainingtrace.domain.inventory.ResourceDefinition
 import com.rainingtrace.domain.map.Place
 import com.rainingtrace.domain.npc.NpcKeywordRules
@@ -43,6 +44,10 @@ object ShippedContent {
         load("yield_rules.json", ::decodeYieldRuleEntries).entries
     }
 
+    val recipes: List<Recipe> by lazy {
+        load("recipes.json", ::decodeRecipeEntries).entries
+    }
+
     val npcs: List<NpcProfile> by lazy { load("npcs.json", ::decodeNpcEntries).entries }
 
     val npcProactiveRules: List<NpcProactiveRule> by lazy {
@@ -64,6 +69,9 @@ object ShippedContent {
 
     fun rule(id: String): ResourceYieldRule =
         yieldRules.firstOrNull { it.id == id } ?: error("内置产出规则里没有 $id")
+
+    fun recipe(id: String): Recipe =
+        recipes.firstOrNull { it.id == id } ?: error("内置配方里没有 $id")
 
     fun npc(id: String): NpcProfile =
         npcs.firstOrNull { it.id == id } ?: error("内置 NPC 里没有 $id")

@@ -1,6 +1,8 @@
 package com.rainingtrace.data.content
 
 import com.rainingtrace.domain.content.ContentReport
+import com.rainingtrace.domain.inventory.ResourceCategory
+import com.rainingtrace.domain.inventory.ResourceDefinition
 import com.rainingtrace.domain.npc.NpcTopic
 import com.rainingtrace.domain.world.WeatherKind
 import com.rainingtrace.domain.world.WorldCondition
@@ -55,7 +57,7 @@ class ShippedContentTest {
         val decoded = decodeResourceEntries(readAsset("resources.json"), "resources.json", report)
 
         assertEquals("内置资源有错误：${report.items}", 0, report.errorCount)
-        assertTrue("内置资源数不足：${decoded.entries.size}", decoded.entries.size >= 18)
+        assertTrue("内置资源数不足：${decoded.entries.size}", decoded.entries.size >= 22)
         val ids = decoded.entries.map { it.id }
         assertEquals("资源 id 有重复：$ids", ids.size, ids.toSet().size)
     }
@@ -66,7 +68,7 @@ class ShippedContentTest {
         val decoded = decodeYieldRuleEntries(readAsset("yield_rules.json"), "yield_rules.json", report)
 
         assertEquals("内置产出规则有错误：${report.items}", 0, report.errorCount)
-        assertTrue("内置产出规则数不足：${decoded.entries.size}", decoded.entries.size >= 21)
+        assertTrue("内置产出规则数不足：${decoded.entries.size}", decoded.entries.size >= 23)
     }
 
     /**
@@ -109,6 +111,79 @@ class ShippedContentTest {
         val rainyLake = rules.first { it.id == "rule.observe.rainy_lake" }
         val weather = rainyLake.conditions.single() as WorldCondition.WeatherIn
         assertEquals(WeatherKind.RAINY, weather.kinds)
+    }
+
+    // ---- 加工配方 ----
+
+    private fun recipes(report: ContentReport) =
+        decodeRecipeEntries(readAsset("recipes.json"), "recipes.json", report)
+
+    @Test
+    fun `内置配方没有错误诊断且数量不缩水`() {
+        val report = ContentReport()
+        val decoded = recipes(report)
+
+        assertEquals("内置配方有错误：${report.items}", 0, report.errorCount)
+        assertTrue("内置配方数不足：${decoded.entries.size}", decoded.entries.size >= 2)
+        val ids = decoded.entries.map { it.id }
+        assertEquals("配方 id 有重复：$ids", ids.size, ids.toSet().size)
+    }
+
+    @Test
+    fun `每条配方引用的入料与产出资源都存在`() {
+        val resourceIds = decodeResourceEntries(
+            readAsset("resources.json"),
+            "resources.json",
+            ContentReport(),
+        ).entries.map { it.id }.toSet()
+
+        val dangling = recipes(ContentReport()).entries
+            .flatMap { recipe ->
+                (recipe.inputs.map { it.resourceId } + recipe.output.resourceId)
+                    .filterNot { it in resourceIds }
+            }
+            .toSet()
+
+        assertTrue("recipes.json 引用了不存在的资源：$dangling", dangling.isEmpty())
+    }
+
+    /**
+     * 链不能断：入料里凡是"加工品"，就必须真的做出来（是某条配方的产出）。
+     * 断了会让玩家永远缺一个拿不到的材料，而界面上完全看不出哪里不对。
+     */
+    @Test
+    fun `被当作入料的加工品都能做出来`() {
+        val decoded = recipes(ContentReport()).entries
+        val craftIds = decodeResourceEntries(
+            readAsset("resources.json"),
+            "resources.json",
+            ContentReport(),
+        ).entries.filter { it.category == ResourceCategory.CRAFT }.map { it.id }.toSet()
+        val craftOutputs = decoded.map { it.output.resourceId }.toSet()
+
+        val broken = decoded
+            .flatMap { it.inputs.map { input -> input.resourceId } }
+            .filter { it in craftIds && it !in craftOutputs }
+            .toSet()
+
+        assertTrue("这些加工品既做不出来、又被拿去当入料：$broken", broken.isEmpty())
+    }
+
+    @Test
+    fun `加工品的堆叠上限比自然物小`() {
+        val crafted = decodeResourceEntries(
+            readAsset("resources.json"),
+            "resources.json",
+            ContentReport(),
+        ).entries.filter { it.category == ResourceCategory.CRAFT }
+
+        assertTrue("资源里一个加工品都没有", crafted.isNotEmpty())
+        crafted.forEach {
+            assertTrue(
+                "${it.id} 是加工品，堆叠上限该比默认的 ${ResourceDefinition.DEFAULT_STACK_LIMIT} 小",
+                it.stackLimit < ResourceDefinition.DEFAULT_STACK_LIMIT,
+            )
+        }
     }
 
     // ---- NPC ----

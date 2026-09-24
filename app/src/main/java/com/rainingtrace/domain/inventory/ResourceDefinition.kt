@@ -27,9 +27,21 @@ data class ResourceDefinition(
     val rarity: Rarity,
     val tags: Set<String> = emptySet(),
     val description: String = "",
+    /**
+     * 单个堆叠（同一资源）的数量上限。
+     *
+     * **只用于展示**，不做硬性阻止：与"背包软容量"分工明确——
+     * 这个管一种资源的数量，软容量管背包里的**种类数**（见 `InventoryCapacity`）。
+     */
+    val stackLimit: Int = DEFAULT_STACK_LIMIT,
 ) {
     init {
         require(id.isNotBlank()) { "resource id must not be blank" }
         require(name.isNotBlank()) { "resource name must not be blank" }
+        require(stackLimit > 0) { "stackLimit must be positive, got $stackLimit" }
+    }
+
+    companion object {
+        const val DEFAULT_STACK_LIMIT = 99
     }
 }

@@ -1,4 +1,4 @@
-package com.rainingtrace.feature.inventory
+package com.rainingtrace.feature.crafting
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
@@ -27,25 +27,22 @@ import com.rainingtrace.R
 import com.rainingtrace.core.common.AppContainer
 
 /**
- * 背包/图鉴子页面：从「我的」进入，自带返回，不显示主外壳底栏。
+ * 制作子页面：从背包页签进入，自带返回，不显示主外壳底栏。
  */
 @Composable
-fun InventoryRoute(
+fun CraftRoute(
     container: AppContainer,
     onBack: () -> Unit,
-    onOpenCraft: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BackHandler { onBack() }
 
-    val inventoryViewModel: InventoryViewModel = viewModel {
-        InventoryViewModel(
+    val craftViewModel: CraftViewModel = viewModel {
+        CraftViewModel(
+            craftItem = container.craftItem,
+            recipeCatalog = container.recipeCatalog,
             inventoryRepository = container.inventoryRepository,
-            catalog = container.resourceCatalog,
-            yieldRules = container.resourceYieldRules,
-            recipes = container.recipeCatalog,
-            loadDiscoveries = container.loadResourceDiscoveries,
-            transferItem = container.transferItem,
+            resourceCatalog = container.resourceCatalog,
         )
     }
 
@@ -77,13 +74,13 @@ fun InventoryRoute(
                 }
                 Spacer(Modifier.width(4.dp))
                 Text(
-                    text = "背包 / 图鉴",
+                    text = "制作",
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
             }
 
-            InventoryScreen(viewModel = inventoryViewModel, onOpenCraft = onOpenCraft)
+            CraftScreen(viewModel = craftViewModel)
         }
     }
 }

@@ -1,5 +1,8 @@
 package com.rainingtrace.domain.content
 
+import com.rainingtrace.domain.craft.Recipe
+import com.rainingtrace.domain.craft.RecipeInput
+import com.rainingtrace.domain.craft.RecipeOutput
 import com.rainingtrace.domain.inventory.Rarity
 import com.rainingtrace.domain.inventory.ResourceCategory
 import com.rainingtrace.domain.inventory.ResourceDefinition
@@ -75,5 +78,30 @@ class ContentValidatorTest {
         id = id,
         resourceId = resourceId,
         action = PlaceActionType.COLLECT,
+    )
+
+    @Test
+    fun `配方引用的资源不存在时丢掉那条配方`() {
+        val report = ContentReport()
+        val content = WorldContent(
+            resources = listOf(resource("res.known")),
+            recipes = listOf(
+                recipe("recipe.ok", input = "res.known"),
+                recipe("recipe.dangling", input = "res.missing"),
+            ),
+        )
+
+        val cleaned = ContentValidator.validate(content, report)
+
+        assertEquals(listOf("recipe.ok"), cleaned.recipes.map { it.id })
+        assertEquals(1, report.errorCount)
+        assertEquals("recipe.dangling", report.items.first().entryId)
+    }
+
+    /** 输入与输出都给成同一个存在的资源时才是"没有悬空"。 */
+    private fun recipe(id: String, input: String) = Recipe(
+        id = id,
+        inputs = listOf(RecipeInput(resourceId = input, amount = 1)),
+        output = RecipeOutput(resourceId = "res.known", amount = 1),
     )
 }

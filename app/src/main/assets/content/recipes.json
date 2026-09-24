@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "removedIds": [],
+  "entries": [
+    {
+      "id": "recipe.rope",
+      "inputs": [
+        { "resourceId": "res.plant_fiber", "amount": 2 },
+        { "resourceId": "res.reed_leaf", "amount": 1 }
+      ],
+      "output": { "resourceId": "res.rope", "amount": 1 }
+    },
+    {
+      "id": "recipe.wood_tag",
+      "inputs": [
+        { "resourceId": "res.drift_wood", "amount": 2 },
+        { "resourceId": "res.rope", "amount": 1 }
+      ],
+      "output": { "resourceId": "res.wood_tag", "amount": 1 }
+    }
+  ]
+}

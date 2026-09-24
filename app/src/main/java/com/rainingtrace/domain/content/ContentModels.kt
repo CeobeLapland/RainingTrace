@@ -1,5 +1,6 @@
 package com.rainingtrace.domain.content
 
+import com.rainingtrace.domain.craft.Recipe
 import com.rainingtrace.domain.inventory.ResourceDefinition
 import com.rainingtrace.domain.map.Place
 import com.rainingtrace.domain.map.PlaceActionType
@@ -61,6 +62,8 @@ data class WorldContent(
     val places: List<Place> = emptyList(),
     val resources: List<ResourceDefinition> = emptyList(),
     val yieldRules: List<ResourceYieldRule> = emptyList(),
+    /** 加工配方（输入 → 输出）。与产出规则是两套：配方无地点、无冷却、有消耗。 */
+    val recipes: List<Recipe> = emptyList(),
     val npcs: List<NpcProfile> = emptyList(),
     val npcProactiveRules: List<NpcProactiveRule> = emptyList(),
     /** 台词表：key → 变体（`"$npcId.$key"` 覆盖在前，共享 `key` 兜底）。 */
@@ -95,6 +98,10 @@ class ContentIndex(
     val yieldRulesByAction: Map<PlaceActionType, List<ResourceYieldRule>> =
         content.yieldRules.groupBy { it.action }
 
+    val recipes: List<Recipe> get() = content.recipes
+
+    val recipeById: Map<String, Recipe> = content.recipes.associateBy { it.id }
+
     val npcs: List<NpcProfile> get() = content.npcs
 
     val npcById: Map<String, NpcProfile> = content.npcs.associateBy { it.id }
@@ -118,6 +125,7 @@ class ContentIndex(
         PLACES to content.places.size,
         RESOURCES to content.resources.size,
         YIELD_RULES to content.yieldRules.size,
+        RECIPES to content.recipes.size,
         NPCS to content.npcs.size,
         NPC_PROACTIVE_RULES to content.npcProactiveRules.size,
         NPC_LINES to content.npcLines.size,
@@ -132,6 +140,7 @@ class ContentIndex(
         const val PLACES = "places"
         const val RESOURCES = "resources"
         const val YIELD_RULES = "yield_rules"
+        const val RECIPES = "recipes"
         const val NPCS = "npcs"
         const val NPC_PROACTIVE_RULES = "npc_proactive_rules"
         const val NPC_LINES = "npc_lines"

@@ -57,6 +57,13 @@ class ContentStore(private val context: Context) : ContentPanel {
                 idOf = { it.id },
                 report = report,
             ),
+            recipes = loadKind(
+                file = RECIPES,
+                overlayLabel = OVERLAY_RECIPES,
+                decode = ::decodeRecipeEntries,
+                idOf = { it.id },
+                report = report,
+            ),
             npcs = loadKind(
                 file = NPCS,
                 overlayLabel = OVERLAY_NPCS,
@@ -197,6 +204,7 @@ class ContentStore(private val context: Context) : ContentPanel {
         "地点 ${places.size}",
         "资源 ${resources.size}",
         "产出规则 ${yieldRules.size}",
+        "配方 ${recipes.size}",
         "NPC ${npcs.size}",
         "主动规则 ${npcProactiveRules.size}",
         "台词 key ${npcLines.size}",
@@ -213,6 +221,7 @@ class ContentStore(private val context: Context) : ContentPanel {
         internal const val PLACES_FILE = "places.json"
         private const val RESOURCES = "resources.json"
         private const val YIELD_RULES = "yield_rules.json"
+        private const val RECIPES = "recipes.json"
         private const val NPCS = "npcs.json"
         private const val NPC_PROACTIVE_RULES = "npc_proactive_rules.json"
         private const val NPC_LINES = "npc_lines.json"
@@ -223,6 +232,7 @@ class ContentStore(private val context: Context) : ContentPanel {
         private const val OVERLAY_PLACES = "$PLACES_FILE（覆盖）"
         private const val OVERLAY_RESOURCES = "$RESOURCES（覆盖）"
         private const val OVERLAY_YIELD_RULES = "$YIELD_RULES（覆盖）"
+        private const val OVERLAY_RECIPES = "$RECIPES（覆盖）"
         private const val OVERLAY_NPCS = "$NPCS（覆盖）"
         private const val OVERLAY_NPC_PROACTIVE_RULES = "$NPC_PROACTIVE_RULES（覆盖）"
         private const val OVERLAY_NPC_LINES = "$NPC_LINES（覆盖）"

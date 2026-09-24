@@ -145,6 +145,40 @@
       "rarity": "RARE",
       "tags": ["winter", "snow", "garden", "anomaly"],
       "description": "雪天窗面上结出的花纹，形状像是被人画上去的。"
+    },
+    {
+      "id": "res.plant_fiber",
+      "name": "植物纤维",
+      "category": "NATURE",
+      "rarity": "COMMON",
+      "tags": ["fiber", "bush", "craft"],
+      "description": "从灌木上剥下来的韧皮纤维，搓一搓就能当绳用。"
+    },
+    {
+      "id": "res.drift_wood",
+      "name": "浮木",
+      "category": "NATURE",
+      "rarity": "COMMON",
+      "tags": ["wood", "lake", "craft"],
+      "description": "湖岸冲上来的小木块，晒干以后是很好的材料。"
+    },
+    {
+      "id": "res.rope",
+      "name": "草绳",
+      "category": "CRAFT",
+      "rarity": "COMMON",
+      "tags": ["rope", "craft"],
+      "description": "纤维和苇叶搓成的绳子，粗糙但结实。",
+      "stackLimit": 20
+    },
+    {
+      "id": "res.wood_tag",
+      "name": "木牌",
+      "category": "CRAFT",
+      "rarity": "UNCOMMON",
+      "tags": ["wood", "tag", "craft"],
+      "description": "系着草绳的小木牌，写点什么挂起来正好。",
+      "stackLimit": 20
     }
   ]
 }

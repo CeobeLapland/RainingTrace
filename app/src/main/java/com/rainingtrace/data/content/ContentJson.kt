@@ -1,6 +1,9 @@
 package com.rainingtrace.data.content
 
 import com.rainingtrace.domain.content.ContentReport
+import com.rainingtrace.domain.craft.Recipe
+import com.rainingtrace.domain.craft.RecipeInput
+import com.rainingtrace.domain.craft.RecipeOutput
 import com.rainingtrace.domain.inventory.Rarity
 import com.rainingtrace.domain.inventory.ResourceCategory
 import com.rainingtrace.domain.inventory.ResourceDefinition
@@ -175,6 +178,8 @@ internal data class ResourceDto(
     val rarity: String = "",
     val tags: List<String> = emptyList(),
     val description: String = "",
+    /** 省略则用领域默认的堆叠上限。 */
+    val stackLimit: Int = ResourceDefinition.DEFAULT_STACK_LIMIT,
 )
 
 internal fun decodeResourceEntries(
@@ -222,6 +227,7 @@ internal fun decodeResource(
             rarity = rarity,
             tags = dto.tags.map { it.trim() }.filter { it.isNotEmpty() }.toSet(),
             description = dto.description,
+            stackLimit = dto.stackLimit,
         )
     }.getOrElse {
         report.error(file, dto.id, "资源不合法：${it.message}")
@@ -435,6 +441,65 @@ internal fun decodeYieldRule(
         )
     }.getOrElse {
         report.error(file, dto.id, "产出规则不合法：${it.message}")
+        null
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 加工配方
+// ---------------------------------------------------------------------------
+
+/** 输入与输出同形（资源 + 数量），所以共用一个 DTO。 */
+@Serializable
+internal data class RecipeItemDto(
+    val resourceId: String = "",
+    val amount: Int = 0,
+)
+
+@Serializable
+internal data class RecipeDto(
+    val id: String = "",
+    val inputs: List<RecipeItemDto> = emptyList(),
+    val output: RecipeItemDto? = null,
+)
+
+internal fun decodeRecipeEntries(
+    text: String,
+    file: String,
+    report: ContentReport,
+): DecodedEntries<Recipe> = decodeEntityFile(text, file, report) { element, f, r ->
+    val dto = runCatching {
+        ContentJsonFormat.decodeFromJsonElement(RecipeDto.serializer(), element)
+    }.getOrElse {
+        r.error(f, null, "条目读不出来：${it.message}")
+        return@decodeEntityFile null
+    }
+    decodeRecipe(dto, f, r)
+}
+
+/**
+ * 配方解析。领域的 `require`（id 非空、amount 为正、输入不重复）就是校验，
+ * 整块构造包在 `runCatching` 里——**半截配方会被整条丢掉**：
+ * 一条写坏的配方如果只丢一个输入，玩家会"照看着有材料却做不出来"。
+ */
+internal fun decodeRecipe(
+    dto: RecipeDto,
+    file: String,
+    report: ContentReport,
+): Recipe? {
+    val output = dto.output
+    if (output == null) {
+        report.error(file, dto.id, "配方缺少 output")
+        return null
+    }
+    return runCatching {
+        Recipe(
+            id = dto.id,
+            inputs = dto.inputs.map { RecipeInput(resourceId = it.resourceId, amount = it.amount) },
+            output = RecipeOutput(resourceId = output.resourceId, amount = output.amount),
+        )
+    }.getOrElse {
+        report.error(file, dto.id, "配方不合法：${it.message}")
         null
     }
 }

@@ -1,6 +1,8 @@
 package com.rainingtrace.data.repository
 
 import com.rainingtrace.domain.content.ContentIndex
+import com.rainingtrace.domain.craft.Recipe
+import com.rainingtrace.domain.craft.RecipeCatalog
 import com.rainingtrace.domain.inventory.ResourceCatalog
 import com.rainingtrace.domain.inventory.ResourceDefinition
 import com.rainingtrace.domain.map.Place
@@ -54,6 +56,18 @@ class ContentYieldRuleCatalog(
 
     override fun rulesFor(action: PlaceActionType): List<ResourceYieldRule> =
         index().yieldRulesByAction[action].orEmpty()
+
+    override fun all(): List<ResourceYieldRule> = index().yieldRules
+}
+
+/** 加工配方表。 */
+class ContentRecipeCatalog(
+    private val index: () -> ContentIndex,
+) : RecipeCatalog {
+
+    override fun all(): List<Recipe> = index().recipes
+
+    override fun byId(id: String): Recipe? = index().recipeById[id]
 }
 
 /** NPC 档案。 */

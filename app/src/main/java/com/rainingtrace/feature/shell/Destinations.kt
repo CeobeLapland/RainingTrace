@@ -15,6 +15,8 @@ object Routes {
     const val ME = "me"
     const val JOURNAL = "journal"
     const val INVENTORY = "inventory"
+    const val CRAFT = "craft"
+    const val WAREHOUSE = "warehouse"
     const val SETTINGS = "settings"
 
     /**

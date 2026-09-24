@@ -213,6 +213,28 @@
       "conditions": [
         { "type": "seasonIn", "seasons": ["AUTUMN"] }
       ]
+    },
+    {
+      "id": "rule.collect.plant_fiber",
+      "resourceId": "res.plant_fiber",
+      "action": "COLLECT",
+      "placeType": "BERRY_BUSH",
+      "amount": 1,
+      "cooldownMs": 600000,
+      "conditions": [
+        { "type": "timeOfDayIn", "times": ["DAY", "DUSK"] }
+      ]
+    },
+    {
+      "id": "rule.collect.drift_wood",
+      "resourceId": "res.drift_wood",
+      "action": "COLLECT",
+      "placeType": "LAKE",
+      "amount": 1,
+      "cooldownMs": 600000,
+      "conditions": [
+        { "type": "timeOfDayIn", "times": ["DAY", "DUSK"] }
+      ]
     }
   ]
 }

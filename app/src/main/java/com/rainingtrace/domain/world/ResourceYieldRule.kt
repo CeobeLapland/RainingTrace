@@ -59,6 +59,9 @@ data class ResourceYieldRule(
 /** 产出规则目录：运行时由 `ContentYieldRuleCatalog` 读内容索引；这个实现留给测试。 */
 interface ResourceYieldRuleCatalog {
     fun rulesFor(action: PlaceActionType): List<ResourceYieldRule>
+
+    /** 全部规则；给"按 resourceId 反查来源"这类用途（图鉴的"来源"）。 */
+    fun all(): List<ResourceYieldRule>
 }
 
 /**
@@ -68,11 +71,13 @@ interface ResourceYieldRuleCatalog {
  * 所以这里不再内置任何一条规则。
  */
 class InMemoryResourceYieldRuleCatalog(
-    rules: List<ResourceYieldRule>,
+    private val rules: List<ResourceYieldRule>,
 ) : ResourceYieldRuleCatalog {
 
     private val byAction: Map<PlaceActionType, List<ResourceYieldRule>> = rules.groupBy { it.action }
 
     override fun rulesFor(action: PlaceActionType): List<ResourceYieldRule> =
         byAction[action].orEmpty()
+
+    override fun all(): List<ResourceYieldRule> = rules
 }

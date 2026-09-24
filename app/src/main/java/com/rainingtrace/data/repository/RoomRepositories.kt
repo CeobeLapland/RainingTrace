@@ -10,6 +10,8 @@ import com.rainingtrace.data.local.MemoryDao
 import com.rainingtrace.data.local.MemoryEntity
 import com.rainingtrace.data.local.TrackPointDao
 import com.rainingtrace.data.local.TrackPointEntity
+import com.rainingtrace.data.local.WarehouseDao
+import com.rainingtrace.data.local.WarehouseItemEntity
 import com.rainingtrace.domain.exploration.CellFogState
 import com.rainingtrace.domain.exploration.ExplorationRepository
 import com.rainingtrace.domain.exploration.ExplorationState
@@ -21,6 +23,7 @@ import com.rainingtrace.domain.footprint.TraceVisibility
 import com.rainingtrace.domain.inventory.InventoryItem
 import com.rainingtrace.domain.inventory.InventoryRepository
 import com.rainingtrace.domain.inventory.InventoryState
+import com.rainingtrace.domain.inventory.WarehouseRepository
 import com.rainingtrace.domain.map.GridManager
 import com.rainingtrace.domain.map.HexCellId
 import com.rainingtrace.domain.map.LocationSource
@@ -231,6 +234,57 @@ class RoomInventoryRepository(
             },
         )
     }
+}
+
+/**
+ * 仓库（v7）：与 [RoomInventoryRepository] 同形，多一个跨两表的事务写入（搬运用）。
+ */
+class RoomWarehouseRepository(
+    private val dao: WarehouseDao,
+) : WarehouseRepository {
+
+    override fun observeState(): Flow<InventoryState> =
+        dao.observeAll().map { rows -> rows.toInventoryState() }
+
+    override suspend fun loadState(): InventoryState = dao.getAll().toInventoryState()
+
+    override suspend fun saveState(state: InventoryState) =
+        dao.replaceAll(state.items.values.toWarehouseEntities())
+
+    override suspend fun replaceBoth(inventory: InventoryState, warehouse: InventoryState) =
+        dao.replaceBoth(
+            inventory = inventory.items.values.toInventoryEntities(),
+            warehouse = warehouse.items.values.toWarehouseEntities(),
+        )
+}
+
+private fun List<WarehouseItemEntity>.toInventoryState(): InventoryState = InventoryState(
+    items = associate {
+        it.resourceId to InventoryItem(
+            resourceId = it.resourceId,
+            quantity = it.quantity,
+            firstAcquiredAtEpochMs = it.firstAcquiredAtEpochMs,
+            lastAcquiredAtEpochMs = it.lastAcquiredAtEpochMs,
+        )
+    },
+)
+
+private fun Collection<InventoryItem>.toInventoryEntities(): List<InventoryItemEntity> = map {
+    InventoryItemEntity(
+        resourceId = it.resourceId,
+        quantity = it.quantity,
+        firstAcquiredAtEpochMs = it.firstAcquiredAtEpochMs,
+        lastAcquiredAtEpochMs = it.lastAcquiredAtEpochMs,
+    )
+}
+
+private fun Collection<InventoryItem>.toWarehouseEntities(): List<WarehouseItemEntity> = map {
+    WarehouseItemEntity(
+        resourceId = it.resourceId,
+        quantity = it.quantity,
+        firstAcquiredAtEpochMs = it.firstAcquiredAtEpochMs,
+        lastAcquiredAtEpochMs = it.lastAcquiredAtEpochMs,
+    )
 }
 
 class RoomMemoryRepository(

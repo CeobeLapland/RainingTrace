@@ -10,6 +10,7 @@ import com.rainingtrace.data.content.JsonPlaceWriter
 import com.rainingtrace.data.repository.ContentNpcProactiveRuleCatalog
 import com.rainingtrace.data.repository.ContentNpcRepository
 import com.rainingtrace.data.repository.ContentPlaceRepository
+import com.rainingtrace.data.repository.ContentRecipeCatalog
 import com.rainingtrace.data.repository.ContentResourceCatalog
 import com.rainingtrace.data.repository.ContentYieldRuleCatalog
 import com.rainingtrace.data.repository.RoomExplorationRepository
@@ -20,15 +21,22 @@ import com.rainingtrace.data.repository.RoomNpcCommitmentRepository
 import com.rainingtrace.data.repository.RoomNpcMessageRepository
 import com.rainingtrace.data.repository.RoomNpcStateRepository
 import com.rainingtrace.data.repository.RoomTrackRepository
+import com.rainingtrace.data.repository.RoomWarehouseRepository
 import com.rainingtrace.data.settings.DataStoreSettingsRepository
 import com.rainingtrace.data.settings.DataStoreWeatherCache
+import com.rainingtrace.domain.craft.CraftUseCase
+import com.rainingtrace.domain.craft.RecipeCatalog
 import com.rainingtrace.domain.exploration.ExplorationRepository
 import com.rainingtrace.domain.exploration.PerformPlaceActionUseCase
 import com.rainingtrace.domain.footprint.FootprintRepository
 import com.rainingtrace.domain.inventory.AddItemToInventoryUseCase
 import com.rainingtrace.domain.inventory.InMemoryResourceCatalog
 import com.rainingtrace.domain.inventory.InventoryRepository
+import com.rainingtrace.domain.inventory.LoadResourceDiscoveriesUseCase
+import com.rainingtrace.domain.inventory.RemoveItemFromInventoryUseCase
 import com.rainingtrace.domain.inventory.ResourceCatalog
+import com.rainingtrace.domain.inventory.TransferItemUseCase
+import com.rainingtrace.domain.inventory.WarehouseRepository
 import com.rainingtrace.domain.map.GridManager
 import com.rainingtrace.domain.map.HexGrid
 import com.rainingtrace.domain.map.LocationProvider
@@ -413,6 +421,21 @@ class AppContainer(
         RoomInventoryRepository(database.inventoryDao())
     }
 
+    /** 仓库（Room v7）：家的存储，与背包同形但分表。 */
+    val warehouseRepository: WarehouseRepository by lazy {
+        RoomWarehouseRepository(database.warehouseDao())
+    }
+
+    /** 背包 ↔ 仓库 的搬运（一次事务写完两张表）。 */
+    val transferItem: TransferItemUseCase by lazy {
+        TransferItemUseCase(
+            inventoryRepository = inventoryRepository,
+            warehouseRepository = warehouseRepository,
+            addItem = addItem,
+            removeItem = removeItem,
+        )
+    }
+
     /** 资源/图鉴目录：定义库存在这里，库存量只在 inventoryRepository。 */
     val resourceCatalog: ResourceCatalog by lazy {
         ContentResourceCatalog { contentStore.index.value }
@@ -483,7 +506,34 @@ class AppContainer(
         ContentYieldRuleCatalog { contentStore.index.value }
     }
 
+    /** 加工配方表：同样只读内容索引，改 JSON 重读即生效。 */
+    val recipeCatalog: RecipeCatalog by lazy {
+        ContentRecipeCatalog { contentStore.index.value }
+    }
+
+    /** 图鉴的"已发现"：真相在足迹事件里（按需调用，不做订阅）。 */
+    val loadResourceDiscoveries: LoadResourceDiscoveriesUseCase by lazy {
+        LoadResourceDiscoveriesUseCase(
+            footprintRepository = footprintRepository,
+            inventoryRepository = inventoryRepository,
+            warehouseRepository = warehouseRepository,
+        )
+    }
+
     val addItem: AddItemToInventoryUseCase by lazy { AddItemToInventoryUseCase(clock) }
+
+    val removeItem: RemoveItemFromInventoryUseCase by lazy { RemoveItemFromInventoryUseCase() }
+
+    /** 制作：按配方把背包里的输入换成输出（材料在仓库里会单独提示）。 */
+    val craftItem: CraftUseCase by lazy {
+        CraftUseCase(
+            inventoryRepository = inventoryRepository,
+            recipeCatalog = recipeCatalog,
+            addItem = addItem,
+            removeItem = removeItem,
+            warehouseRepository = warehouseRepository,
+        )
+    }
 
     val recordTrackPoint: RecordTrackPointUseCase by lazy {
         RecordTrackPointUseCase(trackRepository, clock)

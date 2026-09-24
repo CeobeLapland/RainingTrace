@@ -660,6 +660,7 @@ private fun ActionRow(
 /** 内容类型的中文名；没登记的 key 直接显示原名，不隐藏。 */
 private fun contentKindLabel(kind: String): String = when (kind) {
     ContentIndex.PLACES -> "地点"
+    ContentIndex.RECIPES -> "配方"
     else -> kind
 }
 

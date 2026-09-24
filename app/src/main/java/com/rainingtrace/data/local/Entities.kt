@@ -80,6 +80,21 @@ data class InventoryItemEntity(
 )
 
 /**
+ * 仓库（v7）：家的存储，与随身背包**同形但分表**。
+ *
+ * 分表而不是给 `inventory_items` 加一列 `container`：后者会让既有的
+ * `replaceAll`（全表删除再写入）在写背包时把仓库行一起删掉，动的是既有结算路径；
+ * 分表则一行既有代码都不用碰。
+ */
+@Entity(tableName = "warehouse_items")
+data class WarehouseItemEntity(
+    @PrimaryKey val resourceId: String,
+    val quantity: Int,
+    val firstAcquiredAtEpochMs: Long,
+    val lastAcquiredAtEpochMs: Long,
+)
+
+/**
  * NPC 消息（append-only；只有未读标记会被更新）。
  *
  * 复合索引 `(npcId, createdAtEpochMs)` 同时服务两件事：会话列表按 npcId 分组取最后一条、

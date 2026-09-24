@@ -132,6 +132,53 @@ interface InventoryDao {
     suspend fun deleteAll()
 }
 
+/**
+ * 仓库（v7）：与 [InventoryDao] 同形，另加一个**跨两表的事务**，
+ * 让"背包 ↔ 仓库"的搬运要么全成、要么全不成。
+ *
+ * 它同时声明 `inventory_items` 的写入：Room 允许一个 DAO 碰任意表，
+ * 而事务边界必须落在同一个 DAO 上。
+ */
+@Dao
+interface WarehouseDao {
+    @Query("SELECT * FROM warehouse_items")
+    fun observeAll(): Flow<List<WarehouseItemEntity>>
+
+    @Query("SELECT * FROM warehouse_items")
+    suspend fun getAll(): List<WarehouseItemEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(items: List<WarehouseItemEntity>)
+
+    @Query("DELETE FROM warehouse_items")
+    suspend fun deleteAll()
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertInventoryItems(items: List<InventoryItemEntity>)
+
+    @Query("DELETE FROM inventory_items")
+    suspend fun deleteAllInventoryItems()
+
+    /** 原子替换仓库（同 [InventoryDao.replaceAll] 的口径）。 */
+    @Transaction
+    suspend fun replaceAll(items: List<WarehouseItemEntity>) {
+        deleteAll()
+        upsertAll(items)
+    }
+
+    /** 一次事务写完背包与仓库：搬运中途崩溃不会丢东西、也不会凭空多出来。 */
+    @Transaction
+    suspend fun replaceBoth(
+        inventory: List<InventoryItemEntity>,
+        warehouse: List<WarehouseItemEntity>,
+    ) {
+        deleteAllInventoryItems()
+        upsertInventoryItems(inventory)
+        deleteAll()
+        upsertAll(warehouse)
+    }
+}
+
 @Dao
 interface NpcMessageDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)

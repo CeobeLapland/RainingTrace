@@ -42,6 +42,7 @@ import com.rainingtrace.R
 import com.rainingtrace.core.common.AppContainer
 import com.rainingtrace.feature.ar.ArScreen
 import com.rainingtrace.feature.camera.CameraRoute
+import com.rainingtrace.feature.crafting.CraftRoute
 import com.rainingtrace.feature.home.HomeScreen
 import com.rainingtrace.feature.inventory.InventoryRoute
 import com.rainingtrace.feature.journal.JournalRoute
@@ -52,6 +53,7 @@ import com.rainingtrace.feature.messages.ChatRoute
 import com.rainingtrace.feature.messages.MessagesRoute
 import com.rainingtrace.feature.profile.MeScreen
 import com.rainingtrace.feature.settings.SettingsRoute
+import com.rainingtrace.feature.warehouse.WarehouseRoute
 import com.rainingtrace.platform.ar.ArCoreController
 
 /**
@@ -164,6 +166,7 @@ fun RainingTraceApp(container: AppContainer) {
                 MeScreen(
                     onOpenJournal = { navController.navigate(Routes.JOURNAL) },
                     onOpenInventory = { navController.navigate(Routes.INVENTORY) },
+                    onOpenWarehouse = { navController.navigate(Routes.WAREHOUSE) },
                     onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                 )
             }
@@ -188,6 +191,21 @@ fun RainingTraceApp(container: AppContainer) {
 
             composable(Routes.INVENTORY) {
                 InventoryRoute(
+                    container = container,
+                    onBack = { navController.popBackStack() },
+                    onOpenCraft = { navController.navigate(Routes.CRAFT) },
+                )
+            }
+
+            composable(Routes.CRAFT) {
+                CraftRoute(
+                    container = container,
+                    onBack = { navController.popBackStack() },
+                )
+            }
+
+            composable(Routes.WAREHOUSE) {
+                WarehouseRoute(
                     container = container,
                     onBack = { navController.popBackStack() },
                 )

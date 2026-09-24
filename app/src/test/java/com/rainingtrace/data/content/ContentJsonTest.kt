@@ -3,6 +3,7 @@ package com.rainingtrace.data.content
 import com.rainingtrace.domain.content.ContentReport
 import com.rainingtrace.domain.inventory.Rarity
 import com.rainingtrace.domain.inventory.ResourceCategory
+import com.rainingtrace.domain.inventory.ResourceDefinition
 import com.rainingtrace.domain.map.PlaceActionType
 import com.rainingtrace.domain.map.PlaceType
 import com.rainingtrace.domain.world.TimeOfDay
@@ -318,5 +319,75 @@ class ContentJsonTest {
 
         assertEquals(listOf("rule.ok"), decoded.entries.map { it.id })
         assertEquals(1, report.errorCount)
+    }
+
+    // ---- 加工配方 ----
+
+    @Test
+    fun `配方解析出输入与输出`() {
+        val report = ContentReport()
+        val decoded = decodeRecipeEntries(
+            """{"entries":[{"id":"recipe.rope",
+               "inputs":[{"resourceId":"res.fiber","amount":2},{"resourceId":"res.leaf","amount":1}],
+               "output":{"resourceId":"res.rope","amount":1}}]}""",
+            "recipes.json",
+            report,
+        )
+
+        assertEquals(0, report.errorCount)
+        val recipe = decoded.entries.single()
+        assertEquals(listOf("res.fiber", "res.leaf"), recipe.inputs.map { it.resourceId })
+        assertEquals(2, recipe.inputs.first().amount)
+        assertEquals("res.rope", recipe.output.resourceId)
+    }
+
+    @Test
+    fun `配方缺 output 时只丢这一条`() {
+        val report = ContentReport()
+        val decoded = decodeRecipeEntries(
+            """{"entries":[
+                 {"id":"recipe.bad","inputs":[{"resourceId":"res.fiber","amount":1}]},
+                 {"id":"recipe.ok","inputs":[{"resourceId":"res.fiber","amount":1}],
+                  "output":{"resourceId":"res.rope","amount":1}}]}""",
+            "recipes.json",
+            report,
+        )
+
+        assertEquals(listOf("recipe.ok"), decoded.entries.map { it.id })
+        assertEquals(1, report.errorCount)
+    }
+
+    @Test
+    fun `配方输入重复算写错 整条丢掉`() {
+        val report = ContentReport()
+        val decoded = decodeRecipeEntries(
+            """{"entries":[{"id":"recipe.dup",
+               "inputs":[{"resourceId":"res.fiber","amount":1},{"resourceId":"res.fiber","amount":2}],
+               "output":{"resourceId":"res.rope","amount":1}}]}""",
+            "recipes.json",
+            report,
+        )
+
+        assertTrue(decoded.entries.isEmpty())
+        assertEquals(1, report.errorCount)
+    }
+
+    @Test
+    fun `资源省略 stackLimit 时用默认值`() {
+        val report = ContentReport()
+        val decoded = decodeResourceEntries(
+            """{"entries":[
+                 {"id":"res.a","name":"东西","category":"NATURE","rarity":"COMMON"},
+                 {"id":"res.b","name":"加工品","category":"CRAFT","rarity":"COMMON","stackLimit":20}]}""",
+            "resources.json",
+            report,
+        )
+
+        assertEquals(0, report.errorCount)
+        assertEquals(
+            ResourceDefinition.DEFAULT_STACK_LIMIT,
+            decoded.entries.first { it.id == "res.a" }.stackLimit,
+        )
+        assertEquals(20, decoded.entries.first { it.id == "res.b" }.stackLimit)
     }
 }

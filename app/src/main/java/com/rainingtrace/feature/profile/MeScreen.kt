@@ -28,6 +28,7 @@ import com.rainingtrace.R
 fun MeScreen(
     onOpenJournal: () -> Unit,
     onOpenInventory: () -> Unit,
+    onOpenWarehouse: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -85,6 +86,13 @@ fun MeScreen(
             title = "背包 / 图鉴",
             subtitle = "观察与记录收藏",
             onClick = onOpenInventory,
+        )
+
+        MeRow(
+            iconRes = R.drawable.ic_fog,
+            title = "仓库",
+            subtitle = "把用不上的存起来",
+            onClick = onOpenWarehouse,
         )
 
         MeRow(

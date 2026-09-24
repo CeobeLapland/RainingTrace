@@ -1,5 +1,6 @@
 package com.rainingtrace.domain.content
 
+import com.rainingtrace.domain.craft.Recipe
 import com.rainingtrace.domain.npc.NpcProfile
 import com.rainingtrace.domain.npc.NpcProactiveRule
 
@@ -25,11 +26,13 @@ object ContentValidator {
         validateUniqueIds(content.places, MERGED, report) { it.id }
         validateUniqueIds(content.resources, MERGED, report) { it.id }
         validateUniqueIds(content.yieldRules, MERGED, report) { it.id }
+        validateUniqueIds(content.recipes, MERGED, report) { it.id }
         validateUniqueIds(content.npcs, MERGED, report) { it.id }
         validateUniqueIds(content.npcProactiveRules, MERGED, report) { it.id }
 
         return content.copy(
             yieldRules = validYieldRules(content, report),
+            recipes = validRecipes(content, report),
             npcs = validNpcs(content, report),
             npcProactiveRules = validProactiveRules(content, report),
             placeAliases = validAliases(content, report),
@@ -64,6 +67,24 @@ object ContentValidator {
             }
             known
         }
+
+    /**
+     * 配方引用的资源（输入与输出）都必须存在，否则要么"做了什么都得不到"、
+     * 要么"永远缺一个不存在的材料"——两者都是静默失效，玩家只能干瞪眼。
+     */
+    private fun validRecipes(content: WorldContent, report: ContentReport): List<Recipe> {
+        val resourceIds = content.resources.map { it.id }.toSet()
+        return content.recipes.filter { recipe ->
+            val dangling = (recipe.inputs.map { it.resourceId } + recipe.output.resourceId)
+                .filterNot { it in resourceIds }
+            if (dangling.isEmpty()) {
+                true
+            } else {
+                report.error(MERGED, recipe.id, "配方引用的资源不存在：${dangling.joinToString()}")
+                false
+            }
+        }
+    }
 
     /**
      * NPC 作息里的地点必须存在。
