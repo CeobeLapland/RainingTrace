@@ -54,6 +54,10 @@ import com.rainingtrace.domain.settings.ProactiveLevel
 import com.rainingtrace.domain.world.Season
 import com.rainingtrace.domain.world.TimeOfDay
 import com.rainingtrace.domain.world.WeatherKind
+import com.rainingtrace.domain.world.WeatherStatus
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 @Composable
 fun SettingsRoute(
@@ -67,7 +71,7 @@ fun SettingsRoute(
         SettingsViewModel(
             settings = container.settingsRepository,
             changeGridLevel = container.changeGridLevel,
-            mutableWeather = container.mutableWeatherProvider,
+            weatherSource = container.mutableWeatherProvider,
             seasonSource = container.seasonSource,
             timeOfDaySource = container.timeOfDaySource,
             contentPanel = container.contentStore,
@@ -80,6 +84,8 @@ fun SettingsRoute(
     val season by viewModel.season.collectAsStateWithLifecycle()
     val seasonOverride by viewModel.seasonOverride.collectAsStateWithLifecycle()
     val npcClockOffset by viewModel.npcClockOffset.collectAsStateWithLifecycle()
+    val weatherOverride by viewModel.weatherOverride.collectAsStateWithLifecycle()
+    val weatherStatus by viewModel.weatherStatus.collectAsStateWithLifecycle()
     val npcMessages by viewModel.npcMessages.collectAsStateWithLifecycle()
     val timeOfDayOverride by viewModel.timeOfDayOverride.collectAsStateWithLifecycle()
     val contentIndex by viewModel.contentIndex.collectAsStateWithLifecycle()
@@ -271,25 +277,46 @@ fun SettingsRoute(
                     onCheckedChange = viewModel::setShowAffection,
                 )
 
-                // 真实天气 API 接入前，靠这里手动切天气来验证"世界状态影响产出"。
+                // 真实天气已接；这里既能切手动覆盖验证"世界状态影响产出"，也能点回"自动"。
                 if (viewModel.canSetWeather) {
                     SectionLabel("世界状态（调试）")
                     Text(
-                        text = "真实天气还没接。手动切换会立刻影响地图上的天气与地点产出，" +
-                            "比如雨天在湖边观察会掉「湖泊记忆碎片」，雨夜还能看到「镜月鱼影」。",
+                        text = "天气来自 Open-Meteo（默认自动，约 15 分钟刷新一次）。手动切一下会立刻" +
+                            "影响地图上的天气与地点产出，比如雨天在湖边观察会掉「湖泊记忆碎片」，" +
+                            "雨夜还能看到「镜月鱼影」。",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 20.dp),
                     )
-                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = weatherStatusLabel(weatherStatus),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    OptionRow(
+                        title = "自动",
+                        hint = "跟随真实天气（当前：${weatherKind?.label() ?: "还没拿到"}）",
+                        selected = weatherOverride == null,
+                        onClick = { viewModel.setWeatherAuto() },
+                    )
                     WeatherKind.entries.forEach { kind ->
                         OptionRow(
                             title = kind.label(),
                             hint = weatherHint(kind),
-                            selected = weatherKind == kind,
+                            // 用覆盖值判断选中，不能用生效值——否则真实天气是多云时
+                            // "多云"那一行会被点亮，看着像手动生效了。
+                            selected = weatherOverride?.kind == kind,
                             onClick = { viewModel.setWeatherKind(kind) },
                         )
                     }
+                    Text(
+                        text = "天气数据由 Open-Meteo.com 提供（CC BY 4.0）。",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                    )
                 }
 
                 // 时段：默认按真实时间，固定住才能验"黎明/夜晚限定"的内容。
@@ -635,3 +662,24 @@ private fun contentKindLabel(kind: String): String = when (kind) {
     ContentIndex.PLACES -> "地点"
     else -> kind
 }
+
+/**
+ * 真实天气来源的状态行。三种状态都写成人话：
+ * 拿到了就说时间，没拿到就说还没拿到，失败了就说正在重试——
+ * 不要只显示一个让人猜的占位值。
+ */
+private fun weatherStatusLabel(status: WeatherStatus): String {
+    val updatedAt = status.lastUpdatedAtEpochMs
+    val time = updatedAt?.let {
+        WEATHER_TIME_FORMAT.format(Instant.ofEpochMilli(it).atZone(WEATHER_ZONE))
+    }
+    return when {
+        status.isRetrying && time != null -> "上次更新 $time · 刚才没拿到，正在重试"
+        status.isRetrying -> "还没拿到真实天气，正在重试"
+        time != null -> "上次更新 $time"
+        else -> "还没有真实天气（当前显示的是占位值）"
+    }
+}
+
+private val WEATHER_ZONE: ZoneId = ZoneId.of("Asia/Shanghai")
+private val WEATHER_TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")

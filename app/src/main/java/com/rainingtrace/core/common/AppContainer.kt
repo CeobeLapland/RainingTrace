@@ -21,6 +21,7 @@ import com.rainingtrace.data.repository.RoomNpcMessageRepository
 import com.rainingtrace.data.repository.RoomNpcStateRepository
 import com.rainingtrace.data.repository.RoomTrackRepository
 import com.rainingtrace.data.settings.DataStoreSettingsRepository
+import com.rainingtrace.data.settings.DataStoreWeatherCache
 import com.rainingtrace.domain.exploration.ExplorationRepository
 import com.rainingtrace.domain.exploration.PerformPlaceActionUseCase
 import com.rainingtrace.domain.footprint.FootprintRepository
@@ -66,17 +67,18 @@ import com.rainingtrace.domain.track.TrackDayFocusRequest
 import com.rainingtrace.domain.track.TrackRepository
 import com.rainingtrace.domain.track.TrackingController
 import com.rainingtrace.domain.world.DerivedSeasonSource
-import com.rainingtrace.domain.world.FakeWeatherProvider
 import com.rainingtrace.domain.world.InMemoryResourceYieldRuleCatalog
 import com.rainingtrace.domain.world.ManualTimeOfDaySource
-import com.rainingtrace.domain.world.MutableWeatherProvider
+import com.rainingtrace.domain.world.RemoteWeatherSource
 import com.rainingtrace.domain.world.ResourceYieldRuleCatalog
 import com.rainingtrace.domain.world.RandomSource
 import com.rainingtrace.domain.world.SeasonSource
 import com.rainingtrace.domain.world.SeededRandomSource
 import com.rainingtrace.domain.world.SystemWorldStateProvider
 import com.rainingtrace.domain.world.TimeOfDaySource
+import com.rainingtrace.domain.world.WeatherCache
 import com.rainingtrace.domain.world.WeatherProvider
+import com.rainingtrace.domain.world.WeatherSource
 import com.rainingtrace.domain.world.WorldStateProvider
 import com.rainingtrace.platform.ar.ArCoreController
 import com.rainingtrace.platform.audio.AndroidAudioNoteController
@@ -84,8 +86,12 @@ import com.rainingtrace.platform.camera.CameraXController
 import com.rainingtrace.platform.location.AndroidTrackingController
 import com.rainingtrace.platform.location.FakeLocationProvider
 import com.rainingtrace.platform.map.MapLibreAdapter
+import com.rainingtrace.platform.weather.OpenMeteoWeatherApi
 import com.rainingtrace.platform.location.AndroidLocationProvider
 import com.rainingtrace.platform.location.SwitchableLocationProvider
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.client.plugins.HttpTimeout
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -153,7 +159,7 @@ class AppContainer(
     }
 
     private val androidLocationProvider: AndroidLocationProvider by lazy {
-        AndroidLocationProvider(appContext, clock)
+        AndroidLocationProvider(appContext, clock, applicationScope)
     }
 
     val locationProvider: SwitchableLocationProvider by lazy {
@@ -412,11 +418,42 @@ class AppContainer(
         ContentResourceCatalog { contentStore.index.value }
     }
 
-    /** 世界天气状态：MVP 用 Fake（固定晴）；P1 换真实 API 适配器，条件与产出不用改。 */
-    val weatherProvider: WeatherProvider by lazy { FakeWeatherProvider() }
+    /**
+     * 天气 HTTP 客户端：进程存活期唯一实例，**有意不关闭**。
+     *
+     * 每次请求用 `use {}` 反而会重建引擎线程池，更贵；进程本来就活到退出。
+     */
+    private val weatherHttpClient: HttpClient by lazy {
+        HttpClient(OkHttp) {
+            install(HttpTimeout) {
+                requestTimeoutMillis = 8_000
+                connectTimeoutMillis = 5_000
+            }
+        }
+    }
 
-    /** 供设置页的调试区手动改天气（真实 API 版不实现 MutableWeatherProvider，界面自动隐藏）。 */
-    val mutableWeatherProvider: MutableWeatherProvider? get() = weatherProvider as? MutableWeatherProvider
+    /**
+     * 世界天气状态：真实 Open-Meteo + 手动覆盖（调试区切一下立刻生效，点回"自动"跟真实值走）。
+     * 缓存：冷启动先给上次的真值，避免断网时退回占位值。
+     */
+    val weatherSource: WeatherSource by lazy {
+        val cached = runBlocking { weatherCache.load() }?.state
+        RemoteWeatherSource(
+            api = OpenMeteoWeatherApi(weatherHttpClient),
+            locationProvider = locationProvider,
+            isForeground = foregroundState.isForeground,
+            clock = clock,
+            scope = applicationScope,
+            cache = weatherCache,
+            initial = cached,
+        )
+    }
+
+    /** 天气缓存：上一次成功拿到的真实值（跨冷启动）。 */
+    private val weatherCache: WeatherCache by lazy { DataStoreWeatherCache(appContext) }
+
+    /** 供设置页的调试区手动改天气（WeatherSource 自带覆盖，界面据此显示）。 */
+    val mutableWeatherProvider: WeatherSource? get() = weatherSource
 
     /**
      * 季节来源：**按节气推导**（立春/立夏/立秋/立冬），设置页调试区可手动覆盖。
@@ -434,7 +471,7 @@ class AppContainer(
     val worldStateProvider: WorldStateProvider by lazy {
         SystemWorldStateProvider(
             clock = clock,
-            weatherProvider = weatherProvider,
+            weatherProvider = weatherSource,
             seasonSource = seasonSource,
             timeOfDaySource = timeOfDaySource,
             scope = applicationScope,

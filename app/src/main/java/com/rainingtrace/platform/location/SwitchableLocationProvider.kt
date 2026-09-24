@@ -1,6 +1,7 @@
 package com.rainingtrace.platform.location
 
 import com.rainingtrace.domain.map.LocationCadenceController
+import com.rainingtrace.domain.map.LocationHealth
 import com.rainingtrace.domain.map.LocationProvider
 import com.rainingtrace.domain.map.RawLocationFix
 import com.rainingtrace.domain.map.WorldCoordinate
@@ -10,8 +11,12 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
@@ -28,7 +33,7 @@ class SwitchableLocationProvider(
     initialMode: LocationMode,
     parentScope: CoroutineScope,
     modeFlow: Flow<LocationMode>,
-) : LocationProvider, LocationCadenceController {
+) : LocationProvider, LocationCadenceController, LocationHealth {
 
     private val _updates = MutableSharedFlow<RawLocationFix>(
         replay = 1,
@@ -43,6 +48,19 @@ class SwitchableLocationProvider(
 
     private val scope = parentScope
     private var collectJob: Job? = null
+
+    /**
+     * 定位卡住的信号：直接在 android 的实现上委托。
+     * Fake 模式下恒为 false（那是调试输入，不存在"信号"这回事）。
+     */
+    override val stalled: StateFlow<Boolean> =
+        combine(android.stalled, modeFlow) { stalled, current ->
+            current == LocationMode.GPS && stalled
+        }.stateIn(
+            scope = scope,
+            started = SharingStarted.WhileSubscribed(STALLED_SUBSCRIPTION_TIMEOUT_MS),
+            initialValue = false,
+        )
 
     init {
         // 立即接上初始来源（Fake 的 replay 点马上能转发），不等 DataStore 首帧
@@ -92,5 +110,9 @@ class SwitchableLocationProvider(
                 android.start()
             }
         }
+    }
+
+    private companion object {
+        const val STALLED_SUBSCRIPTION_TIMEOUT_MS = 5_000L
     }
 }

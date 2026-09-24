@@ -51,6 +51,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rainingtrace.R
 import com.rainingtrace.core.ui.LocalImage
+import com.rainingtrace.core.ui.gpsQualitySuffix
 import com.rainingtrace.core.ui.label
 import com.rainingtrace.domain.map.MapRendererAdapter
 import com.rainingtrace.domain.map.Place
@@ -216,6 +217,13 @@ fun MapScreen(
             ) {
                 MapChip(text = "足迹记录中", emphasized = true)
             }
+            // 采集还开着但很久没回调：省电策略把后台定位掐了，去系统设置放行。
+            // 只在 GPS 模式下有意义；Fake 是调试输入，不存在"卡住"。
+            if (uiState.locationStalled &&
+                uiState.locationMode == com.rainingtrace.domain.settings.LocationMode.GPS
+            ) {
+                MapChip(text = "定位卡住了 · 去系统设置允许后台定位", emphasized = true)
+            }
             when (uiState.locationMode) {
                 com.rainingtrace.domain.settings.LocationMode.FAKE ->
                     MapChip(text = "Fake 定位 · 点按地图移动", emphasized = true)
@@ -235,7 +243,9 @@ fun MapScreen(
                             },
                         )
                     LocationPermission.GRANTED ->
-                        MapChip(text = "GPS 定位中")
+                        // 精度并进这一行（不另起一个 chip：左上角已经会堆到四个了）。
+                        // 只在 GPS 模式下渲染——Fake 的 5m 会显示成"信号好"，那是误导。
+                        MapChip(text = gpsStatusText(uiState.lastAccuracyMeters))
                     LocationPermission.UNKNOWN ->
                         MapChip(text = "正在请求定位…")
                 }
@@ -707,6 +717,15 @@ private fun distanceLabel(meters: Double): String = if (meters < 1000) {
     "${meters.toInt()} m"
 } else {
     String.format(java.util.Locale.SIMPLIFIED_CHINESE, "%.2f km", meters / 1000)
+}
+
+/**
+ * GPS 状态 chip 的文案：把精度并进"定位中"这一行。
+ * 还没拿到定位时只说"定位中"，不编一个精度出来。
+ */
+private fun gpsStatusText(accuracyMeters: Double?): String {
+    val suffix = gpsQualitySuffix(accuracyMeters) ?: return "GPS 定位中"
+    return "GPS 定位中 · $suffix"
 }
 
 /**

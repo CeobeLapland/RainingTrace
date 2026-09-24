@@ -24,7 +24,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
-private val Context.settingsDataStore by preferencesDataStore(name = "rt_settings")
+/** 全库共用的 DataStore：天气缓存（`DataStoreWeatherCache`）也写同一个文件。 */
+internal val Context.settingsDataStore by preferencesDataStore(name = "rt_settings")
 
 class DataStoreSettingsRepository(
     private val context: Context,

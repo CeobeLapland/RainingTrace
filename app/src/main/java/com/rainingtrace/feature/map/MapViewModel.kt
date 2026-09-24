@@ -15,6 +15,7 @@ import com.rainingtrace.domain.exploration.rank
 import com.rainingtrace.domain.map.HexCellId
 import com.rainingtrace.domain.map.HexCellVisual
 import com.rainingtrace.domain.map.GridManager
+import com.rainingtrace.domain.map.LocationHealth
 import com.rainingtrace.domain.map.LocationProvider
 import com.rainingtrace.domain.map.MapCamera
 import com.rainingtrace.domain.map.MapLayer
@@ -88,6 +89,16 @@ data class MapUiState(
     val nearbyPlaces: List<Place> = emptyList(),
     /** 选中地点各动作的"此刻产出"提示；选中时才计算，清空选择即丢弃。 */
     val actionPreviews: Map<PlaceActionType, PlaceYieldPreview> = emptyMap(),
+    /**
+     * 最近一次定位的精度（米）。**不管这个点有没有被采纳**都会更新——
+     * 它存在的意义正是让"信号弱，点正在被丢弃"这件事看得见。
+     */
+    val lastAccuracyMeters: Double? = null,
+    /**
+     * 采集还开着，但很久没有回调（系统把后台定位掐了）。
+     * 界面据此告诉玩家去放行——代码修不了省电策略，但能如实说出来。
+     */
+    val locationStalled: Boolean = false,
     val showFilterPanel: Boolean = false,
     val toast: String? = null,
     val showTrack: Boolean = true,
@@ -147,6 +158,8 @@ class MapViewModel(
     private val refreshLocation: () -> Unit,
     /** 现场采点：把当前位置记成一个地点（写进内容覆盖层）。 */
     private val placeWriter: PlaceWriter,
+    /** 定位"卡住了"的可见信号（长时间没回调：系统省电策略掐了后台定位）。 */
+    private val locationHealth: LocationHealth,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MapUiState())
@@ -202,6 +215,12 @@ class MapViewModel(
                 // 后台只由 TrackRecordingService 写轨迹点，这里不跑去噪/开雾/渲染/查地点。
                 if (!foregroundState.isForeground.value) return@collect
                 onLocationFix(fix)
+            }
+            // 定位卡住（系统掐了后台定位）：只在有人看地图时订阅，省电口径不变。
+            launch {
+                locationHealth.stalled.collect { stalled ->
+                    _uiState.value = _uiState.value.copy(locationStalled = stalled)
+                }
             }
             launch { runNpcTicker() }
         }
@@ -499,6 +518,10 @@ class MapViewModel(
         MapCamera(center = gridManager.grid.origin, zoom = DEFAULT_ZOOM)
 
     private suspend fun onLocationFix(fix: com.rainingtrace.domain.map.RawLocationFix) {
+        // 精度在去噪闸门**之前**落进 UI：被丢弃的点同样要让"信号弱"看得见，
+        // 否则玩家只会看到标记不动，却不知道为什么。
+        _uiState.value = _uiState.value.copy(lastAccuracyMeters = fix.accuracyMeters)
+
         // 去噪闸门：只有稳定点才成为轨迹、才开雾。被拒的漂移点不移动玩家。
         val result = recordTrackPoint(fix)
         if (result !is RecordTrackResult.Accepted) {

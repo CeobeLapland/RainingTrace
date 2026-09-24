@@ -14,12 +14,15 @@ import com.rainingtrace.domain.settings.NpcMessageSettings
 import com.rainingtrace.domain.settings.ProactiveLevel
 import com.rainingtrace.domain.settings.TrackingSettings
 import com.rainingtrace.domain.track.ChangeGridLevelUseCase
-import com.rainingtrace.domain.world.MutableWeatherProvider
 import com.rainingtrace.domain.world.Season
 import com.rainingtrace.domain.world.SeasonSource
 import com.rainingtrace.domain.world.TimeOfDay
 import com.rainingtrace.domain.world.TimeOfDaySource
 import com.rainingtrace.domain.world.WeatherKind
+import com.rainingtrace.domain.world.WeatherSource
+import com.rainingtrace.domain.world.WeatherState
+import com.rainingtrace.domain.world.WeatherStatus
+import com.rainingtrace.domain.world.setKind
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -31,7 +34,7 @@ class SettingsViewModel(
     private val settings: AppSettingsRepository,
     private val changeGridLevel: ChangeGridLevelUseCase,
     /** 可手动设定的天气 / 季节 / 时段；真实来源接上后传空，调试区自动隐藏。 */
-    private val mutableWeather: MutableWeatherProvider? = null,
+    private val weatherSource: WeatherSource? = null,
     private val seasonSource: SeasonSource? = null,
     private val timeOfDaySource: TimeOfDaySource? = null,
     /** 内容源（开发者模式）：传空则整个「内容」分区隐藏。 */
@@ -55,7 +58,7 @@ class SettingsViewModel(
     val npcMessages = settings.npcMessages
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), NpcMessageSettings())
 
-    val canSetWeather: Boolean get() = mutableWeather != null
+    val canSetWeather: Boolean get() = weatherSource != null
 
     val canSetSeason: Boolean get() = seasonSource != null
 
@@ -78,10 +81,23 @@ class SettingsViewModel(
         ?: MutableStateFlow<ContentIndex?>(null)
 
     /** 当前天气：地图 chip、产出条件都跟着它走。 */
-    val weatherKind: StateFlow<WeatherKind?> = mutableWeather?.weather
+    val weatherKind: StateFlow<WeatherKind?> = weatherSource?.weather
         ?.map { it.kind }
-        ?.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), mutableWeather.weather.value.kind)
+        ?.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), weatherSource.weather.value.kind)
         ?: MutableStateFlow(null)
+
+    /**
+     * 手动覆盖值；null = 跟随真实天气（UI 的「自动」那一行）。
+     *
+     * **每个天气行的选中态要用它**，不能用 [weatherKind]：真实天气是多云时
+     * 那个"多云"行会被点亮，玩家会以为手动生效了。
+     */
+    val weatherOverride: StateFlow<WeatherState?> = weatherSource?.manualOverride
+        ?: MutableStateFlow(null)
+
+    /** 真实来源状态：上次成功时间 / 是否在重试。 */
+    val weatherStatus: StateFlow<WeatherStatus> = weatherSource?.status
+        ?: MutableStateFlow(WeatherStatus.NOT_APPLICABLE)
 
     /** 当前生效季节（手动覆盖优先，否则按节气推导）。 */
     val season: StateFlow<Season?> = seasonSource?.season
@@ -104,7 +120,12 @@ class SettingsViewModel(
     }
 
     fun setWeatherKind(kind: WeatherKind) {
-        mutableWeather?.setKind(kind)
+        weatherSource?.setKind(kind)
+    }
+
+    /** 回到真实天气（清掉手动覆盖）。 */
+    fun setWeatherAuto() {
+        weatherSource?.setOverride(null)
     }
 
     fun setSeason(season: Season?) {

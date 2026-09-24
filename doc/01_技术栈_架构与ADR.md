@@ -77,7 +77,7 @@ PostGIS 用于空间查询和索引；Supabase 以完整 Postgres 为基础，�
               │                       │
 ┌─────────────▼───────────────────────▼──────────┐
 │ Platform / External Adapters                    │
-│ Location / Camera / Map / AR / Weather / Time  │
+│ Location / Camera / Map / AR / Weather(Open-Meteo) / Time │
 └──────────────────────────────────────────────────┘
 ```
 
@@ -287,9 +287,22 @@ PostGIS 提供 Point/Polygon/LineString 等空间类型和空间索引能力。�
 - Authenticated API
 - 世界事件生成
 - NPC 文本请求
-- 第三方天气/活动数据接入
+- ~~第三方天气/活动数据接入~~（天气已改为**端上直连**：客户端直接调 Open-Meteo，
+  绕一层 Edge Function 只会多一跳延迟与一份配额，没有任何收益。真实活动数据接入仍可放这里）
 - 媒体预处理
 - 服务端结算
+
+## 关于天气数据源
+
+**选 Open-Meteo**（`platform/weather/OpenMeteoWeatherApi.kt`）：
+
+- 非商用免费、**无需 API key**（没有密钥就没有泄露面，也不用做密钥分发）
+- 上限 10000 次/日；本项目 15 分钟拉一次 = 96 次/日
+- 数据许可 CC BY 4.0 → **必须署名**，设置页「世界状态（调试）」里有一行
+- `weather_code` 是标准 WMO 4677 码，映射表在 `domain/world/WmoWeatherCode.kt`
+
+想要天气预报/历史/多日曲线时也是同一个 base URL，只是换参数。
+真要换成别家，只需另写一个 `WeatherApi` 实现——玩法层与条件一个都不用改。
 
 Supabase Edge Functions 当前以 TypeScript/Deno 为主，并支持本地开发。citeturn765638search2turn765638search13
 

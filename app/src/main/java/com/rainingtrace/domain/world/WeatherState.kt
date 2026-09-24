@@ -55,26 +55,24 @@ interface WeatherProvider {
     val weather: StateFlow<WeatherState>
 }
 
-/** 可手动设定天气：调试/开发者模式用（真实 API 版不实现它）。 */
-interface MutableWeatherProvider : WeatherProvider {
-    fun setWeather(state: WeatherState)
-
-    /** 只换天气类型，湿度/温度取 [weatherPreset] 给出的常规值。 */
-    fun setKind(kind: WeatherKind)
-}
-
-/** Fake 实现：固定或手动设置天气，供无网络开发、调试与测试使用。 */
-class FakeWeatherProvider(initial: WeatherState = CLEAR_DAY) : MutableWeatherProvider {
+/**
+ * 纯手动的天气实现：**它自己就是"手动覆盖"**（没有真实来源可以覆盖）。
+ *
+ * 所以 [manualOverride] 恒为非 null、[status] 恒为 [WeatherStatus.NOT_APPLICABLE]。
+ * 运行时用的是 `RemoteWeatherSource`（真实 Open-Meteo + 手动覆盖）；这个类留给测试。
+ */
+class FakeWeatherProvider(initial: WeatherState = CLEAR_DAY) : WeatherSource {
 
     private val _weather = MutableStateFlow(initial)
     override val weather: StateFlow<WeatherState> = _weather.asStateFlow()
 
-    override fun setWeather(state: WeatherState) {
-        _weather.value = state
-    }
+    override val manualOverride: StateFlow<WeatherState?> = _weather.asStateFlow()
 
-    override fun setKind(kind: WeatherKind) {
-        setWeather(weatherPreset(kind))
+    override val status: StateFlow<WeatherStatus> = MutableStateFlow(WeatherStatus.NOT_APPLICABLE)
+
+    override fun setOverride(state: WeatherState?) {
+        // 纯手动实现没有"自动"可言：传 null 就回到最初的默认值，而不是留空。
+        _weather.value = state ?: CLEAR_DAY
     }
 
     companion object {

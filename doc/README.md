@@ -142,11 +142,14 @@ Android / Map / AR / Backend SDK
 例如：
 
 - `LocationProvider` → `FakeLocationProvider`
-- `WeatherProvider` → `FakeWeatherProvider`
+- `WeatherApi` → `FakeWeatherProvider`（真实实现是 Open-Meteo，手动覆盖即可离线）
 - `WorldClock` → `FakeWorldClock`
 - `MapRepository` → `FakeMapRepository`
 - `EventRepository` → `InMemoryEventRepository`
 - `CameraCapture` → `FakeCameraCapture`
+
+**内容不用 Fake**：地点/NPC/台词本来就在 `assets/content/*.json` 里随包发布，
+没有网络也是完整的。所以 P0 的"没有 GPS、没有网络也能开发"现在是真的成立。
 
 这样 AI 可以在没有 GPS、没有 AR、没有网络的情况下写和测核心逻辑。
 

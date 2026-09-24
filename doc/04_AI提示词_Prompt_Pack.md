@@ -2,6 +2,12 @@
 
 以下 prompt 默认配合 `02_AGENTS.md` 使用。
 
+> **加内容的地方是 JSON，不是 Kotlin。**
+> 地点 / 资源 / 产出规则 / NPC / 主动消息规则 / 台词 / 地点别名 / 解析关键词表
+> 全部住在 `app/src/main/assets/content/`，玩家覆盖层在 `<filesDir>/content/`。
+> 任何"请在 Kotlin 里加一个地点/NPC/台词"的写法都是过时的——那会造出第二份真相，
+> 而这正是我们已经拆掉的东西。
+
 ---
 
 ## Prompt 00 — 新任务总模板
@@ -86,17 +92,19 @@ Non-goals：
 - FakeLocationProvider
 - FakeClock
 - FakeWeatherProvider
-- SeededWorldRepository
+
+**不要**新增 SeededWorldRepository：这个名字从来没实现过，内容也不需要"seed"——
+地点/资源/NPC/台词全部来自 `app/src/main/assets/content/*.json`（+ `<filesDir>/content/` 覆盖层）。
+开发者没有网络时照样有完整内容；断网只影响真实天气，而天气可以在设置页手动覆盖。
 
 必须可配置：
-- 时间
-- 天气
-- 玩家位置
-- 附近地点
+- 时间（设置页「世界状态（调试）」固定时段）
+- 天气（同上，手动覆盖优先于真实来源）
+- 季节（同上，或按节气自动推导）
+- 玩家位置（定位方式切 Fake，点地图移动）
 - 随机种子
 
 不要调用真实 GPS。
-不要访问生产数据库。
 ```
 
 ---
