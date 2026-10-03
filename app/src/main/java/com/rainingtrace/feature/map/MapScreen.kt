@@ -50,9 +50,11 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rainingtrace.R
+import com.rainingtrace.core.ui.ArtIcon
 import com.rainingtrace.core.ui.LocalImage
 import com.rainingtrace.core.ui.gpsQualitySuffix
 import com.rainingtrace.core.ui.label
+import com.rainingtrace.domain.art.ArtPaths
 import com.rainingtrace.domain.map.MapRendererAdapter
 import com.rainingtrace.domain.map.Place
 import com.rainingtrace.domain.map.PlaceActionType
@@ -935,9 +937,24 @@ private fun NearbyPlacesCard(
     }
 }
 
-/** 地点缩略图占位：用类型色圆角 + 标记字，后续可替换为照片。 */
+/**
+ * 地点缩略图：优先用美术图（`art/place/<类型小写>.png`），
+ * 缺图回退成"类型色圆角 + 标记字"（回退那套一行没动，`PlaceVisualsTest` 仍守着它）。
+ */
 @Composable
 private fun PlaceThumb(type: PlaceType, size: androidx.compose.ui.unit.Dp) {
+    ArtIcon(
+        path = ArtPaths.place(type),
+        contentDescription = null,
+        modifier = Modifier
+            .size(size)
+            .clip(RoundedCornerShape(14.dp)),
+        fallback = { PlaceThumbFallback(type = type, size = size) },
+    )
+}
+
+@Composable
+private fun PlaceThumbFallback(type: PlaceType, size: androidx.compose.ui.unit.Dp) {
     val spec = placeStyle(type)
     Box(
         modifier = Modifier
@@ -1071,10 +1088,17 @@ private fun PlaceTypeChip(
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = spec.glyph,
-            style = MaterialTheme.typography.labelMedium,
-            color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+        ArtIcon(
+            path = ArtPaths.place(type),
+            contentDescription = null,
+            modifier = Modifier.size(24.dp),
+            fallback = {
+                Text(
+                    text = spec.glyph,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
         )
     }
 }

@@ -15,12 +15,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.rainingtrace.core.ui.theme.NpcAvatarPalette
+import com.rainingtrace.domain.art.ArtPaths
 
 /**
- * NPC 头像：色块 + 姓氏字形。
+ * NPC 头像：优先用美术图（`art/npc/<npcId>.png`），缺图回退成"色块 + 姓氏字形"。
  *
- * 还没有立绘资源，先和 `PlaceThumb` 用同一种占位做法；将来有图只需改这一个组件。
- * 颜色由 `npcId` 稳定映射，同一个人到哪都是同一个色。
+ * 回退色由 `npcId` 稳定映射，同一个人到哪都是同一个色。
  */
 @Composable
 fun NpcAvatar(
@@ -29,9 +29,21 @@ fun NpcAvatar(
     modifier: Modifier = Modifier,
     size: Dp = 40.dp,
 ) {
+    ArtIcon(
+        path = ArtPaths.npcAvatar(npcId),
+        contentDescription = null,
+        modifier = modifier
+            .size(size)
+            .clip(RoundedCornerShape(size / 4)),
+        fallback = { NpcAvatarFallback(npcId = npcId, name = name, size = size) },
+    )
+}
+
+@Composable
+private fun NpcAvatarFallback(npcId: String, name: String, size: Dp) {
     val color = NpcAvatarPalette[npcId.hashCode().mod(NpcAvatarPalette.size)]
     Box(
-        modifier = modifier
+        modifier = Modifier
             .size(size)
             .clip(RoundedCornerShape(size / 4))
             .background(color),

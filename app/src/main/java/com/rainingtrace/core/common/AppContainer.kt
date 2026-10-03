@@ -1,6 +1,7 @@
 package com.rainingtrace.core.common
 
 import android.content.Context
+import com.rainingtrace.core.art.ArtSource
 import com.rainingtrace.core.lifecycle.AppForegroundState
 import com.rainingtrace.core.time.SystemWorldClock
 import com.rainingtrace.core.time.WorldClock
@@ -89,6 +90,7 @@ import com.rainingtrace.domain.world.WeatherProvider
 import com.rainingtrace.domain.world.WeatherSource
 import com.rainingtrace.domain.world.WorldStateProvider
 import com.rainingtrace.platform.ar.ArCoreController
+import com.rainingtrace.platform.art.AssetArtSource
 import com.rainingtrace.platform.audio.AndroidAudioNoteController
 import com.rainingtrace.platform.camera.CameraXController
 import com.rainingtrace.platform.location.AndroidTrackingController
@@ -138,6 +140,13 @@ class AppContainer(
 
     // 世界原点：北湖（参考坐标，真机试玩后校准）
     private val worldOrigin = WorldCoordinate(39.7326, 116.1712)
+
+    /**
+     * 美术图（`assets/art/`，命名约定见 `ArtPaths`）。
+     *
+     * 读不到就回退到占位，所以美术可以边画边上，任何时候都不会因为缺图而坏掉。
+     */
+    val artSource: ArtSource by lazy { AssetArtSource(appContext) }
 
     private val database: RainingTraceDatabase by lazy {
         RainingTraceDatabase.create(context)
@@ -273,7 +282,7 @@ class AppContainer(
         locationProvider.emitDebugMove(coordinate)
     }
 
-    val mapRenderer: MapRendererAdapter by lazy { MapLibreAdapter() }
+    val mapRenderer: MapRendererAdapter by lazy { MapLibreAdapter(artSource) }
 
     val placeRepository: PlaceRepository by lazy {
         ContentPlaceRepository { contentStore.index.value }

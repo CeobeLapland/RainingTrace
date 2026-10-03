@@ -24,8 +24,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.rainingtrace.core.ui.ArtIcon
+import com.rainingtrace.domain.art.ArtPaths
 import com.rainingtrace.domain.inventory.ResourceCategory
 
 /**
@@ -91,20 +94,14 @@ private fun WarehouseCard(entry: WarehouseEntry, onTake: () -> Unit) {
                 .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
+            ArtIcon(
+                path = ArtPaths.item(entry.definition.id),
+                contentDescription = null,
                 modifier = Modifier
                     .size(44.dp)
-                    .background(
-                        color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.25f),
-                        shape = CircleShape,
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = categoryGlyph(entry.definition.category),
-                    style = MaterialTheme.typography.titleLarge,
-                )
-            }
+                    .clip(CircleShape),
+                fallback = { WarehouseBadgeFallback(entry.definition.category) },
+            )
             Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -122,6 +119,25 @@ private fun WarehouseCard(entry: WarehouseEntry, onTake: () -> Unit) {
                 Text("取出到背包")
             }
         }
+    }
+}
+
+/** 缺图回退：类别色圆 + 类别汉字（与背包页同一口径）。 */
+@Composable
+private fun WarehouseBadgeFallback(category: ResourceCategory) {
+    Box(
+        modifier = Modifier
+            .size(44.dp)
+            .background(
+                color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.25f),
+                shape = CircleShape,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = categoryGlyph(category),
+            style = MaterialTheme.typography.titleLarge,
+        )
     }
 }
 

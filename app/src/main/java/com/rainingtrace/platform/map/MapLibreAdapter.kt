@@ -8,6 +8,8 @@ import android.graphics.Path
 import android.graphics.PointF
 import android.graphics.Typeface
 import android.util.Log
+import com.rainingtrace.core.art.ArtSource
+import com.rainingtrace.domain.art.ArtPaths
 import com.rainingtrace.domain.exploration.CellFogState
 import com.rainingtrace.domain.map.HexCellVisual
 import com.rainingtrace.domain.map.MapCamera
@@ -46,8 +48,13 @@ import org.maplibre.geojson.Polygon
  * 职责边界（06_地图专项 §1）：只做 render/camera/gesture/visual layer。
  * 六边形数据由 domain 的 [HexCellVisual] 提供（GeoJSON source），
  * 迷雾颜色按 CellFogState 分层 filter 渲染。
+ *
+ * [artSource] 提供美术针（`ArtPaths.pin` 等）；**为 null 或读不到图时**一律回退到
+ * 程序画的水滴位图，所以美术可以边画边上，缺图不会让整层不渲染。
  */
-class MapLibreAdapter : MapRendererAdapter {
+class MapLibreAdapter(
+    private val artSource: ArtSource? = null,
+) : MapRendererAdapter {
 
     private var map: MapLibreMap? = null
     private var style: Style? = null
@@ -414,17 +421,35 @@ class MapLibreAdapter : MapRendererAdapter {
         loaded.addSource(GeoJsonSource(FOCUS_SOURCE, EMPTY_FC))
         loaded.addSource(GeoJsonSource(TRACKS_SOURCE, EMPTY_FC))
 
-        // 注册每种地点类型的水滴位图（颜色+字）+ 未探索 "?" 位图，供图标层按类型 match 取图。
+        // 注册每种地点类型的水滴位图（美术图优先，缺图回退成颜色+字）+ 未探索 "?" 位图，
+        // 供图标层按类型 match 取图。
+        // 回退必须在 addImage **之前**定下来：图层引用的名字一定得注册过，
+        // 否则整层静默不渲染（runCatching 只能防崩，防不了这个）。
         PlaceType.entries.forEach { type ->
             val spec = placeStyle(type)
-            runCatching { loaded.addImage(placeImageName(type), placePinBitmap(spec)) }
+            runCatching {
+                loaded.addImage(
+                    placeImageName(type),
+                    pinBitmap(ArtPaths.pin(type)) { placePinBitmap(spec) },
+                )
+            }
         }
-        runCatching { loaded.addImage(UNREVEALED_IMAGE, unrevealedPinBitmap()) }
+        runCatching {
+            loaded.addImage(
+                UNREVEALED_IMAGE,
+                pinBitmap(ArtPaths.unrevealedPin()) { unrevealedPinBitmap() },
+            )
+        }
 
         // NPC 位图：停在某处 / 正在走路两种姿态各一张。
         NPC_POSES.forEach { pose ->
+            val walking = pose == NPC_POSE_WALK
+            val spec = npcStyle(walking)
             runCatching {
-                loaded.addImage(npcImageName(pose), placePinBitmap(npcStyle(pose == NPC_POSE_WALK)))
+                loaded.addImage(
+                    npcImageName(pose),
+                    pinBitmap(ArtPaths.npcPin(walking)) { placePinBitmap(spec) },
+                )
             }
         }
 
@@ -656,6 +681,13 @@ class MapLibreAdapter : MapRendererAdapter {
         )
 
     /**
+     * 取一张针位图：有美术图就用美术图，否则现场画。
+     * [fallback] 是 lambda，所以**只在缺图时才求值**（有图时不白画一张）。
+     */
+    private fun pinBitmap(path: String, fallback: () -> Bitmap): Bitmap =
+        artSource?.bitmap(path, PIN_TARGET_PX) ?: fallback()
+
+    /**
      * 画水滴图标位图：水滴形底 + 白描边 + 类型字。
      * iconAnchor=bottom，使水滴尖端对准真实坐标（像地图 POI）。
      */
@@ -726,6 +758,12 @@ class MapLibreAdapter : MapRendererAdapter {
         // 第一阶段托管矢量瓦片（01_技术栈：允许原型使用），无需 API key。
         // OpenFreeMap liberty：全球街道级矢量瓦片，校园缩放可用。
         const val STYLE_URI = "https://tiles.openfreemap.org/styles/liberty"
+
+        /**
+         * 针位图的解码上限（边长 px）。规格是 72×94，所以这个值只是"别把超大图整张解进来"，
+         * 正常素材不会被降采样。抬清晰度时改它 + 真机核对显示大小。
+         */
+        private const val PIN_TARGET_PX = 128
 
         private const val CELLS_SOURCE = "rt-cells"
         private const val PLAYER_SOURCE = "rt-player"

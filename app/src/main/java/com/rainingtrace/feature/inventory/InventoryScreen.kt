@@ -32,14 +32,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rainingtrace.R
 import com.rainingtrace.core.time.WORLD_ZONE
+import com.rainingtrace.core.ui.ArtIcon
 import com.rainingtrace.core.ui.describe
 import com.rainingtrace.core.ui.label
+import com.rainingtrace.domain.art.ArtPaths
 import com.rainingtrace.domain.inventory.Rarity
 import com.rainingtrace.domain.inventory.ResourceCategory
 import com.rainingtrace.domain.inventory.ResourceDefinition
@@ -374,8 +378,25 @@ private fun ItemCard(
     }
 }
 
+/**
+ * 物品徽章：优先用美术图（`art/item/<resourceId>.png`），缺图回退成类别汉字。
+ * 图鉴里"未发现"的条目连图一起压暗。
+ */
 @Composable
 private fun CategoryBadge(definition: ResourceDefinition, dimmed: Boolean) {
+    ArtIcon(
+        path = ArtPaths.item(definition.id),
+        contentDescription = null,
+        modifier = Modifier
+            .size(44.dp)
+            .clip(CircleShape)
+            .alpha(if (dimmed) 0.5f else 1f),
+        fallback = { CategoryBadgeFallback(definition = definition, dimmed = dimmed) },
+    )
+}
+
+@Composable
+private fun CategoryBadgeFallback(definition: ResourceDefinition, dimmed: Boolean) {
     Box(
         modifier = Modifier
             .size(44.dp)
