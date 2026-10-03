@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "removedIds": [],
+  "entries": [
+    {
+      "id": "place.bit.north_lake",
+      "name": "北湖",
+      "type": "LAKE",
+      "lat": 39.7326,
+      "lng": 116.1712,
+      "actions": ["OBSERVE", "COLLECT"],
+      "description": "校区中轴最北侧的一潭水。岸边有芦苇，雨后的傍晚常有麻雀贴着水面掠过。"
+    },
+    {
+      "id": "place.bit.library",
+      "name": "图书馆",
+      "type": "LIBRARY",
+      "lat": 39.7302,
+      "lng": 116.1690,
+      "actions": ["OBSERVE", "COLLECT"],
+      "description": "安静的大楼，午后阳光会斜斜地落在中庭。书架间偶尔能翻出旧书目卡。"
+    },
+    {
+      "id": "place.bit.canteen_one",
+      "name": "食堂一",
+      "type": "CANTEEN",
+      "lat": 39.7294,
+      "lng": 116.1726,
+      "actions": ["OBSERVE", "COLLECT"],
+      "description": "饭点前总飘着饭菜香，窗口前排着长长的队。窗口边挂着今日的菜签。"
+    },
+    {
+      "id": "place.bit.plaza",
+      "name": "中心广场",
+      "type": "PLAZA",
+      "lat": 39.7310,
+      "lng": 116.1735,
+      "actions": ["OBSERVE", "COLLECT"],
+      "description": "开阔的广场，周末偶尔会有社团活动。角落里常落下几张传单。"
+    },
+    {
+      "id": "place.bit.garden",
+      "name": "湖心花园",
+      "type": "GARDEN",
+      "lat": 39.7338,
+      "lng": 116.1732,
+      "actions": ["OBSERVE", "COLLECT"],
+      "description": "一条小径绕着几棵老树。苔藓、松果与花瓣随季节换着铺在地上。"
+    },
+    {
+      "id": "place.bit.dorm_3",
+      "name": "学生宿舍 3 号楼",
+      "type": "DORM",
+      "lat": 39.7290,
+      "lng": 116.1712,
+      "actions": ["OBSERVE", "COLLECT"],
+      "description": "晚上亮着许多窗，是回来的地方。桌边总贴着几张写到一半的便签。"
+    },
+    {
+      "id": "place.bit.orchard",
+      "name": "果林",
+      "type": "ORCHARD",
+      "lat": 39.7346,
+      "lng": 116.1742,
+      "actions": ["COLLECT"],
+      "description": "花园北侧的一小片果木，秋天枝头最沉。"
+    },
+    {
+      "id": "place.bit.berry_bush",
+      "name": "浆果丛",
+      "type": "BERRY_BUSH",
+      "lat": 39.7341,
+      "lng": 116.1726,
+      "actions": ["COLLECT"],
+      "description": "小径旁的一丛灌木，走过去顺手就能摘几颗。"
+    },
+    {
+      "id": "place.bit.mushroom_patch",
+      "name": "菌丛",
+      "type": "MUSHROOM_PATCH",
+      "lat": 39.7334,
+      "lng": 116.1738,
+      "actions": ["COLLECT"],
+      "description": "老树根边常冒菌子，下过雨那几天最好找。"
+    }
+  ]
+}

@@ -510,7 +510,86 @@
 
 ---
 
-## 七、后续转 JSON 的约定
+## 七、配套新增（地点表引入 · 41 项）
+
+> 来源：`places_design.md` 的 139 处地点共引用 175 个资源 id，其中 132 个已在本文主表内，
+> 下列 **41 项**为新增地点（尤其是校外 I 区、J 区异常点）所需。
+> **转换前必须先合并本节**，否则地点的关联资源会指向不存在的 id。
+> 字段与主表完全一致：仅 **CRAFT 类带 `stackLimit`**，其余不带。
+
+### 7.1 自然资源 NATURE（13）
+
+| 名称 | id | 稀有度 | tags | 描述 | stackLimit | 图标提示词 |
+|------|-----|--------|------|------|-----------|-----------|
+| 竹竿 | res.bamboo | COMMON | bamboo, wood | 从竹林里砍下来的老竹，节硬实，泡过水更韧。 | - | 带节的青竹竿，截面中空 |
+| 竹笋 | res.bamboo_shoot | UNCOMMON | bamboo, spring | 春天从地下顶出来的笋，壳还没褪干净。 | - | 尖头竹笋，褐色笋壳 |
+| 松针 | res.pine_needle | COMMON | pine, forest | 落了一地的松针，扫起来有一股苦香。 | - | 一束深绿松针 |
+| 蒲棒 | res.cattail | COMMON | reed, wetland | 湿地边一排直挺挺的棒子，顶上那段摸上去像布。 | - | 深褐蒲棒，绒质穗头 |
+| 雏菊花苞 | res.daisy_bud | UNCOMMON | flower, lawn | 还没开的小白苞，一夜之间就能全开。 | - | 白色小花苞，绿色萼片 |
+| 海草 | res.seaweed | COMMON | seaweed, shore | 石缝里的海草，晒干后缩成一小团。 | - | 深绿海草，湿漉漉挂着水珠 |
+| 淡水贝壳 | res.freshwater_shell | UNCOMMON | shell, river | 河底翻到的，小而厚，边缘有一圈年轮。 | - | 灰白河蚌壳，表面有年轮纹 |
+| 干草 | res.hay | COMMON | hay, farm | 秋天收下来的草，捆成筒，兔子很爱吃。 | - | 捆成筒的干黄草 |
+| 育苗苗 | res.seedling | UNCOMMON | seedling, farm | 温棚里育出来的芽，根还裹着湿土。 | - | 小苗连着湿土块，嫩芽舒展 |
+| 浇过水的土 | res.watered_soil | COMMON | soil, farm | 装在盆里的湿土，可以直接带去别处种。 | - | 湿润深色土，盆装 |
+| 箱板木 | res.crate_wood | COMMON | wood, crate | 装过东西的箱子拆下来的板，钉眼还在。 | - | 带钉眼的旧箱板，边缘毛糙 |
+| 龟裂的跑道 | res.cracked_tracks | COMMON | track, ruin | 旧操场上碎成块的塑胶面，踩上去会翘起来。 | - | 龟裂翘起的红色塑胶面块 |
+| 荒径残标 | res.gold_axe | UNCOMMON | sign, ruin | 被藤蔓吃掉两个字的木路牌，还认得出是个"径"。 | - | 褪色木路牌，字迹模糊，缠着藤蔓 |
+
+### 7.2 制造资源 CRAFT（18）
+
+| 名称 | id | 稀有度 | tags | 描述 | stackLimit | 图标提示词 |
+|------|-----|--------|------|------|-----------|-----------|
+| 水管段 | res.water_pipe | COMMON | pipe, repair | 换下来的旧管，内壁结着水垢。 | 20 | 灰白旧水管段，内壁有水垢 |
+| 脚手架扣件 | res.scaffold_clamp | COMMON | metal, scaffold | 工地上的接头，螺纹还能用，很沉。 | 20 | 十字形金属扣件，螺纹可见 |
+| 混凝土块 | res.concrete_block | COMMON | concrete, build | 拆下来的废块，断口还是新的。 | 20 | 灰色混凝土块，表面粗糙 |
+| 橡胶边角 | res.rubber_scrap | COMMON | rubber, scrap | 轮胎裁下来的，剪成小块备用。 | 20 | 黑色橡胶碎片，边缘有花纹 |
+| 缝纫余线 | res.stitch_scrap | COMMON | thread, scrap | 剪下来的线头，短得没法再缝但还能编。 | 50 | 一小把彩色短棉线头 |
+| 布带 | res.cloth_ribbon | COMMON | cloth, ribbon | 绑东西用的窄布带，颜色深深浅浅一叠。 | 20 | 卷起的窄布带，多种颜色叠放 |
+| 淘汰零件 | res.obsolete_gear | UNCOMMON | metal, scrap | 没人认领的旧零件，型号早就停产了。 | 1 | 锈蚀的旧机械零件，型号已停产 |
+| 球拍 | res.paddle | COMMON | paddle, sport | 落在馆里的球拍，胶皮已经失去弹性。 | 1 | 掉漆的旧球拍，胶皮失去弹性 |
+| 攀岩鞋 | res.climbing_shoe | UNCOMMON | shoe, sport | 磨损严重的攀岩鞋，橡胶底磨得只剩纹路。 | 1 | 磨损的攀岩鞋，橡胶底磨薄 |
+| 泳帽 | res.cloth_swim_cap | COMMON | cloth, swim | 干了的泳帽，弹力还在，边缘有个小破口。 | 1 | 干了的布质泳帽，边缘有小破口 |
+| 球 | res.ball | COMMON | ball, sport | 打过很久的球，气不太足，拍上去声音是闷的。 | 1 | 磨损的旧球，表面发白 |
+| 舞台灯 | res.stage_light | UNCOMMON | light, stage | 礼堂拆下来的旧灯，玻璃罩上有一圈烤痕。 | 1 | 旧舞台灯，玻璃罩有烤痕 |
+| 胶片片段 | res.film_strip | UNCOMMON | film, cinema | 断了的胶片，只能看不能放，齿孔很清晰。 | 1 | 一小段断掉的胶片，齿孔清晰 |
+| 编织袋 | res.handwoven_bag | COMMON | bag, craft | 山里带回来的，纹路粗，背带磨得发亮。 | 1 | 粗纹编织袋，背带磨亮 |
+| 磨平的钱币 | res.worn_coin | UNCOMMON | coin, found | 面纹都磨没了，只剩个边。 | 20 | 磨平的钱币，只剩边缘轮廓 |
+| 颜料管 | res.tube_paint | COMMON | paint, art | 挤扁了的颜料管，剪开还能用。 | 20 | 挤扁的颜料管，管口剪开 |
+| 平行梯 | res.parallel_ladder | UNCOMMON | anomaly, ladder | 两条永远不会靠拢的梯子，看久了会头晕。 | 1 | 两道永远平行的旧梯子，透视扭曲 |
+| 谱下房间 | res.room_under_score | RARE | anomaly, music | 谱纸背面画的房间，线条比纸还新。 | 1 | 折起的一小段乐谱，背面透出房间般的线条 |
+
+### 7.3 知识资源 KNOWLEDGE（3）
+
+| 名称 | id | 稀有度 | tags | 描述 | stackLimit | 图标提示词 |
+|------|-----|--------|------|------|-----------|-----------|
+| 旧书 | res.used_book | COMMON | book, second-hand | 二手书店的退货，扉页有别人的名字。 | - | 旧书，书脊发黄，扉页有名字 |
+| 乐谱纸 | res.music_sheet | COMMON | music, paper | 手抄的谱子，折痕处已经起毛。 | - | 手抄乐谱纸，折痕起毛 |
+| 计时纸 | res.timing_paper | UNCOMMON | sport, record | 运动会用的计时表，最快那一栏被划掉重填过。 | - | 手写计时表，有涂改痕迹 |
+
+### 7.4 文化资源 CULTURE（4）
+
+| 名称 | id | 稀有度 | tags | 描述 | stackLimit | 图标提示词 |
+|------|-----|--------|------|------|-----------|-----------|
+| 车票存根 | res.ticket_stub | COMMON | ticket, travel | 小火车站的票根，日期只剩一个模糊的数字。 | - | 旧车票存根，日期模糊 |
+| 贴墙广告 | res.pasted_poster | COMMON | poster, street | 地下通道里被撕下来的一角，还粘着胶。 | - | 撕下的广告一角，背面有胶 |
+| 购物袋 | res.shopping_bag | COMMON | bag, shopping | 百货楼的袋子，印着早已停产的商标。 | - | 旧塑料袋，印着褪色商标 |
+| 通知碎片 | res.notice_scrap | COMMON | paper, notice | 公告栏上被雨泡糊的一角，字认不全。 | - | 被雨泡糊的通知纸角，字迹晕开 |
+
+### 7.5 记忆资源 MEMORY（3）
+
+| 名称 | id | 稀有度 | tags | 描述 | stackLimit | 图标提示词 |
+|------|-----|--------|------|------|-----------|-----------|
+| 干菜 | res.dried_vegetable | COMMON | food, dried | 挂起来风干的菜，冬天煮汤用。 | - | 挂起的风干菜，褐色卷缩 |
+| 篝火灰 | res.campfire_ash | COMMON | ash, camp | 烧完只剩一层灰白，底下还是热的。 | - | 一堆灰白篝火余烬 |
+| 布丁杯 | res.pudding_cup | COMMON | cup, trash | 小卖部晚上多留的那一盒，塑料壳上有一层雾。 | - | 塑料布丁杯，内壁挂着一层雾 |
+
+> 分布：NATURE 13 / CRAFT 18 / KNOWLEDGE 3 / CULTURE 4 / MEMORY 3 = **41 项**。
+> 稀有度：COMMON 28 / UNCOMMON 12 / RARE 1 / ANOMALY 0 —— 刻意不给 ANOMALY，异常侧由 J 区地点本身承担。
+> `stackLimit`：仅 CRAFT 类 18 项带值（工具/乐器/容器类 = 1，原料类 = 20，纤维类 = 50），其余 23 项不带此字段。
+
+---
+
+## 八、后续转 JSON 的约定
 
 1. `id` 已全局去重，可直接作为主键；`removedIds` 目前为空。
 2. `description` 直接取表格「描述」列原文，不做改写。

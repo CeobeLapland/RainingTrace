@@ -14,17 +14,6 @@
       "description": "压平的易拉罐底，边还扎手。"
     },
     {
-      "id": "res.bamboo",
-      "name": "竹竿",
-      "category": "NATURE",
-      "rarity": "COMMON",
-      "tags": [
-        "bamboo",
-        "wood"
-      ],
-      "description": "从竹林里砍下来的老竹，节硬实，泡过水更韧。"
-    },
-    {
       "id": "res.bamboo_segment",
       "name": "竹节",
       "category": "NATURE",
@@ -69,17 +58,6 @@
       "description": "教学楼窗台那只总在晒太阳的狸花猫。"
     },
     {
-      "id": "res.cattail",
-      "name": "蒲棒",
-      "category": "NATURE",
-      "rarity": "COMMON",
-      "tags": [
-        "reed",
-        "wetland"
-      ],
-      "description": "湿地边一排直挺挺的棒子，顶上那段摸上去像布。"
-    },
-    {
       "id": "res.clay",
       "name": "黏土",
       "category": "NATURE",
@@ -112,28 +90,6 @@
         "autumn"
       ],
       "description": "剥开就是整齐的一排黄牙齿。"
-    },
-    {
-      "id": "res.cracked_tracks",
-      "name": "龟裂的跑道",
-      "category": "NATURE",
-      "rarity": "COMMON",
-      "tags": [
-        "track",
-        "ruin"
-      ],
-      "description": "旧操场上碎成块的塑胶面，踩上去会翘起来。"
-    },
-    {
-      "id": "res.crate_wood",
-      "name": "箱板木",
-      "category": "NATURE",
-      "rarity": "COMMON",
-      "tags": [
-        "wood",
-        "crate"
-      ],
-      "description": "装过东西的箱子拆下来的板，钉眼还在。"
     },
     {
       "id": "res.crucian_carp",
@@ -302,17 +258,6 @@
       "description": "果林里挂着的青苹果，秋天最沉。"
     },
     {
-      "id": "res.hay",
-      "name": "干草",
-      "category": "NATURE",
-      "rarity": "COMMON",
-      "tags": [
-        "hay",
-        "farm"
-      ],
-      "description": "秋天收下来的草，捆成筒，兔子很爱吃。"
-    },
-    {
       "id": "res.iron_ore",
       "name": "铁矿石",
       "category": "NATURE",
@@ -432,17 +377,6 @@
         "autumn"
       ],
       "description": "落在小径上的松果，秋天尤其多。"
-    },
-    {
-      "id": "res.pine_needle",
-      "name": "松针",
-      "category": "NATURE",
-      "rarity": "COMMON",
-      "tags": [
-        "pine",
-        "forest"
-      ],
-      "description": "落了一地的松针，扫起来有一股苦香。"
     },
     {
       "id": "res.pine_needles",
@@ -601,17 +535,6 @@
       "description": "操场沙坑里的细沙，装一把就漏。"
     },
     {
-      "id": "res.seaweed",
-      "name": "海草",
-      "category": "NATURE",
-      "rarity": "COMMON",
-      "tags": [
-        "seaweed",
-        "shore"
-      ],
-      "description": "石缝里的海草，晒干后缩成一小团。"
-    },
-    {
       "id": "res.shepherd_purse",
       "name": "荠菜",
       "category": "NATURE",
@@ -744,17 +667,6 @@
       "description": "捞上来滑溜溜，能闻到水草味。"
     },
     {
-      "id": "res.watered_soil",
-      "name": "浇过水的土",
-      "category": "NATURE",
-      "rarity": "COMMON",
-      "tags": [
-        "soil",
-        "farm"
-      ],
-      "description": "装在盆里的湿土，可以直接带去别处种。"
-    },
-    {
       "id": "res.wet_sand",
       "name": "湿沙",
       "category": "NATURE",
@@ -833,17 +745,6 @@
       "description": "雨后从树根边冒出来的菌子，只有湿润那几天好找。"
     },
     {
-      "id": "res.bamboo_shoot",
-      "name": "竹笋",
-      "category": "NATURE",
-      "rarity": "UNCOMMON",
-      "tags": [
-        "bamboo",
-        "spring"
-      ],
-      "description": "春天从地下顶出来的笋，壳还没褪干净。"
-    },
-    {
       "id": "res.clam_shell",
       "name": "蚌壳",
       "category": "NATURE",
@@ -877,17 +778,6 @@
       "description": "乌黑泛蓝的羽毛，摸上去像纸。"
     },
     {
-      "id": "res.daisy_bud",
-      "name": "雏菊花苞",
-      "category": "NATURE",
-      "rarity": "UNCOMMON",
-      "tags": [
-        "flower",
-        "lawn"
-      ],
-      "description": "还没开的小白苞，一夜之间就能全开。"
-    },
-    {
       "id": "res.egret_feather",
       "name": "白鹭羽",
       "category": "NATURE",
@@ -899,17 +789,6 @@
       "description": "湿地芦苇丛里偶尔飘来一根。"
     },
     {
-      "id": "res.freshwater_shell",
-      "name": "淡水贝壳",
-      "category": "NATURE",
-      "rarity": "UNCOMMON",
-      "tags": [
-        "shell",
-        "river"
-      ],
-      "description": "河底翻到的，小而厚，边缘有一圈年轮。"
-    },
-    {
       "id": "res.frost_flower",
       "name": "霜花",
       "category": "NATURE",
@@ -919,17 +798,6 @@
         "winter"
       ],
       "description": "清晨玻璃内侧长出来的白色枝状花纹。"
-    },
-    {
-      "id": "res.gold_axe",
-      "name": "荒径残标",
-      "category": "NATURE",
-      "rarity": "UNCOMMON",
-      "tags": [
-        "sign",
-        "ruin"
-      ],
-      "description": "被藤蔓吃掉两个字的木路牌，还认得出是个\"径\"。"
     },
     {
       "id": "res.ice_crystal",
@@ -1095,17 +963,6 @@
         "river"
       ],
       "description": "透明的小虾，湖水凉处最多。"
-    },
-    {
-      "id": "res.seedling",
-      "name": "育苗苗",
-      "category": "NATURE",
-      "rarity": "UNCOMMON",
-      "tags": [
-        "seedling",
-        "farm"
-      ],
-      "description": "温棚里育出来的芽，根还裹着湿土。"
     },
     {
       "id": "res.snowflake",
@@ -1473,17 +1330,6 @@
       "description": "写了满满一页又划掉半页的那种纸。"
     },
     {
-      "id": "res.music_sheet",
-      "name": "乐谱纸",
-      "category": "KNOWLEDGE",
-      "rarity": "COMMON",
-      "tags": [
-        "music",
-        "paper"
-      ],
-      "description": "手抄的谱子，折痕处已经起毛。"
-    },
-    {
       "id": "res.observation_record",
       "name": "观察记录",
       "category": "KNOWLEDGE",
@@ -1548,17 +1394,6 @@
         "note"
       ],
       "description": "墙角的粉笔箭头，画的人不同、方向相同。"
-    },
-    {
-      "id": "res.used_book",
-      "name": "旧书",
-      "category": "KNOWLEDGE",
-      "rarity": "COMMON",
-      "tags": [
-        "book",
-        "second-hand"
-      ],
-      "description": "二手书店的退货，扉页有别人的名字。"
     },
     {
       "id": "res.weather_log",
@@ -1768,17 +1603,6 @@
         "data"
       ],
       "description": "湖岸刻度上的数字，一个月涨一次。"
-    },
-    {
-      "id": "res.timing_paper",
-      "name": "计时纸",
-      "category": "KNOWLEDGE",
-      "rarity": "UNCOMMON",
-      "tags": [
-        "sport",
-        "record"
-      ],
-      "description": "运动会用的计时表，最快那一栏被划掉重填过。"
     },
     {
       "id": "res.water_quality_card",
@@ -2177,17 +2001,6 @@
       "description": "汤凉了就不好吃了，所以要快。"
     },
     {
-      "id": "res.notice_scrap",
-      "name": "通知碎片",
-      "category": "CULTURE",
-      "rarity": "COMMON",
-      "tags": [
-        "paper",
-        "notice"
-      ],
-      "description": "公告栏上被雨泡糊的一角，字认不全。"
-    },
-    {
       "id": "res.paper_cut",
       "name": "窗花",
       "category": "CULTURE",
@@ -2208,17 +2021,6 @@
         "childhood"
       ],
       "description": "从三楼走廊扔出去的，姿态其实很差。"
-    },
-    {
-      "id": "res.pasted_poster",
-      "name": "贴墙广告",
-      "category": "CULTURE",
-      "rarity": "COMMON",
-      "tags": [
-        "poster",
-        "street"
-      ],
-      "description": "地下通道里被撕下来的一角，还粘着胶。"
     },
     {
       "id": "res.photo_print",
@@ -2353,17 +2155,6 @@
       "description": "伞柄上贴满名字贴纸，有点挤。"
     },
     {
-      "id": "res.shopping_bag",
-      "name": "购物袋",
-      "category": "CULTURE",
-      "rarity": "COMMON",
-      "tags": [
-        "bag",
-        "shopping"
-      ],
-      "description": "百货楼的袋子，印着早已停产的商标。"
-    },
-    {
       "id": "res.sketch_page",
       "name": "速写本一页",
       "category": "CULTURE",
@@ -2417,17 +2208,6 @@
         "food"
       ],
       "description": "一屉蒸笼的开盖瞬间，白汽糊住眼镜。"
-    },
-    {
-      "id": "res.ticket_stub",
-      "name": "车票存根",
-      "category": "CULTURE",
-      "rarity": "COMMON",
-      "tags": [
-        "ticket",
-        "travel"
-      ],
-      "description": "小火车站的票根，日期只剩一个模糊的数字。"
     },
     {
       "id": "res.zongzi_leaf",
@@ -2706,17 +2486,6 @@
       "description": "期末考试前开花，算是鼓励。"
     },
     {
-      "id": "res.campfire_ash",
-      "name": "篝火灰",
-      "category": "MEMORY",
-      "rarity": "COMMON",
-      "tags": [
-        "ash",
-        "camp"
-      ],
-      "description": "烧完只剩一层灰白，底下还是热的。"
-    },
-    {
       "id": "res.construction_sound",
       "name": "远处施工",
       "category": "MEMORY",
@@ -2739,17 +2508,6 @@
       "description": "有人跑过整条走廊，拖鞋声。"
     },
     {
-      "id": "res.dried_vegetable",
-      "name": "干菜",
-      "category": "MEMORY",
-      "rarity": "COMMON",
-      "tags": [
-        "food",
-        "dried"
-      ],
-      "description": "挂起来风干的菜，冬天煮汤用。"
-    },
-    {
       "id": "res.memo_slip",
       "name": "备忘纸条",
       "category": "MEMORY",
@@ -2759,17 +2517,6 @@
         "daily"
       ],
       "description": "\"买电池、还书、打电话\"，三行。"
-    },
-    {
-      "id": "res.pudding_cup",
-      "name": "布丁杯",
-      "category": "MEMORY",
-      "rarity": "COMMON",
-      "tags": [
-        "cup",
-        "trash"
-      ],
-      "description": "小卖部晚上多留的那一盒，塑料壳上有一层雾。"
     },
     {
       "id": "res.radio_static",
@@ -3440,18 +3187,6 @@
       "stackLimit": 20
     },
     {
-      "id": "res.ball",
-      "name": "球",
-      "category": "CRAFT",
-      "rarity": "COMMON",
-      "tags": [
-        "ball",
-        "sport"
-      ],
-      "description": "打过很久的球，气不太足，拍上去声音是闷的。",
-      "stackLimit": 1
-    },
-    {
       "id": "res.bamboo_strip",
       "name": "竹篾",
       "category": "CRAFT",
@@ -3617,42 +3352,6 @@
         "game"
       ],
       "description": "车和马被摸得最亮。",
-      "stackLimit": 20
-    },
-    {
-      "id": "res.cloth_ribbon",
-      "name": "布带",
-      "category": "CRAFT",
-      "rarity": "COMMON",
-      "tags": [
-        "cloth",
-        "ribbon"
-      ],
-      "description": "绑东西用的窄布带，颜色深深浅浅一叠。",
-      "stackLimit": 20
-    },
-    {
-      "id": "res.cloth_swim_cap",
-      "name": "泳帽",
-      "category": "CRAFT",
-      "rarity": "COMMON",
-      "tags": [
-        "cloth",
-        "swim"
-      ],
-      "description": "干了的泳帽，弹力还在，边缘有个小破口。",
-      "stackLimit": 1
-    },
-    {
-      "id": "res.concrete_block",
-      "name": "混凝土块",
-      "category": "CRAFT",
-      "rarity": "COMMON",
-      "tags": [
-        "concrete",
-        "build"
-      ],
-      "description": "拆下来的废块，断口还是新的。",
       "stackLimit": 20
     },
     {
@@ -3992,18 +3691,6 @@
       "stackLimit": 20
     },
     {
-      "id": "res.handwoven_bag",
-      "name": "编织袋",
-      "category": "CRAFT",
-      "rarity": "COMMON",
-      "tags": [
-        "bag",
-        "craft"
-      ],
-      "description": "山里带回来的，纹路粗，背带磨得发亮。",
-      "stackLimit": 1
-    },
-    {
       "id": "res.hanger",
       "name": "衣架",
       "category": "CRAFT",
@@ -4206,18 +3893,6 @@
       ],
       "description": "折不好就只是一张纸。",
       "stackLimit": 20
-    },
-    {
-      "id": "res.paddle",
-      "name": "球拍",
-      "category": "CRAFT",
-      "rarity": "COMMON",
-      "tags": [
-        "paddle",
-        "sport"
-      ],
-      "description": "落在馆里的球拍，胶皮已经失去弹性。",
-      "stackLimit": 1
     },
     {
       "id": "res.paint_brush",
@@ -4448,18 +4123,6 @@
       "stackLimit": 20
     },
     {
-      "id": "res.rubber_scrap",
-      "name": "橡胶边角",
-      "category": "CRAFT",
-      "rarity": "COMMON",
-      "tags": [
-        "rubber",
-        "scrap"
-      ],
-      "description": "轮胎裁下来的，剪成小块备用。",
-      "stackLimit": 20
-    },
-    {
       "id": "res.ruler",
       "name": "直尺",
       "category": "CRAFT",
@@ -4493,18 +4156,6 @@
         "mineral"
       ],
       "description": "灰白颗粒，能尝出涩味。",
-      "stackLimit": 20
-    },
-    {
-      "id": "res.scaffold_clamp",
-      "name": "脚手架扣件",
-      "category": "CRAFT",
-      "rarity": "COMMON",
-      "tags": [
-        "metal",
-        "scaffold"
-      ],
-      "description": "工地上的接头，螺纹还能用，很沉。",
       "stackLimit": 20
     },
     {
@@ -4602,18 +4253,6 @@
       ],
       "description": "白色块状，指甲一刮就掉粉。",
       "stackLimit": 20
-    },
-    {
-      "id": "res.stitch_scrap",
-      "name": "缝纫余线",
-      "category": "CRAFT",
-      "rarity": "COMMON",
-      "tags": [
-        "thread",
-        "scrap"
-      ],
-      "description": "剪下来的线头，短得没法再缝但还能编。",
-      "stackLimit": 50
     },
     {
       "id": "res.storage_box",
@@ -4736,18 +4375,6 @@
       "stackLimit": 20
     },
     {
-      "id": "res.tube_paint",
-      "name": "颜料管",
-      "category": "CRAFT",
-      "rarity": "COMMON",
-      "tags": [
-        "paint",
-        "art"
-      ],
-      "description": "挤扁了的颜料管，剪开还能用。",
-      "stackLimit": 20
-    },
-    {
       "id": "res.vegetable_oil",
       "name": "食用油",
       "category": "CRAFT",
@@ -4769,18 +4396,6 @@
         "sour"
       ],
       "description": "酸气冲鼻子，闻久了头晕。",
-      "stackLimit": 20
-    },
-    {
-      "id": "res.water_pipe",
-      "name": "水管段",
-      "category": "CRAFT",
-      "rarity": "COMMON",
-      "tags": [
-        "pipe",
-        "repair"
-      ],
-      "description": "换下来的旧管，内壁结着水垢。",
       "stackLimit": 20
     },
     {
@@ -4916,18 +4531,6 @@
       "stackLimit": 20
     },
     {
-      "id": "res.climbing_shoe",
-      "name": "攀岩鞋",
-      "category": "CRAFT",
-      "rarity": "UNCOMMON",
-      "tags": [
-        "shoe",
-        "sport"
-      ],
-      "description": "磨损严重的攀岩鞋，橡胶底磨得只剩纹路。",
-      "stackLimit": 1
-    },
-    {
       "id": "res.clock",
       "name": "挂钟",
       "category": "CRAFT",
@@ -4998,18 +4601,6 @@
       ],
       "description": "塑料壳，摇一摇能响。",
       "stackLimit": 20
-    },
-    {
-      "id": "res.film_strip",
-      "name": "胶片片段",
-      "category": "CRAFT",
-      "rarity": "UNCOMMON",
-      "tags": [
-        "film",
-        "cinema"
-      ],
-      "description": "断了的胶片，只能看不能放，齿孔很清晰。",
-      "stackLimit": 1
     },
     {
       "id": "res.folding_ladder",
@@ -5192,18 +4783,6 @@
       "stackLimit": 10
     },
     {
-      "id": "res.obsolete_gear",
-      "name": "淘汰零件",
-      "category": "CRAFT",
-      "rarity": "UNCOMMON",
-      "tags": [
-        "metal",
-        "scrap"
-      ],
-      "description": "没人认领的旧零件，型号早就停产了。",
-      "stackLimit": 1
-    },
-    {
       "id": "res.paper_lantern",
       "name": "纸灯笼",
       "category": "CRAFT",
@@ -5214,18 +4793,6 @@
       ],
       "description": "里面塞了暖光贴。",
       "stackLimit": 20
-    },
-    {
-      "id": "res.parallel_ladder",
-      "name": "平行梯",
-      "category": "CRAFT",
-      "rarity": "UNCOMMON",
-      "tags": [
-        "anomaly",
-        "ladder"
-      ],
-      "description": "两条永远不会靠拢的梯子，看久了会头晕。",
-      "stackLimit": 1
     },
     {
       "id": "res.patchwork",
@@ -5492,18 +5059,6 @@
       "stackLimit": 20
     },
     {
-      "id": "res.stage_light",
-      "name": "舞台灯",
-      "category": "CRAFT",
-      "rarity": "UNCOMMON",
-      "tags": [
-        "light",
-        "stage"
-      ],
-      "description": "礼堂拆下来的旧灯，玻璃罩上有一圈烤痕。",
-      "stackLimit": 1
-    },
-    {
       "id": "res.steel_ingot",
       "name": "钢锭",
       "category": "CRAFT",
@@ -5673,18 +5228,6 @@
       "stackLimit": 20
     },
     {
-      "id": "res.worn_coin",
-      "name": "磨平的钱币",
-      "category": "CRAFT",
-      "rarity": "UNCOMMON",
-      "tags": [
-        "coin",
-        "found"
-      ],
-      "description": "面纹都磨没了，只剩个边。",
-      "stackLimit": 20
-    },
-    {
       "id": "res.camera",
       "name": "相机",
       "category": "CRAFT",
@@ -5790,18 +5333,6 @@
         "tool"
       ],
       "description": "调到某段会突然有杂音。",
-      "stackLimit": 1
-    },
-    {
-      "id": "res.room_under_score",
-      "name": "谱下房间",
-      "category": "CRAFT",
-      "rarity": "RARE",
-      "tags": [
-        "anomaly",
-        "music"
-      ],
-      "description": "谱纸背面画的房间，线条比纸还新。",
       "stackLimit": 1
     },
     {
