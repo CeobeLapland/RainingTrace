@@ -63,6 +63,40 @@ class PlaceVisualsTest {
         assertTrue(visuals.isEmpty())
     }
 
+    /** 刷出来的资源点：即使类型是"林地"这种 PLACE 类，也不能当人文地点给它画灰问号。 */
+    private fun spawnedPlace(type: PlaceType) = Place(
+        id = "place.spawn.${type.name.lowercase()}.0",
+        name = "刷出来的点",
+        type = type,
+        coordinate = origin,
+        actions = setOf(PlaceActionType.GATHER),
+        origin = PlaceOrigin.SPAWNED,
+    )
+
+    @Test
+    fun `unrevealed spawned points are never drawn even for a human place type`() {
+        val visuals = placeVisualsFor(
+            places = listOf(spawnedPlace(PlaceType.FOREST)),
+            isRevealed = { false },
+            shownTypes = PlaceType.entries.toSet(),
+        )
+
+        // 只看 category 会把它画成灰 "?"，等于把没走过的地方免费开图
+        assertTrue(visuals.isEmpty())
+    }
+
+    @Test
+    fun `revealed spawned points are drawn like any other place`() {
+        val visuals = placeVisualsFor(
+            places = listOf(spawnedPlace(PlaceType.FOREST)),
+            isRevealed = { true },
+            shownTypes = PlaceType.entries.toSet(),
+        )
+
+        assertEquals(1, visuals.size)
+        assertEquals("刷出来的点", visuals.single().name)
+    }
+
     @Test
     fun `filtering out a type hides it even when revealed`() {
         val visuals = placeVisualsFor(

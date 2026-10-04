@@ -14,8 +14,12 @@ import com.rainingtrace.domain.npc.NpcProfile
 import com.rainingtrace.domain.npc.NpcProactiveRule
 import com.rainingtrace.domain.npc.NpcProactiveRuleCatalog
 import com.rainingtrace.domain.npc.NpcRepository
+import com.rainingtrace.domain.spawn.SpawnPlanner
+import com.rainingtrace.domain.spawn.SpawnRule
+import com.rainingtrace.domain.spawn.SpawnRuleCatalog
 import com.rainingtrace.domain.world.ResourceYieldRule
 import com.rainingtrace.domain.world.ResourceYieldRuleCatalog
+import com.rainingtrace.domain.world.WorldStateProvider
 
 /**
  * 读 [ContentIndex] 的仓储：内容外置之后运行时用的就是它们。
@@ -86,4 +90,44 @@ class ContentNpcProactiveRuleCatalog(
 ) : NpcProactiveRuleCatalog {
 
     override val rules: List<NpcProactiveRule> get() = index().npcProactiveRules
+}
+
+/** 资源点刷新规则表。 */
+class ContentSpawnRuleCatalog(
+    private val index: () -> ContentIndex,
+) : SpawnRuleCatalog {
+
+    override fun rules(): List<SpawnRule> = index().spawnRules
+}
+
+/**
+ * 资源点刷新的合成层：静态地点 + 当天确定性算出来的 spawn 点。
+ *
+ * - `all()` **只返静态点**：它是给 NPC 作息按 id 解析坐标用的，塞进会过期、
+ *   会随时间变的点会污染语义。
+ * - `nearby()` / `placeById()` 才带 spawn 点（`placeById` 对刚过期的点有宽限，
+ *   否则"图标还在、点下去没反应"）。
+ *
+ * spawn 点不落库，每次现算；几十条规则的量级是微秒级，不值得加缓存。
+ */
+class SpawnAwarePlaceRepository(
+    private val authored: PlaceRepository,
+    private val spawnRules: SpawnRuleCatalog,
+    private val worldState: WorldStateProvider,
+) : PlaceRepository {
+
+    override suspend fun placeById(id: String): Place? =
+        authored.placeById(id) ?: planned().firstOrNull { it.id == id }
+
+    override suspend fun nearby(coordinate: WorldCoordinate, radiusMeters: Double): List<Place> =
+        (authored.nearby(coordinate, radiusMeters) + planned())
+            .map { it to coordinate.distanceMetersTo(it.coordinate) }
+            .filter { (_, distance) -> distance <= radiusMeters }
+            .sortedBy { (_, distance) -> distance }
+            .map { (place, _) -> place }
+
+    override suspend fun all(): List<Place> = authored.all()
+
+    private fun planned(): List<Place> =
+        SpawnPlanner.plan(spawnRules.rules(), worldState.current())
 }

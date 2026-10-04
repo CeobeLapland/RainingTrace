@@ -13,6 +13,7 @@ import com.rainingtrace.data.repository.ContentNpcRepository
 import com.rainingtrace.data.repository.ContentPlaceRepository
 import com.rainingtrace.data.repository.ContentRecipeCatalog
 import com.rainingtrace.data.repository.ContentResourceCatalog
+import com.rainingtrace.data.repository.ContentSpawnRuleCatalog
 import com.rainingtrace.data.repository.ContentYieldRuleCatalog
 import com.rainingtrace.data.repository.RoomExplorationRepository
 import com.rainingtrace.data.repository.RoomFootprintRepository
@@ -23,6 +24,7 @@ import com.rainingtrace.data.repository.RoomNpcMessageRepository
 import com.rainingtrace.data.repository.RoomNpcStateRepository
 import com.rainingtrace.data.repository.RoomTrackRepository
 import com.rainingtrace.data.repository.RoomWarehouseRepository
+import com.rainingtrace.data.repository.SpawnAwarePlaceRepository
 import com.rainingtrace.data.settings.DataStoreSettingsRepository
 import com.rainingtrace.data.settings.DataStoreWeatherCache
 import com.rainingtrace.domain.craft.CraftUseCase
@@ -285,7 +287,11 @@ class AppContainer(
     val mapRenderer: MapRendererAdapter by lazy { MapLibreAdapter(artSource) }
 
     val placeRepository: PlaceRepository by lazy {
-        ContentPlaceRepository { contentStore.index.value }
+        SpawnAwarePlaceRepository(
+            authored = ContentPlaceRepository { contentStore.index.value },
+            spawnRules = ContentSpawnRuleCatalog { contentStore.index.value },
+            worldState = worldStateProvider,
+        )
     }
 
     /** 现场采点：把当前位置记成一个地点，写进 `files/content/places.json`。 */

@@ -97,6 +97,13 @@ class ContentStore(private val context: Context) : ContentPanel {
                 decode = ::decodeNpcKeywords,
                 report = report,
             ),
+            spawnRules = loadKind(
+                file = SPAWN_RULES,
+                overlayLabel = OVERLAY_SPAWN_RULES,
+                decode = ::decodeSpawnRuleEntries,
+                idOf = { it.id },
+                report = report,
+            ),
         )
         // 校验会剔除引用悬空的条目，所以后面必须用返回值，不能继续用 content。
         val cleaned = ContentValidator.validate(content, report)
@@ -210,6 +217,7 @@ class ContentStore(private val context: Context) : ContentPanel {
         "台词 key ${npcLines.size}",
         "别名 ${placeAliases.size}",
         "话题 ${npcKeywords.topics.size}",
+        "刷新规则 ${spawnRules.size}",
     ).joinToString("，")
 
     companion object {
@@ -227,6 +235,7 @@ class ContentStore(private val context: Context) : ContentPanel {
         private const val NPC_LINES = "npc_lines.json"
         private const val PLACE_ALIASES = "place_aliases.json"
         private const val NPC_KEYWORDS = "npc_keywords.json"
+        private const val SPAWN_RULES = "spawn_rules.json"
 
         /** 覆盖层的诊断标注：同一份文件名要能区分"内置"和"你改的"。 */
         private const val OVERLAY_PLACES = "$PLACES_FILE（覆盖）"
@@ -238,6 +247,7 @@ class ContentStore(private val context: Context) : ContentPanel {
         private const val OVERLAY_NPC_LINES = "$NPC_LINES（覆盖）"
         private const val OVERLAY_PLACE_ALIASES = "$PLACE_ALIASES（覆盖）"
         private const val OVERLAY_NPC_KEYWORDS = "$NPC_KEYWORDS（覆盖）"
+        private const val OVERLAY_SPAWN_RULES = "$SPAWN_RULES（覆盖）"
 
         /** 覆盖层的真实路径（写入方与读取方共用同一处拼接，避免拼错目录）。 */
         fun overlayFile(context: Context, file: String): File =

@@ -10,6 +10,8 @@ import com.rainingtrace.domain.map.Place
 import com.rainingtrace.domain.map.PlaceActionType
 import com.rainingtrace.domain.map.PlaceType
 import com.rainingtrace.domain.map.WorldCoordinate
+import com.rainingtrace.domain.spawn.SpawnRule
+import com.rainingtrace.domain.spawn.SpawnSpot
 import com.rainingtrace.domain.world.ResourceYieldRule
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -138,4 +140,60 @@ class ContentValidatorTest {
         category = ResourceCategory.CRAFT,
         rarity = Rarity.COMMON,
     )
+
+    // ---- 资源点刷新规则 ----
+
+    private fun spawnRule(id: String, placeType: PlaceType, perDay: Int, spots: Int) = SpawnRule(
+        id = id,
+        name = "刷出来的点",
+        placeType = placeType,
+        spots = List(spots) { SpawnSpot(WorldCoordinate(39.7326, 116.1712), 10.0) },
+        perDay = perDay,
+    )
+
+    /** `perDay` 比候选点还多不是错误：夹到候选点数就行，但要说一声。 */
+    @Test
+    fun `刷新规则的 perDay 超过候选点只记一条 WARN`() {
+        val report = ContentReport()
+        val content = WorldContent(
+            resources = listOf(resource("res.berry")),
+            yieldRules = listOf(
+                ResourceYieldRule(
+                    id = "rule.collect.berry",
+                    resourceId = "res.berry",
+                    action = PlaceActionType.COLLECT,
+                    placeType = PlaceType.BERRY_BUSH,
+                ),
+            ),
+            spawnRules = listOf(spawnRule("spawn.berry", PlaceType.BERRY_BUSH, perDay = 3, spots = 1)),
+        )
+
+        val cleaned = ContentValidator.validate(content, report)
+
+        assertEquals("内容不该被丢掉", 1, cleaned.spawnRules.size)
+        assertEquals(0, report.errorCount)
+        assertEquals(1, report.items.size)
+        assertTrue("WARN 里要说明 perDay 超了", report.items.first().message.contains("perDay"))
+    }
+
+    /** 刷出来但采不到，是最静默的坏法：走过去一看什么都没有。 */
+    @Test
+    fun `刷新规则刷出来的类型没有产出规则时只记一条 WARN`() {
+        val report = ContentReport()
+        val content = WorldContent(
+            spawnRules = listOf(
+                spawnRule("spawn.mushroom", PlaceType.MUSHROOM_PATCH, perDay = 1, spots = 2),
+            ),
+        )
+
+        val cleaned = ContentValidator.validate(content, report)
+
+        assertEquals("内容不该被丢掉", 1, cleaned.spawnRules.size)
+        assertEquals(0, report.errorCount)
+        assertEquals(1, report.items.size)
+        assertTrue(
+            "WARN 里要点名是哪个类型",
+            report.items.first().message.contains("MUSHROOM_PATCH"),
+        )
+    }
 }

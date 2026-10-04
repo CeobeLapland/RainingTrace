@@ -17,6 +17,7 @@ import com.rainingtrace.domain.map.MapLayer
 import com.rainingtrace.domain.map.MapRendererAdapter
 import com.rainingtrace.domain.map.MemoryVisual
 import com.rainingtrace.domain.map.NpcVisual
+import com.rainingtrace.domain.map.PlaceCategory
 import com.rainingtrace.domain.map.PlaceStyleSpec
 import com.rainingtrace.domain.map.PlaceType
 import com.rainingtrace.domain.map.PlaceVisual
@@ -522,6 +523,11 @@ class MapLibreAdapter(
                     if (fontStack != null) {
                         setProperties(PropertyFactory.textFont(fontStack))
                     }
+                    // 资源点（含刷出来的）可以有很多：拉远了先藏起来，别糊成一片图标汤。
+                    // 默认缩放（16.5）在阈值之上，所以平时照常看得见。
+                    if (type.category == PlaceCategory.RESOURCE) {
+                        setMinZoom(RESOURCE_MARKER_MIN_ZOOM)
+                    }
                 },
             )
         }
@@ -833,6 +839,9 @@ class MapLibreAdapter(
 
         /** 最小缩放：再小视口内格子数量会失控；此级别约覆盖 1km 宽。 */
         private const val MIN_ZOOM = 14.0
+
+        /** 资源点图层的最低缩放：比默认 16.5 略低，只在拉远看全局时藏起来。 */
+        private const val RESOURCE_MARKER_MIN_ZOOM = 16f
 
         /**
          * 相机中心活动边界（约 25×30km，覆盖一个区/小城）。

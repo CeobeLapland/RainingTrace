@@ -27,6 +27,7 @@ import com.rainingtrace.domain.map.Place
 import com.rainingtrace.domain.map.PlaceActionType
 import com.rainingtrace.domain.map.PlaceCategory
 import com.rainingtrace.domain.map.PlaceDraft
+import com.rainingtrace.domain.map.PlaceOrigin
 import com.rainingtrace.domain.map.PlaceRepository
 import com.rainingtrace.domain.map.PlaceType
 import com.rainingtrace.domain.map.PlaceVisual
@@ -66,6 +67,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -223,6 +226,17 @@ class MapViewModel(
                 }
             }
             launch { runNpcTicker() }
+            // 资源点刷新：跨天换一批；"此刻能不能采"也会随天气/时段变，两种情况都要重算。
+            launch {
+                worldState.state
+                    .map { Triple(it.localDate, it.weather.kind, it.timeOfDay) }
+                    .distinctUntilChanged()
+                    .collect {
+                        if (!foregroundState.isForeground.value) return@collect
+                        lastCoordinate?.let { coordinate -> refreshPlaces(coordinate) }
+                    }
+            }
+            launch { runSpawnTicker() }
         }
     }
 
@@ -246,6 +260,20 @@ class MapViewModel(
             if (presences.none { it.walking && viewport.contains(it.coordinate) }) continue
             mapRenderer.renderNpcs(presences.map(::toNpcVisual))
             syncSelectedNpc(presences)
+        }
+    }
+
+    /**
+     * 资源点的刷新循环：出现时刻与过期都随日期/时间走（见 `SpawnPlanner`），
+     * 所以停在原地也要周期重算，否则"到点出现 / 到点过期"不会自己反应。
+     * 门控与 [runNpcTicker] 同一口径：前台 + 有定位。
+     */
+    private suspend fun runSpawnTicker() {
+        while (true) {
+            delay(SPAWN_TICK_MS)
+            if (!foregroundState.isForeground.value) continue
+            val coordinate = lastCoordinate ?: continue
+            refreshPlaces(coordinate)
         }
     }
 
@@ -646,7 +674,9 @@ class MapViewModel(
         // 资源点靠地图图标点选（走进去就看见了）。
         _uiState.value = _uiState.value.copy(
             nearbyPlaces = all.filter { place ->
-                place.type.category == PlaceCategory.PLACE &&
+                // 刷出来的点不进列表（会把地点淹没）：它们靠地图图标点选。
+                place.origin == PlaceOrigin.AUTHORED &&
+                    place.type.category == PlaceCategory.PLACE &&
                     place.type in _filters.value.shownPlaceTypes &&
                     isRevealed(place) &&
                     place.coordinate.distanceMetersTo(coordinate) <= PLACE_CARD_RADIUS_METERS
@@ -732,6 +762,9 @@ class MapViewModel(
 
         /** NPC 重渲间隔：见 [runNpcTicker] 的取舍（10s 一步刚好"在挪动"）。 */
         private const val NPC_TICK_MS = 10_000L
+
+        /** 资源点重算间隔：出现/过期按分钟算，1 分钟一次够用也不费电。 */
+        private const val SPAWN_TICK_MS = 60_000L
         private val MEMORY_TIME_FORMAT: java.time.format.DateTimeFormatter =
             java.time.format.DateTimeFormatter.ofPattern("HH:mm")
     }

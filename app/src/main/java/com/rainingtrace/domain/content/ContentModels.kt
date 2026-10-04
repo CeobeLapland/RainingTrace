@@ -7,6 +7,7 @@ import com.rainingtrace.domain.map.PlaceActionType
 import com.rainingtrace.domain.npc.NpcKeywordRules
 import com.rainingtrace.domain.npc.NpcProfile
 import com.rainingtrace.domain.npc.NpcProactiveRule
+import com.rainingtrace.domain.spawn.SpawnRule
 import com.rainingtrace.domain.world.ResourceYieldRule
 import kotlinx.coroutines.flow.StateFlow
 
@@ -72,6 +73,8 @@ data class WorldContent(
     val placeAliases: Map<String, String> = emptyMap(),
     /** 规则解析用的中文关键词表（改它就能教会 NPC 认新词）。 */
     val npcKeywords: NpcKeywordRules = NpcKeywordRules.EMPTY,
+    /** 资源点刷新规则：按候选点 + 确定性种子生成会过期的资源点（见 `SpawnPlanner`）。 */
+    val spawnRules: List<SpawnRule> = emptyList(),
 )
 
 /**
@@ -114,6 +117,10 @@ class ContentIndex(
 
     val npcKeywords: NpcKeywordRules get() = content.npcKeywords
 
+    val spawnRules: List<SpawnRule> get() = content.spawnRules
+
+    val spawnRulesById: Map<String, SpawnRule> = content.spawnRules.associateBy { it.id }
+
     val errorCount: Int = diagnostics.count { it.isError }
 
     /**
@@ -131,6 +138,7 @@ class ContentIndex(
         NPC_LINES to content.npcLines.size,
         PLACE_ALIASES to content.placeAliases.size,
         NPC_KEYWORDS to content.npcKeywords.topics.size,
+        SPAWN_RULES to content.spawnRules.size,
     )
 
     companion object {
@@ -146,6 +154,7 @@ class ContentIndex(
         const val NPC_LINES = "npc_lines"
         const val PLACE_ALIASES = "place_aliases"
         const val NPC_KEYWORDS = "npc_keywords"
+        const val SPAWN_RULES = "spawn_rules"
     }
 }
 

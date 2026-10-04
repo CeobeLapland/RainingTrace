@@ -102,6 +102,19 @@ enum class PlaceActionType {
     WATCH,
 }
 
+/**
+ * 地点从哪来。**呈现与筛选语义挂在它上面，不要只看 `PlaceType.category`**：
+ * 刷出来的点完全可能是林地/山丘这类 PLACE 类型，但它既不该"未揭示时画灰问号"
+ * （那是免费开图），也不该进"附近地点"列表（会淹没列表）。
+ */
+enum class PlaceOrigin {
+    /** 人配（`places.json`）或玩家现场记点——常驻，不过期。 */
+    AUTHORED,
+
+    /** 按刷新规则 + 确定性种子生成——会过期、会换位置（见 `SpawnPlanner`）。 */
+    SPAWNED,
+}
+
 data class Place(
     val id: String,
     val name: String,
@@ -109,6 +122,10 @@ data class Place(
     val coordinate: WorldCoordinate,
     val actions: Set<PlaceActionType>,
     val description: String = "",
+    /** 来源；[PlaceOrigin.SPAWNED] 的点由规则算出，不落盘。 */
+    val origin: PlaceOrigin = PlaceOrigin.AUTHORED,
+    /** 过期时刻（仅 spawn 点有）；常驻地点为 null。 */
+    val expiresAtEpochMs: Long? = null,
 ) {
     init {
         require(id.isNotBlank()) { "place id must not be blank" }

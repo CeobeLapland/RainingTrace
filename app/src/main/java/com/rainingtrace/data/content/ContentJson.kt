@@ -19,6 +19,8 @@ import com.rainingtrace.domain.npc.NpcTopic
 import com.rainingtrace.domain.npc.NpcTrait
 import com.rainingtrace.domain.npc.NpcTriggerCondition
 import com.rainingtrace.domain.npc.TimeHint
+import com.rainingtrace.domain.spawn.SpawnRule
+import com.rainingtrace.domain.spawn.SpawnSpot
 import com.rainingtrace.domain.world.ResourceYieldRule
 import com.rainingtrace.domain.world.Season
 import com.rainingtrace.domain.world.TimeOfDay
@@ -901,5 +903,100 @@ internal fun decodeNpcKeywords(
     ).also {
         if (it.topics.isEmpty()) report.warn(file, null, "关键词表里一个话题都没有，NPC 会听不懂所有话")
         if (it.meet.isEmpty()) report.warn(file, null, "没有任何\"想见面\"的说法，约定功能会失效")
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 资源点刷新规则
+// ---------------------------------------------------------------------------
+
+/** 候选点：实际生成位置会在它周围 [radiusMeters] 内确定性偏移。 */
+@Serializable
+internal data class SpawnSpotDto(
+    val lat: Double = 0.0,
+    val lng: Double = 0.0,
+    val radiusMeters: Double = 0.0,
+)
+
+@Serializable
+internal data class SpawnRuleDto(
+    val id: String = "",
+    val name: String = "",
+    val placeType: String = "",
+    val description: String = "",
+    /** 省略 = 沿用 `defaultActionsFor(placeType)`（与"记点"同一口径）。 */
+    val actions: List<String> = emptyList(),
+    val spots: List<SpawnSpotDto> = emptyList(),
+    val perDay: Int = 1,
+    val lifetimeMinutes: Int = SpawnRule.MINUTES_PER_DAY,
+    val conditions: List<WorldConditionDto> = emptyList(),
+)
+
+internal fun decodeSpawnRuleEntries(
+    text: String,
+    file: String,
+    report: ContentReport,
+): DecodedEntries<SpawnRule> = decodeEntityFile(text, file, report) { element, f, r ->
+    val dto = runCatching {
+        ContentJsonFormat.decodeFromJsonElement(SpawnRuleDto.serializer(), element)
+    }.getOrElse {
+        r.error(f, null, "条目读不出来：${it.message}")
+        return@decodeEntityFile null
+    }
+    decodeSpawnRule(dto, f, r)
+}
+
+internal fun decodeSpawnRule(
+    dto: SpawnRuleDto,
+    file: String,
+    report: ContentReport,
+): SpawnRule? {
+    val placeType = parseEnum(dto.placeType, PlaceType.entries)
+    if (placeType == null) {
+        report.error(
+            file,
+            dto.id,
+            "未知的 placeType「${dto.placeType}」，合法值：${legalValues(PlaceType.entries)}",
+        )
+        return null
+    }
+
+    // 动作是可选覆盖：不写就是 null，交给 `defaultActionsFor` 决定。
+    val actions: Set<PlaceActionType>? = if (dto.actions.isEmpty()) {
+        null
+    } else {
+        val parsed = dto.actions.mapNotNull { raw ->
+            val action = parseEnum(raw, PlaceActionType.entries)
+            if (action == null) {
+                report.error(
+                    file,
+                    dto.id,
+                    "未知的 action「$raw」，合法值：${legalValues(PlaceActionType.entries)}",
+                )
+            }
+            action
+        }.toSet()
+        // 写了动作但一个都不合法 → 这条规则没意义，丢掉。
+        if (parsed.isEmpty()) return null
+        parsed
+    }
+
+    val conditions = dto.conditions.mapNotNull { decodeWorldCondition(it, file, dto.id, report) }
+
+    return runCatching {
+        SpawnRule(
+            id = dto.id,
+            name = dto.name,
+            placeType = placeType,
+            spots = dto.spots.map { SpawnSpot(WorldCoordinate(it.lat, it.lng), it.radiusMeters) },
+            perDay = dto.perDay,
+            description = dto.description,
+            actions = actions,
+            lifetimeMinutes = dto.lifetimeMinutes,
+            conditions = conditions,
+        )
+    }.getOrElse {
+        report.error(file, dto.id, "刷新规则不合法：${it.message}")
+        null
     }
 }

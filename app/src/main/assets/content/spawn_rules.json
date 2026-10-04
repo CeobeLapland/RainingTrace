@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "removedIds": [],
+  "entries": [
+    {
+      "id": "spawn.berry_bush_campus",
+      "name": "浆果丛",
+      "placeType": "BERRY_BUSH",
+      "description": "小径旁的一丛灌木，走过去顺手就能摘几颗。",
+      "spots": [
+        { "lat": 39.7341, "lng": 116.1726, "radiusMeters": 18 },
+        { "lat": 39.7336, "lng": 116.1741, "radiusMeters": 14 },
+        { "lat": 39.7329, "lng": 116.1718, "radiusMeters": 12 }
+      ],
+      "perDay": 2,
+      "conditions": []
+    },
+    {
+      "id": "spawn.mushroom_patch_campus",
+      "name": "菌丛",
+      "placeType": "MUSHROOM_PATCH",
+      "description": "老树根边常冒菌子，下过雨那几天最好找。",
+      "spots": [
+        { "lat": 39.7334, "lng": 116.1738, "radiusMeters": 15 },
+        { "lat": 39.7339, "lng": 116.1703, "radiusMeters": 10 }
+      ],
+      "perDay": 1,
+      "conditions": [
+        { "type": "weatherIn", "kinds": ["RAINY"] }
+      ]
+    }
+  ]
+}

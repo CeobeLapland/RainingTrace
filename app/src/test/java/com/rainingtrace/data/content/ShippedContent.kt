@@ -7,6 +7,7 @@ import com.rainingtrace.domain.map.Place
 import com.rainingtrace.domain.npc.NpcKeywordRules
 import com.rainingtrace.domain.npc.NpcProfile
 import com.rainingtrace.domain.npc.NpcProactiveRule
+import com.rainingtrace.domain.spawn.SpawnRule
 import com.rainingtrace.domain.world.ResourceYieldRule
 
 /**
@@ -46,6 +47,10 @@ object ShippedContent {
 
     val recipes: List<Recipe> by lazy {
         load("recipes.json", ::decodeRecipeEntries).entries
+    }
+
+    val spawnRules: List<SpawnRule> by lazy {
+        load("spawn_rules.json", ::decodeSpawnRuleEntries).entries
     }
 
     val npcs: List<NpcProfile> by lazy { load("npcs.json", ::decodeNpcEntries).entries }

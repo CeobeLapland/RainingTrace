@@ -2,8 +2,10 @@ package com.rainingtrace.domain.content
 
 import com.rainingtrace.domain.craft.Recipe
 import com.rainingtrace.domain.inventory.ResourceCategory
+import com.rainingtrace.domain.map.defaultActionsFor
 import com.rainingtrace.domain.npc.NpcProfile
 import com.rainingtrace.domain.npc.NpcProactiveRule
+import com.rainingtrace.domain.spawn.SpawnRule
 
 /**
  * 内容的引用完整性校验（纯函数，可单测）。
@@ -30,6 +32,7 @@ object ContentValidator {
         validateUniqueIds(content.recipes, MERGED, report) { it.id }
         validateUniqueIds(content.npcs, MERGED, report) { it.id }
         validateUniqueIds(content.npcProactiveRules, MERGED, report) { it.id }
+        validateUniqueIds(content.spawnRules, MERGED, report) { it.id }
 
         warnUncraftableCraftGoods(content, report)
 
@@ -39,6 +42,7 @@ object ContentValidator {
             npcs = validNpcs(content, report),
             npcProactiveRules = validProactiveRules(content, report),
             placeAliases = validAliases(content, report),
+            spawnRules = validSpawnRules(content, report),
         )
     }
 
@@ -155,6 +159,43 @@ object ContentValidator {
             }
             known
         }
+    }
+
+    /**
+     * 刷新规则是不是个"哑点"。候选点为空、半径非正这类硬错在 [SpawnRule] 的 `require`
+     * 里就挡掉了（解析期变成诊断），这里只补两条**不该拦构建**的提醒：
+     * - `perDay` 比候选点还多 → 每天最多只会刷出候选点那么多个；
+     * - 该类型没有任何产出规则 → 玩家走到跟前也采不到东西（补内容的中途很正常）。
+     */
+    private fun validSpawnRules(content: WorldContent, report: ContentReport): List<SpawnRule> {
+        val specificKeys = content.yieldRules.map { it.action to it.placeType }.toSet()
+        val wildcardActions = content.yieldRules
+            .filter { it.placeType == null }
+            .map { it.action }
+            .toSet()
+
+        content.spawnRules.forEach { rule ->
+            if (rule.perDay > rule.spots.size) {
+                report.warn(
+                    MERGED,
+                    rule.id,
+                    "perDay（${rule.perDay}）比候选点还多（${rule.spots.size} 个），" +
+                        "每天最多只会刷出 ${rule.spots.size} 个",
+                )
+            }
+            val actions = rule.actions ?: defaultActionsFor(rule.placeType)
+            val reachable = actions.any { action ->
+                (action to rule.placeType) in specificKeys || action in wildcardActions
+            }
+            if (!reachable) {
+                report.warn(
+                    MERGED,
+                    rule.id,
+                    "刷出来的「${rule.placeType}」没有任何产出规则，玩家走到跟前也采不到东西",
+                )
+            }
+        }
+        return content.spawnRules
     }
 
     private fun <T> validateUniqueIds(

@@ -3,6 +3,7 @@ package com.rainingtrace.data.content
 import com.rainingtrace.domain.content.ContentReport
 import com.rainingtrace.domain.inventory.ResourceCategory
 import com.rainingtrace.domain.inventory.ResourceDefinition
+import com.rainingtrace.domain.map.defaultActionsFor
 import com.rainingtrace.domain.npc.NpcTopic
 import com.rainingtrace.domain.world.WeatherKind
 import com.rainingtrace.domain.world.WorldCondition
@@ -185,6 +186,52 @@ class ShippedContentTest {
                 "${it.id} 是加工品，堆叠上限该比默认的 ${ResourceDefinition.DEFAULT_STACK_LIMIT} 小",
                 it.stackLimit < ResourceDefinition.DEFAULT_STACK_LIMIT,
             )
+        }
+    }
+
+    // ---- 资源点刷新规则 ----
+
+    private fun spawnRules(report: ContentReport) =
+        decodeSpawnRuleEntries(readAsset("spawn_rules.json"), "spawn_rules.json", report)
+
+    @Test
+    fun `内置刷新规则没有错误诊断且数量不缩水`() {
+        val report = ContentReport()
+        val decoded = spawnRules(report)
+
+        assertEquals("内置刷新规则有错误：${report.items}", 0, report.errorCount)
+        assertTrue("内置刷新规则数不足：${decoded.entries.size}", decoded.entries.size >= 1)
+        val ids = decoded.entries.map { it.id }
+        assertEquals("刷新规则 id 有重复：$ids", ids.size, ids.toSet().size)
+    }
+
+    /**
+     * 刷出来却采不到，是这条链上最静默的坏法：玩家走到跟前一看什么都没有，
+     * 既没有报错也没有线索。所以"每条刷新规则都至少能命中一条产出规则"钉成硬约束。
+     */
+    @Test
+    fun `每条刷新规则都能采到东西`() {
+        val rules = decodeYieldRuleEntries(
+            readAsset("yield_rules.json"),
+            "yield_rules.json",
+            ContentReport(),
+        ).entries
+        val specific = rules.map { it.action to it.placeType }.toSet()
+        val wildcard = rules.filter { it.placeType == null }.map { it.action }.toSet()
+
+        val dumb = spawnRules(ContentReport()).entries.filter { rule ->
+            val actions = rule.actions ?: defaultActionsFor(rule.placeType)
+            actions.none { (it to rule.placeType) in specific || it in wildcard }
+        }.map { it.id }
+
+        assertTrue("这些刷新规则刷出来也采不到东西：$dumb", dumb.isEmpty())
+    }
+
+    @Test
+    fun `每条刷新规则都有候选点且 perDay 不超过候选点数`() {
+        spawnRules(ContentReport()).entries.forEach { rule ->
+            assertTrue("${rule.id} 没有任何候选点", rule.spots.isNotEmpty())
+            assertTrue("${rule.id} 的 perDay 比候选点还多", rule.perDay <= rule.spots.size)
         }
     }
 

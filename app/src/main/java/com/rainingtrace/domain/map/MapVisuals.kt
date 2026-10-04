@@ -100,8 +100,11 @@ fun npcStyle(walking: Boolean): PlaceStyleSpec = if (walking) {
  * 地图上要画哪些地点标记（06_地图专项 §7 POI 分层 + 筛选语义）。
  *
  * - 已揭示 + 类型没被筛掉 → 彩色图标 + 名字；
- * - 未揭示的**人文地点** → 灰色 "?"（走过了才知道这儿有东西），这是既有的探索暗示；
- * - 未揭示的**自然资源点** → 完全不画：给个 "?" 等于免费开图，资源点必须自己走近撞见。
+ * - 未揭示的**常驻人文地点** → 灰色 "?"（走过了才知道这儿有东西），这是既有的探索暗示；
+ * - 未揭示的**刷出来的点**与**自然资源点** → 完全不画：给个 "?" 等于免费开图。
+ *
+ * 后两条判定必须用 `origin`，不能只看 `PlaceType.category`——刷出来的点可能是林地这类
+ * PLACE 类型，只看分类就会给它画 "?"，把开图泄露出去。
  */
 fun placeVisualsFor(
     places: List<Place>,
@@ -114,7 +117,8 @@ fun placeVisualsFor(
             revealed && place.type in shownTypes ->
                 add(PlaceVisual(place.id, place.name, place.coordinate, place.type, revealed = true))
 
-            !revealed && place.type.category == PlaceCategory.PLACE ->
+            !revealed && place.origin == PlaceOrigin.AUTHORED &&
+                place.type.category == PlaceCategory.PLACE ->
                 add(PlaceVisual(place.id, "", place.coordinate, place.type, revealed = false))
 
             else -> Unit

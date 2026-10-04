@@ -661,6 +661,7 @@ private fun ActionRow(
 private fun contentKindLabel(kind: String): String = when (kind) {
     ContentIndex.PLACES -> "地点"
     ContentIndex.RECIPES -> "配方"
+    ContentIndex.SPAWN_RULES -> "刷新规则"
     else -> kind
 }
 
