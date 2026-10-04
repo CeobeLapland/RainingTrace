@@ -159,3 +159,27 @@ data class NpcCommitmentEntity(
     val createdAtEpochMs: Long,
     val resolvedAtEpochMs: Long?,
 )
+
+/**
+ * NPC 记忆（N4 记忆层）。
+ *
+ * 有界设计见 [com.rainingtrace.domain.npc.NpcMemoryMaintenance]：
+ * 每个 NPC 封顶，超了把低优先级合并成 SUMMARY。索引按 (npcId) 建，
+ * 挑选/清理都按"某个 NPC"取全量在领域侧算，量级小不需要更细索引。
+ */
+@Entity(
+    tableName = "npc_memory_facts",
+    indices = [Index(value = ["npcId"])],
+)
+data class NpcMemoryFactEntity(
+    @PrimaryKey val id: String,
+    val npcId: String,
+    /** [com.rainingtrace.domain.npc.NpcMemoryKind] 的 name。 */
+    val kind: String,
+    val content: String,
+    val importance: Int,
+    val source: String,
+    val createdAtEpochMs: Long,
+    val lastReferencedAtEpochMs: Long,
+    val refCount: Int,
+)

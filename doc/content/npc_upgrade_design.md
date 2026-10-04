@@ -144,3 +144,38 @@
 - 30 人 json 落地 `assets/content/npcs.json`；转换脚本指向 `doc/content/` 设计稿，修了齐岭 oneLiner 乱码、跨日 1440 条目（md 源同步删除，约定改为"不写 1440 跨日标记"）。
 - 图片约定：头像 `art/npc/npc.head.<id>.png`、新增立绘 `art/npc/npc.body.<id>.png`（`ArtPaths` + 测试）。已画的 `npc.head.bit.lin.png` / `npc.body.bit.lin.png` 现在能读到；立绘 UI 落位在 N2（档案页 + 地图卡片）。
 - 单测 407 全绿。**既有存档行为不变**：核心 5 人作息多数落地，位置/行走照旧。
+
+## 9. N2 落地记录（地图交互）
+
+- **交互条（galgame 式选项列）确认按"列表"设计**：`NpcInteraction` 枚举（TALK/PROFILE，GIFT/ERRAND/WALK_TOGETHER 注释预留）；卡片只渲染已实现的动作，避免"点不动死的按钮"。N5 加动作 = 枚举加值 + `ALL_NPC_INTERACTIONS` 点亮 + `when` 补分支（编译器会盯着）。
+- **卡片重做** [MapScreen.kt 的 NpcDetailCard](file:///e:/DreamingPath/RainingTrace/app/src/main/java/com/rainingtrace/feature/map/MapScreen.kt)：头像 + 名字 + 此刻状态 + 一句话 + 今天在做什么 + 操作条 `[聊天][档案]`。聊天**碰见即开放**（不需要先解锁，对应"现实遇见 → 聊天软件"的入口）。
+- **档案全屏页**（NpcProfileSheet，盖在地图上的全屏页）：立绘大图（`npc.body.<id>.png`，缺图占位底板）+ 关系阶段 + 性格标签 + 礼遇喜好（N1 入库的数据，送礼玩法 N5）+ 今日作息轨迹时间轴（按可解析地点过滤，与 `resolveSchedule` 同口径）。
+- 地图 → 聊天已接线（`onOpenChat` → `npc_chat/{npcId}` 路由）。
+- 测试构建全绿。
+
+## 10. N4 落地记录（记忆层 + LLM 架构，2026-10-04）
+
+**问题定案**
+- **固定提示词做成可配置**：`NpcProfile.personaPrompt`（JSON 可选字段），没填 = `NpcPersonaPrompt` 从身份/性格/背景/喜好自动组装；填了整段覆盖。
+- **主动对话**：触发条件保持规则化（玩法状态，不交给 LLM 拍板）；本轮不改行为，LLM 只留"文本生成"插槽。
+- **Token 控制（三层，绝不无限增长）**：① 每轮只带最近消息（已有）+ 记忆 `topK(12)`；② 每个 NPC 记忆封顶 40 条，超了把最低优先级 5 条合并成 1 条 SUMMARY（已有 SUMMARY 并入而非新开）；③ `PromptBudget`（2400 字）硬裁剪：保人格 → 保记忆 → 保最新消息。
+
+**落地**
+- Room **v8**：`npc_memory_facts` 表（有界事实表，索引 npcId），迁移照 `8.json` 逐字抄。
+- `NpcMemoryMaintenance`（纯函数）：提取/去重/topK/prune(合并 SUMMARY)/对话→事实。
+- `NpcMemoryWriter`：聊天（话题偏好/提到地点/答应的约定）与初次遇见都沉淀记忆，写完自动清理。
+- `LlmClient` 接口 + `LlmNarrativeService`：组装"人格+世界/关系状态+记忆+最近消息"的有界 prompt；**client 为空/失败一律回退模板**，绝不假装听懂；产出的文本仍由 `SendNpcMessageUseCase` 结算好感/承诺，并过 `DialogueValidator`。
+- `AppContainer`：`llmClient` 当前为 null（关闭），接 API 时实现 `LlmClient` 换掉即可，玩法零改动。
+- 单测 +12（提取/去重/topK/清理/预算/人格/LLM 兜底），全绿。
+
+## 11. 下一步候选
+
+- N3 随机运动 + 作息变体（世界观感）
+- N5 送礼/委托/结伴 + 关系网 + 特殊角色条件出场
+- 真 LLM：实现 `LlmClient`（需要你的 API key 与选型）
+
+## 12. 补充落地（2026-10-05）
+
+- **personaPrompt 手动覆盖已接通"md 唯一真源"工作流**：角色详设里加一行 `- **人设提示词**：` → 转换脚本解析为 `personaPrompt` → 运行时 JSON。示例已给林砚（`doc/content/npcs_design.md` 林砚节）。不写 = 自动组装。
+- **记忆可编辑（玩家/开发者共用）**：档案页"他还记得"区块——每条可编辑内容与重要度（1–10）、可删除、"＋写下一条"手写添加（自动去重、走超限合并）。入口在 `NpcMemoryEditor`（domain 用例），UI 在 [MapScreen.kt 的 NpcProfileSheet](file:///e:/DreamingPath/RainingTrace/app/src/main/java/com/rainingtrace/feature/map/MapScreen.kt)。
+- 单测 +3（手写添加判重/超限、编辑覆盖、重要度夹取），全绿。

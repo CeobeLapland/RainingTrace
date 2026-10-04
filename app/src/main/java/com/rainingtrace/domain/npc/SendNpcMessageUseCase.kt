@@ -43,6 +43,8 @@ class SendNpcMessageUseCase(
     private val placeAliases: () -> Map<String, String> = { emptyMap() },
     /** 承诺仓储（片 3）：答应了才允许说承诺词，所以它是"不骗人"的另一半。 */
     private val commitmentRepository: NpcCommitmentRepository? = null,
+    /** N4 记忆层：这次对话沉淀成"他记得"的事实（去重 + 有界）。 */
+    private val memoryWriter: NpcMemoryWriter? = null,
 ) {
 
     suspend operator fun invoke(npcId: String, text: String): SendMessageResult {
@@ -165,6 +167,15 @@ class SendNpcMessageUseCase(
                 ),
             )
         }
+
+        // ⑦ 沉淀记忆：话题偏好 / 提到的地方 / 约好的见面 → 他会"记得"。
+        memoryWriter?.recordFromDialogue(
+            npcId = npcId,
+            npcName = profile.name,
+            parsed = parsed,
+            mentionedPlaceName = parsed.mentionedPlaceName,
+            commitmentFacts = commitment.facts,
+        )
 
         return SendMessageResult.Sent(reply)
     }

@@ -36,6 +36,13 @@ data class NpcProfile(
      * 他们正常入档（可对话、可送礼），但出场由条件控制（N5），默认不上地图。
      */
     val enabled: Boolean = true,
+    /**
+     * LLM 人物设定的手写覆盖（N4 记忆层/LLM 用）。
+     *
+     * 不填 = 用 [defaultPersona] 从身份/性格/背景/喜好自动组装（默认即有内容）；
+     * 填了 = 整段采用，便于为个别 NPC 精调语气与人设细节。
+     */
+    val personaPrompt: String? = null,
 ) {
     init {
         require(id.isNotBlank()) { "npc id must not be blank" }

@@ -228,3 +228,28 @@ interface NpcCommitmentDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(commitment: NpcCommitmentEntity)
 }
+
+@Dao
+interface NpcMemoryFactDao {
+    @Query("SELECT * FROM npc_memory_facts WHERE npcId = :npcId")
+    suspend fun forNpc(npcId: String): List<NpcMemoryFactEntity>
+
+    @Query("SELECT * FROM npc_memory_facts")
+    suspend fun all(): List<NpcMemoryFactEntity>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insert(fact: NpcMemoryFactEntity)
+
+    /** 编辑/手写位：整行覆盖（编辑后的 content/importance 生效）。 */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(fact: NpcMemoryFactEntity)
+
+    @Query("DELETE FROM npc_memory_facts WHERE id IN (:ids)")
+    suspend fun deleteByIds(ids: List<String>)
+
+    @Query(
+        "UPDATE npc_memory_facts SET lastReferencedAtEpochMs = :now, refCount = refCount + 1 " +
+            "WHERE id IN (:ids)",
+    )
+    suspend fun touch(ids: List<String>, now: Long)
+}

@@ -41,10 +41,14 @@ import com.rainingtrace.domain.memory.MemoryFocusRequest
 import com.rainingtrace.domain.memory.MemoryNode
 import com.rainingtrace.domain.memory.MemoryRepository
 import com.rainingtrace.domain.npc.NpcEncounterResult
+import com.rainingtrace.domain.npc.NpcMemoryEditor
+import com.rainingtrace.domain.npc.NpcMemoryFact
 import com.rainingtrace.domain.npc.NpcPresence
 import com.rainingtrace.domain.npc.NpcPresenceUseCase
 import com.rainingtrace.domain.npc.NpcProfile
 import com.rainingtrace.domain.npc.NpcRepository
+import com.rainingtrace.domain.npc.NpcState
+import com.rainingtrace.domain.npc.NpcStateRepository
 import com.rainingtrace.domain.npc.RecordNpcEncounterUseCase
 import com.rainingtrace.domain.settings.AppSettingsRepository
 import com.rainingtrace.domain.settings.LocationMode
@@ -84,6 +88,12 @@ data class MapUiState(
     val selectedNpc: NpcPresence? = null,
     /** 选中 NPC 的档案（名字/一句话）；[selectedNpc] 不为空时才有值。 */
     val selectedNpcProfile: NpcProfile? = null,
+    /** 选中 NPC 的可变状态（好感/关系阶段）；档案页显示用，选中时现读一次。 */
+    val selectedNpcState: NpcState? = null,
+    /** 选中 NPC 今日作息轨迹预览（时间升序，只保留能解析的地点）。 */
+    val selectedNpcSchedule: List<NpcSchedulePreviewRow> = emptyList(),
+    /** 选中 NPC 记住的事；档案页"他还记得"区块，可编辑。 */
+    val selectedNpcMemories: List<NpcMemoryFact> = emptyList(),
     /** 日记「在地图查看」跳过来的记忆 → 聚焦卡 + 高亮环。 */
     val focusedMemory: MemoryNode? = null,
     /** 轨迹日历跳过来的某一天 → 底部摘要卡 + 画那天的轨迹（空 = 画今天）。 */
@@ -121,6 +131,14 @@ data class FocusedTrackDay(
     val endLabel: String,
 )
 
+/** 档案页"今天他会去哪"时间轴的每一站；字段已按可解析地点过滤好。 */
+data class NpcSchedulePreviewRow(
+    /** 到达时刻，HH:mm。 */
+    val timeLabel: String,
+    val placeName: String,
+    val activity: String,
+)
+
 /**
  * 地图屏单向数据流（战争迷雾架构）：
  *
@@ -147,6 +165,10 @@ class MapViewModel(
     /** NPC：按作息算出此刻在哪（纯函数，不落库）。 */
     private val npcPresence: NpcPresenceUseCase,
     private val npcRepository: NpcRepository,
+    /** 好感/关系阶段：档案页显示用（与聊天同一份可变状态）。 */
+    private val npcStateRepository: NpcStateRepository,
+    /** N4 记忆的编辑入口：档案页"他还记得"区块。 */
+    private val npcMemoryEditor: NpcMemoryEditor,
     /** 走到 NPC 跟前时记一次"第一次遇见"。 */
     private val recordNpcEncounter: RecordNpcEncounterUseCase,
     /** NPC 位置与世界状态（时段）同源：都用它现算，避免读到过期 tick。 */
@@ -489,9 +511,13 @@ class MapViewModel(
         }
         viewModelScope.launch {
             val presence = npcPresence.presenceOf(npcId, worldState.current()) ?: return@launch
+            val profile = npcRepository.byId(npcId)
             _uiState.value = _uiState.value.copy(
                 selectedNpc = presence,
-                selectedNpcProfile = npcRepository.byId(npcId),
+                selectedNpcProfile = profile,
+                selectedNpcState = npcStateRepository.stateOf(npcId),
+                selectedNpcSchedule = schedulePreview(profile, placeRepository.all().associateBy { it.id }),
+                selectedNpcMemories = npcMemoryEditor.factsFor(npcId),
                 selectedPlace = null,
                 actionPreviews = emptyMap(),
             )
@@ -499,8 +525,68 @@ class MapViewModel(
     }
 
     fun clearNpcSelection() {
-        _uiState.value = _uiState.value.copy(selectedNpc = null, selectedNpcProfile = null)
+        _uiState.value = _uiState.value.copy(
+            selectedNpc = null,
+            selectedNpcProfile = null,
+            selectedNpcState = null,
+            selectedNpcSchedule = emptyList(),
+            selectedNpcMemories = emptyList(),
+        )
     }
+
+    /** 编辑一条记忆（档案页"他还记得"）。 */
+    fun editNpcMemory(memory: NpcMemoryFact, newContent: String, newImportance: Int) {
+        val npcId = _uiState.value.selectedNpc?.npcId ?: return
+        viewModelScope.launch {
+            npcMemoryEditor.update(npcId, memory.id, newContent, newImportance)
+            _uiState.value = _uiState.value.copy(
+                selectedNpcMemories = npcMemoryEditor.factsFor(npcId),
+            )
+        }
+    }
+
+    /** 删除一条记忆。 */
+    fun deleteNpcMemory(memory: NpcMemoryFact) {
+        val npcId = _uiState.value.selectedNpc?.npcId ?: return
+        viewModelScope.launch {
+            npcMemoryEditor.delete(npcId, memory.id)
+            _uiState.value = _uiState.value.copy(
+                selectedNpcMemories = npcMemoryEditor.factsFor(npcId),
+            )
+        }
+    }
+
+    /** 手写一条记忆。 */
+    fun addNpcMemory(content: String, importance: Int) {
+        val npcId = _uiState.value.selectedNpc?.npcId ?: return
+        viewModelScope.launch {
+            npcMemoryEditor.add(npcId, content, importance)
+            _uiState.value = _uiState.value.copy(
+                selectedNpcMemories = npcMemoryEditor.factsFor(npcId),
+            )
+        }
+    }
+
+    /**
+     * 档案页"今天他会去哪"：作息按可解析地点过滤后升序排列。
+     * 与 `resolveSchedule` 同一过滤口径（地点不存在就剔除），所以预览就是他真的会走的路线。
+     */
+    private suspend fun schedulePreview(profile: NpcProfile?, places: Map<String, Place>): List<NpcSchedulePreviewRow> {
+        if (profile == null) return emptyList()
+        return profile.schedule
+            .mapNotNull { entry ->
+                val place = places[entry.placeId] ?: return@mapNotNull null
+                NpcSchedulePreviewRow(
+                    timeLabel = minuteLabel(entry.startMinute),
+                    placeName = place.name,
+                    activity = entry.activity,
+                )
+            }
+            .sortedBy { it.timeLabel }
+    }
+
+    private fun minuteLabel(minuteOfDay: Int): String =
+        "%02d:%02d".format(minuteOfDay / 60, minuteOfDay % 60)
 
     /** 立即按当前时刻重算并渲染 NPC（切回本屏 / 视口变化时用）。 */
     private suspend fun renderNpcsNow() {

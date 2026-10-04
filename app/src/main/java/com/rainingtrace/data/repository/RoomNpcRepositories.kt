@@ -2,6 +2,8 @@ package com.rainingtrace.data.repository
 
 import com.rainingtrace.data.local.NpcCommitmentDao
 import com.rainingtrace.data.local.NpcCommitmentEntity
+import com.rainingtrace.data.local.NpcMemoryFactDao
+import com.rainingtrace.data.local.NpcMemoryFactEntity
 import com.rainingtrace.data.local.NpcMessageDao
 import com.rainingtrace.data.local.NpcMessageEntity
 import com.rainingtrace.data.local.NpcStateDao
@@ -10,6 +12,9 @@ import com.rainingtrace.domain.npc.NpcCommitment
 import com.rainingtrace.domain.npc.NpcCommitmentRepository
 import com.rainingtrace.domain.npc.NpcCommitmentStatus
 import com.rainingtrace.domain.npc.NpcConversation
+import com.rainingtrace.domain.npc.NpcMemoryFact
+import com.rainingtrace.domain.npc.NpcMemoryKind
+import com.rainingtrace.domain.npc.NpcMemoryRepository
 import com.rainingtrace.domain.npc.NpcMessage
 import com.rainingtrace.domain.npc.NpcMessageRepository
 import com.rainingtrace.domain.npc.NpcMessageSource
@@ -163,5 +168,56 @@ class RoomNpcCommitmentRepository(
             .getOrDefault(NpcCommitmentStatus.MISSED),
         createdAtEpochMs = createdAtEpochMs,
         resolvedAtEpochMs = resolvedAtEpochMs,
+    )
+}
+
+/** NPC 记忆（N4）的 Room 实现。 */
+class RoomNpcMemoryRepository(
+    private val dao: NpcMemoryFactDao,
+) : NpcMemoryRepository {
+
+    override suspend fun factsFor(npcId: String): List<NpcMemoryFact> =
+        dao.forNpc(npcId).map { it.toDomain() }
+
+    override suspend fun all(): List<NpcMemoryFact> = dao.all().map { it.toDomain() }
+
+    override suspend fun append(fact: NpcMemoryFact) {
+        dao.insert(fact.toEntity())
+    }
+
+    override suspend fun upsert(fact: NpcMemoryFact) {
+        dao.upsert(fact.toEntity())
+    }
+
+    override suspend fun remove(ids: List<String>) {
+        if (ids.isNotEmpty()) dao.deleteByIds(ids)
+    }
+
+    override suspend fun touch(npcId: String, ids: List<String>, nowEpochMs: Long) {
+        if (ids.isNotEmpty()) dao.touch(ids, nowEpochMs)
+    }
+
+    private fun NpcMemoryFactEntity.toDomain() = NpcMemoryFact(
+        id = id,
+        npcId = npcId,
+        kind = runCatching { NpcMemoryKind.valueOf(kind) }.getOrDefault(NpcMemoryKind.EVENT),
+        content = content,
+        importance = importance,
+        source = source,
+        createdAtEpochMs = createdAtEpochMs,
+        lastReferencedAtEpochMs = lastReferencedAtEpochMs,
+        refCount = refCount,
+    )
+
+    private fun NpcMemoryFact.toEntity() = NpcMemoryFactEntity(
+        id = id,
+        npcId = npcId,
+        kind = kind.name,
+        content = content,
+        importance = importance,
+        source = source,
+        createdAtEpochMs = createdAtEpochMs,
+        lastReferencedAtEpochMs = lastReferencedAtEpochMs,
+        refCount = refCount,
     )
 }

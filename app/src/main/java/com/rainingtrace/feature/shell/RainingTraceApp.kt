@@ -112,6 +112,8 @@ fun RainingTraceApp(container: AppContainer) {
                         trackDayFocus = container.trackDayFocusRequest,
                         npcPresence = container.npcPresence,
                         npcRepository = container.npcRepository,
+                        npcStateRepository = container.npcStateRepository,
+                        npcMemoryEditor = container.npcMemoryEditor,
                         recordNpcEncounter = container.recordNpcEncounter,
                         worldState = container.worldStateProvider,
                         foregroundState = container.foregroundState,
@@ -128,6 +130,7 @@ fun RainingTraceApp(container: AppContainer) {
                         WorldStatusViewModel(worldState = container.worldStateProvider)
                     },
                     mapAdapter = container.mapRenderer,
+                    onOpenChat = { npcId -> navController.navigate(npcChatRoute(npcId)) },
                     modifier = Modifier.fillMaxSize(),
                 )
             }

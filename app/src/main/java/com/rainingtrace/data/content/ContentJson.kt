@@ -538,6 +538,7 @@ internal data class NpcProfileDto(
     val giftPreferences: NpcGiftPreferencesDto? = null,
     val homePlaceId: String? = null,
     val enabled: Boolean? = null,
+    val personaPrompt: String? = null,
     val schedule: List<NpcScheduleEntryDto> = emptyList(),
 )
 
@@ -624,6 +625,7 @@ internal fun decodeNpc(
             } ?: GiftPreferences(),
             homePlaceId = dto.homePlaceId,
             enabled = dto.enabled ?: true,
+            personaPrompt = dto.personaPrompt,
         )
     }.getOrElse {
         report.error(file, dto.id, "NPC 不合法：${it.message}")

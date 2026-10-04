@@ -20,6 +20,7 @@ import com.rainingtrace.data.repository.RoomFootprintRepository
 import com.rainingtrace.data.repository.RoomInventoryRepository
 import com.rainingtrace.data.repository.RoomMemoryRepository
 import com.rainingtrace.data.repository.RoomNpcCommitmentRepository
+import com.rainingtrace.data.repository.RoomNpcMemoryRepository
 import com.rainingtrace.data.repository.RoomNpcMessageRepository
 import com.rainingtrace.data.repository.RoomNpcStateRepository
 import com.rainingtrace.data.repository.RoomTrackRepository
@@ -52,9 +53,14 @@ import com.rainingtrace.domain.memory.AudioNoteController
 import com.rainingtrace.domain.memory.CreateMemoryUseCase
 import com.rainingtrace.domain.memory.MemoryFocusRequest
 import com.rainingtrace.domain.memory.MemoryRepository
+import com.rainingtrace.domain.npc.LlmClient
+import com.rainingtrace.domain.npc.LlmNarrativeService
 import com.rainingtrace.domain.npc.NarrativeService
 import com.rainingtrace.domain.npc.NpcCommitmentRepository
 import com.rainingtrace.domain.npc.NpcCommitmentUseCase
+import com.rainingtrace.domain.npc.NpcMemoryEditor
+import com.rainingtrace.domain.npc.NpcMemoryRepository
+import com.rainingtrace.domain.npc.NpcMemoryWriter
 import com.rainingtrace.domain.npc.NpcMessageParser
 import com.rainingtrace.domain.npc.NpcMessageRepository
 import com.rainingtrace.domain.npc.NpcMessageWriter
@@ -322,7 +328,12 @@ class AppContainer(
 
     /** 走到 NPC 跟前 → 记一次"第一次遇见"（真相在 footprint 事件里）。 */
     val recordNpcEncounter: RecordNpcEncounterUseCase by lazy {
-        RecordNpcEncounterUseCase(clock, footprintRepository, worldStateProvider)
+        RecordNpcEncounterUseCase(
+            clock = clock,
+            footprintRepository = footprintRepository,
+            worldState = worldStateProvider,
+            memoryWriter = npcMemoryWriter,
+        )
     }
 
     /** NPC 消息（Room v5）：会话列表 / 未读 / 线程。 */
@@ -339,6 +350,30 @@ class AppContainer(
     val npcCommitmentRepository: NpcCommitmentRepository by lazy {
         RoomNpcCommitmentRepository(database.npcCommitmentDao())
     }
+
+    /** NPC 记忆（Room v8，N4）：有界的事实表，驱动 LLM 上下文。 */
+    val npcMemoryRepository: NpcMemoryRepository by lazy {
+        RoomNpcMemoryRepository(database.npcMemoryFactDao())
+    }
+
+    /**
+     * 把一次对话/一次遇见沉淀成记忆（去重 + 超限合并成 SUMMARY）。
+     * 聊天与遇见都走它，NPC 才"记得"。
+     */
+    val npcMemoryWriter: NpcMemoryWriter by lazy {
+        NpcMemoryWriter(repository = npcMemoryRepository, clock = clock)
+    }
+
+    /** 记忆编辑入口（玩家/开发者共用）：档案页的"他还记得"区块。 */
+    val npcMemoryEditor: NpcMemoryEditor by lazy {
+        NpcMemoryEditor(repository = npcMemoryRepository, writer = npcMemoryWriter)
+    }
+
+    /**
+     * 真实 LLM 插槽（N4）。当前为 null = 关闭，叙事回退到模板。
+     * 接 API 时实现 [LlmClient] 并在这里替换即可——换厂商不改任何玩法代码。
+     */
+    private val llmClient: LlmClient? = null
 
     /** 片 2 与片 3 共用的"写消息 + 留足迹"。 */
     private val npcMessageWriter: NpcMessageWriter by lazy {
@@ -359,11 +394,18 @@ class AppContainer(
     /** 地点口语别名来自内容（NPC 消息解析用），改完 JSON 重读即生效。 */
     private fun placeAliases(): Map<String, String> = contentStore.index.value.placeAliases
 
-    /** 模板叙事。将来接 LLM 只换这一个实现，玩法与状态计算都不用动。 */
+    /**
+     * 模板叙事（兜底层）。LLM 版 [LlmNarrativeService] 包在它外面：
+     * client 为空或失败时走模板，**绝不假装听懂**。
+     */
     private val npcNarrative: NarrativeService by lazy {
-        TemplateNarrativeService(
-            random = npcRandom,
-            lines = { contentStore.index.value.npcLines },
+        LlmNarrativeService(
+            client = llmClient,
+            fallback = TemplateNarrativeService(
+                random = npcRandom,
+                lines = { contentStore.index.value.npcLines },
+            ),
+            memoryRepository = npcMemoryRepository,
         )
     }
 
@@ -383,6 +425,7 @@ class AppContainer(
             random = npcRandom,
             placeAliases = ::placeAliases,
             commitmentRepository = npcCommitmentRepository,
+            memoryWriter = npcMemoryWriter,
         )
     }
 

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,13 +22,19 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -40,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -52,6 +60,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rainingtrace.R
 import com.rainingtrace.core.ui.ArtIcon
 import com.rainingtrace.core.ui.LocalImage
+import com.rainingtrace.core.ui.NpcAvatar
+import com.rainingtrace.core.ui.NpcPortrait
 import com.rainingtrace.core.ui.gpsQualitySuffix
 import com.rainingtrace.core.ui.label
 import com.rainingtrace.domain.art.ArtPaths
@@ -68,8 +78,12 @@ import com.rainingtrace.domain.map.placeStyle
 import com.rainingtrace.domain.exploration.PlaceActionRejectReason
 import com.rainingtrace.domain.exploration.PlaceYieldPreview
 import com.rainingtrace.domain.memory.MemoryNode
+import com.rainingtrace.domain.npc.NpcInteraction
+import com.rainingtrace.domain.npc.NpcMemoryFact
 import com.rainingtrace.domain.npc.NpcPresence
 import com.rainingtrace.domain.npc.NpcProfile
+import com.rainingtrace.domain.npc.NpcState
+import com.rainingtrace.domain.npc.RelationshipStage
 import com.rainingtrace.domain.settings.MapFilterSettings
 import com.rainingtrace.domain.settings.MemoryTimeFilter
 import com.rainingtrace.platform.map.MapLibreAdapter
@@ -91,6 +105,8 @@ fun MapScreen(
     viewModel: MapViewModel,
     worldStatus: WorldStatusViewModel,
     mapAdapter: MapRendererAdapter,
+    /** "在地图上碰见 → 聊天"：跳到该 NPC 的会话页（消息 Tab）。 */
+    onOpenChat: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -103,6 +119,8 @@ fun MapScreen(
     // 采点表单是**短暂的界面状态**（还没提交的草稿），不属于业务状态，
     // 所以留在 Compose 里；提交动作才走 ViewModel。
     var showCaptureForm by rememberSaveable { mutableStateOf(false) }
+    // 档案全屏页（galgame 式）：数据都在 uiState 里，只负责开/关这个短暂的界面状态。
+    var showNpcProfile by rememberSaveable { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
@@ -351,6 +369,11 @@ fun MapScreen(
             selectedNpc != null -> NpcDetailCard(
                 presence = selectedNpc,
                 profile = uiState.selectedNpcProfile,
+                onChat = { npcId ->
+                    showNpcProfile = false
+                    onOpenChat(npcId)
+                },
+                onProfile = { showNpcProfile = true },
                 onClose = viewModel::clearNpcSelection,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -386,6 +409,25 @@ fun MapScreen(
                 delay(3000)
                 viewModel.consumeToast()
             }
+        }
+
+        // 档案全屏页：盖在地图之上（galgame 式"选项 → 人物页"）。
+        val profileTarget = uiState.selectedNpc
+        val profileData = uiState.selectedNpcProfile
+        if (showNpcProfile && profileTarget != null && profileData != null) {
+            NpcProfileSheet(
+                presence = profileTarget,
+                profile = profileData,
+                state = uiState.selectedNpcState,
+                schedule = uiState.selectedNpcSchedule,
+                memories = uiState.selectedNpcMemories,
+                onChat = { onOpenChat(profileTarget.npcId) },
+                onEditMemory = viewModel::editNpcMemory,
+                onDeleteMemory = viewModel::deleteNpcMemory,
+                onAddMemory = viewModel::addNpcMemory,
+                onClose = { showNpcProfile = false },
+                modifier = Modifier.fillMaxSize(),
+            )
         }
     }
 }
@@ -812,21 +854,35 @@ private fun PlaceDetailCard(
 }
 
 /**
- * NPC 只读卡片：名字、一句话人设、此刻在哪、在做什么。
+ * NPC 卡片（galgame 式"选项列"）：头像 + 名字 + 此刻状态 + 一句话，底部一条交互条。
  *
- * 没有交互按钮——对话/任务/购物属于后面的切片。位置与"在做什么"由作息算出，
- * 卡片会在 NPC 换地点或开始走路时跟着更新（见 MapViewModel.syncSelectedNpc）。
+ * 交互条从第一天就是**动作列表**：当前只有聊天与档案；N5 做完送礼/委托/结伴时，
+ * 在 `NpcInteraction` 加枚举值、在 `availableInteractions` 里点亮即可。
+ * 位置与"在做什么"由作息算出，卡片会在 NPC 换地点或开始走路时跟着更新。
  */
 @Composable
 private fun NpcDetailCard(
     presence: NpcPresence,
     profile: NpcProfile?,
+    onChat: (String) -> Unit,
+    onProfile: () -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Card(modifier = modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+        Column {
+            Row(
+                modifier = Modifier.padding(start = 16.dp, end = 8.dp, top = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (profile != null) {
+                    NpcAvatar(
+                        npcId = profile.id,
+                        name = profile.name,
+                        size = 44.dp,
+                        modifier = Modifier.padding(end = 12.dp),
+                    )
+                }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = profile?.name ?: presence.npcName,
@@ -857,12 +913,13 @@ private fun NpcDetailCard(
                     )
                 }
             }
+
             profile?.oneLiner?.takeIf { it.isNotBlank() }?.let { line ->
                 Text(
                     text = line,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 10.dp),
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp),
                 )
             }
             if (presence.activity.isNotBlank()) {
@@ -870,11 +927,293 @@ private fun NpcDetailCard(
                     text = "现在：${presence.activity}",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.padding(top = 10.dp),
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 10.dp),
                 )
+            }
+
+            // 交互条：已实现的动作才出现，未实现的（N5）不渲染，避免"点不动死的按钮"。
+            NpcActionRow(
+                actions = ALL_NPC_INTERACTIONS,
+                onAction = { action ->
+                    when (action) {
+                        NpcInteraction.TALK -> onChat(presence.npcId)
+                        NpcInteraction.PROFILE -> onProfile()
+                    }
+                },
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            )
+        }
+    }
+}
+
+/**
+ * 这位 NPC 现在"能用"的动作。
+ *
+ * 当前已实现的只有聊天与档案。**聊天从第一天就对所有能点到的 NPC 开放**——
+ * 在地图上碰到就能搭话，这正是"现实遇见 → 聊天软件"的入口设定。
+ * N5 做完送礼/委托/结伴后，往这里加选项即可（见 `NpcInteraction`）。
+ */
+private val ALL_NPC_INTERACTIONS: List<NpcInteraction> = listOf(
+    NpcInteraction.TALK,
+    NpcInteraction.PROFILE,
+)
+
+@Composable
+private fun NpcActionRow(
+    actions: List<NpcInteraction>,
+    onAction: (NpcInteraction) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        actions.forEach { action ->
+            OutlinedButton(
+                onClick = { onAction(action) },
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(action.label)
             }
         }
     }
+}
+
+/**
+ * 档案全屏页（galgame 式"人物页"）：立绘大图为主体，配头像、性格、喜好、关系、今日作息轨迹。
+ * 从地图卡片"档案"进入，盖在整个地图之上；右上角关闭，底部留一个"聊天"入口。
+ */
+@Composable
+private fun NpcProfileSheet(
+    presence: NpcPresence,
+    profile: NpcProfile,
+    state: NpcState?,
+    schedule: List<NpcSchedulePreviewRow>,
+    memories: List<NpcMemoryFact>,
+    onChat: () -> Unit,
+    onEditMemory: (NpcMemoryFact, String, Int) -> Unit,
+    onDeleteMemory: (NpcMemoryFact) -> Unit,
+    onAddMemory: (String, Int) -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    // 短暂的编辑/添加对话框状态，留在 Compose（业务动作走回调）。
+    var editing by remember { mutableStateOf<NpcMemoryFact?>(null) }
+    var adding by remember { mutableStateOf(false) }
+
+    Surface(modifier = modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
+        Column {
+            // 顶栏：返回 + 名字 + 关系阶段
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(onClick = onClose) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_close),
+                        contentDescription = "关闭",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(profile.name, style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        text = state?.stage?.label ?: RelationshipStage.STRANGER.label,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.secondary,
+                    )
+                }
+            }
+
+            // 立绘区：有图显示全身像，缺图显示占位底板
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentAlignment = Alignment.Center,
+            ) {
+                NpcPortrait(
+                    npcId = profile.id,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxHeight(),
+                )
+            }
+
+            // 下半信息区
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                profile.oneLiner.takeIf { it.isNotBlank() }?.let {
+                    Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                profile.role.takeIf { it.isNotBlank() }?.let {
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+                }
+
+                if (profile.traits.isNotEmpty()) {
+                    Text(
+                        text = "性格：" + profile.traits.joinToString("、") { it.label },
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
+
+                if (schedule.isNotEmpty()) {
+                    Text("今天他会去：", style = MaterialTheme.typography.labelLarge)
+                    schedule.forEach { row ->
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                text = row.timeLabel,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.width(56.dp),
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(row.placeName, style = MaterialTheme.typography.bodyMedium)
+                                if (row.activity.isNotBlank()) {
+                                    Text(
+                                        text = row.activity,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // "他还记得"：NPC 记住的事。玩家/开发者都能改（世界年鉴是自己写的）。
+                Text("他还记得", style = MaterialTheme.typography.labelLarge)
+                if (memories.isEmpty()) {
+                    Text(
+                        text = "还没有记忆——跟他说说话，或亲手写一条。",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                memories.forEach { memory ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "${memory.importance}★",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.width(36.dp),
+                        )
+                        Text(
+                            text = memory.content,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.weight(1f),
+                        )
+                        TextButton(onClick = { editing = memory }) { Text("编辑", style = MaterialTheme.typography.labelSmall) }
+                        TextButton(onClick = { onDeleteMemory(memory) }) { Text("删", style = MaterialTheme.typography.labelSmall) }
+                    }
+                }
+                TextButton(onClick = { adding = true }) { Text("＋ 写下一条") }
+
+                // 礼遇喜好：N1 已入库，展示给玩家（送礼玩法在 N5）
+                if (profile.giftPreferences.liked.isNotEmpty()) {
+                    Text(
+                        text = "喜欢：" + profile.giftPreferences.liked.joinToString("、"),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (profile.giftPreferences.disliked.isNotEmpty()) {
+                    Text(
+                        text = "不喜欢：" + profile.giftPreferences.disliked.joinToString("、"),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
+                Button(
+                    onClick = onChat,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("发消息")
+                }
+            }
+        }
+
+        // 记忆编辑 / 添加对话框
+        editing?.let { memory ->
+            NpcMemoryEditDialog(
+                title = "编辑「${profile.name}」记得的事",
+                initialContent = memory.content,
+                initialImportance = memory.importance,
+                onConfirm = { content, importance ->
+                    onEditMemory(memory, content, importance)
+                    editing = null
+                },
+                onDismiss = { editing = null },
+            )
+        }
+        if (adding) {
+            NpcMemoryEditDialog(
+                title = "给「${profile.name}」写一条记忆",
+                initialContent = "",
+                initialImportance = 5,
+                onConfirm = { content, importance ->
+                    onAddMemory(content, importance)
+                    adding = false
+                },
+                onDismiss = { adding = false },
+            )
+        }
+    }
+}
+
+/** 记忆编辑对话框：内容 + 重要度滑块。 */
+@Composable
+private fun NpcMemoryEditDialog(
+    title: String,
+    initialContent: String,
+    initialImportance: Int,
+    onConfirm: (String, Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var content by remember { mutableStateOf(initialContent) }
+    var importance by remember { mutableStateOf(initialImportance.toFloat()) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = content,
+                    onValueChange = { content = it },
+                    label = { Text("他记得……") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    text = "重要度（越高越容易被想起来）：${importance.toInt()}/10",
+                    style = MaterialTheme.typography.labelMedium,
+                )
+                Slider(
+                    value = importance,
+                    onValueChange = { importance = it },
+                    valueRange = 1f..10f,
+                    steps = 8,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(content.trim(), importance.toInt()) },
+                enabled = content.isNotBlank(),
+            ) { Text("保存") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
+        },
+    )
 }
 
 /** 产出提示文案；还没算出来时留省略号，避免闪烁成"没有"。 */

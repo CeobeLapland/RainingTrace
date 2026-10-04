@@ -18,6 +18,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * v5：NPC 消息与关系/情绪状态（npc_messages / npc_states）。
  * v6：约定（npc_commitments）——他答应了就真的会去。
  * v7：仓库（warehouse_items）——家的存储与随身背包分表。
+ * v8：NPC 记忆（npc_memory_facts）——N4 记忆层的有界事实表。
  */
 @Database(
     entities = [
@@ -30,8 +31,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         NpcMessageEntity::class,
         NpcStateEntity::class,
         NpcCommitmentEntity::class,
+        NpcMemoryFactEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = true,
 )
 abstract class RainingTraceDatabase : RoomDatabase() {
@@ -44,6 +46,7 @@ abstract class RainingTraceDatabase : RoomDatabase() {
     abstract fun npcMessageDao(): NpcMessageDao
     abstract fun npcStateDao(): NpcStateDao
     abstract fun npcCommitmentDao(): NpcCommitmentDao
+    abstract fun npcMemoryFactDao(): NpcMemoryFactDao
 
     companion object {
         const val NAME = "rainingtrace.db"
@@ -127,6 +130,23 @@ abstract class RainingTraceDatabase : RoomDatabase() {
             }
         }
 
+        /** v8：NPC 记忆表（createSql 从生成的 `schemas/.../8.json` 逐字抄）。 */
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `npc_memory_facts` (`id` TEXT NOT NULL, " +
+                        "`npcId` TEXT NOT NULL, `kind` TEXT NOT NULL, `content` TEXT NOT NULL, " +
+                        "`importance` INTEGER NOT NULL, `source` TEXT NOT NULL, " +
+                        "`createdAtEpochMs` INTEGER NOT NULL, `lastReferencedAtEpochMs` INTEGER NOT NULL, " +
+                        "`refCount` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_npc_memory_facts_npcId` " +
+                        "ON `npc_memory_facts` (`npcId`)",
+                )
+            }
+        }
+
         fun create(context: Context): RainingTraceDatabase =
             Room.databaseBuilder(context, RainingTraceDatabase::class.java, NAME)
                 // v1→v2 结构不兼容；用户已确认开发期删库重来。
@@ -137,6 +157,7 @@ abstract class RainingTraceDatabase : RoomDatabase() {
                     MIGRATION_4_5,
                     MIGRATION_5_6,
                     MIGRATION_6_7,
+                    MIGRATION_7_8,
                 )
                 .fallbackToDestructiveMigration(false)
                 .build()

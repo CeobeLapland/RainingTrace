@@ -21,6 +21,8 @@ class RecordNpcEncounterUseCase(
     private val clock: WorldClock,
     private val footprintRepository: FootprintRepository,
     private val worldState: WorldStateProvider,
+    /** N4：第一次遇见 → 沉淀成 NPC 记忆（"他记得第一次见到你"）。 */
+    private val memoryWriter: NpcMemoryWriter? = null,
 ) {
 
     suspend operator fun invoke(
@@ -51,6 +53,7 @@ class RecordNpcEncounterUseCase(
                 },
             ),
         )
+        memoryWriter?.recordFirstMeeting(npcId = presence.npcId, placeName = presence.placeName)
         return NpcEncounterResult.Met(presence.npcId, presence.npcName)
     }
 
