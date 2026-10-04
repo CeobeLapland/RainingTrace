@@ -1,6 +1,7 @@
 package com.rainingtrace.domain.content
 
 import com.rainingtrace.domain.craft.Recipe
+import com.rainingtrace.domain.inventory.ResourceCategory
 import com.rainingtrace.domain.npc.NpcProfile
 import com.rainingtrace.domain.npc.NpcProactiveRule
 
@@ -29,6 +30,8 @@ object ContentValidator {
         validateUniqueIds(content.recipes, MERGED, report) { it.id }
         validateUniqueIds(content.npcs, MERGED, report) { it.id }
         validateUniqueIds(content.npcProactiveRules, MERGED, report) { it.id }
+
+        warnUncraftableCraftGoods(content, report)
 
         return content.copy(
             yieldRules = validYieldRules(content, report),
@@ -83,6 +86,34 @@ object ContentValidator {
                 report.error(MERGED, recipe.id, "配方引用的资源不存在：${dangling.joinToString()}")
                 false
             }
+        }
+    }
+
+    /**
+     * 链条完整性：**加工品（CRAFT）被当作入料，却没有配方能产出它** —— 那些配方永远做不出来。
+     *
+     * 只记一条 **WARN**（不是 ERROR，也不丢任何东西）：作者常常先写下游、后补上游，
+     * 中途不完整是正常的；但"做不出来却看不出来"会静默毁掉一整条链，
+     * 所以必须留在设置页「内容（开发者模式）」的诊断里看得见。
+     */
+    private fun warnUncraftableCraftGoods(content: WorldContent, report: ContentReport) {
+        val craftOutputs = content.recipes.map { it.output.resourceId }.toSet()
+        val craftIds = content.resources
+            .filter { it.category == ResourceCategory.CRAFT }
+            .map { it.id }
+            .toSet()
+
+        val broken = content.recipes
+            .flatMap { recipe -> recipe.inputs.map { it.resourceId } }
+            .filter { it in craftIds && it !in craftOutputs }
+            .distinct()
+
+        if (broken.isNotEmpty()) {
+            report.warn(
+                MERGED,
+                null,
+                "这些加工品被当作入料、却没有任何配方能产出（相关配方永远做不出来）：${broken.joinToString()}",
+            )
         }
     }
 

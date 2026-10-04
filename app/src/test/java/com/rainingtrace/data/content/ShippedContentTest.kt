@@ -148,25 +148,27 @@ class ShippedContentTest {
     }
 
     /**
-     * 链不能断：入料里凡是"加工品"，就必须真的做出来（是某条配方的产出）。
-     * 断了会让玩家永远缺一个拿不到的材料，而界面上完全看不出哪里不对。
+     * 基材采不到是静默的：加了资源、忘了配来源，游戏里永远拿不到，界面上也看不出。
+     * 所以"每种自然基材都有产出规则"必须有人盯着——它是"采集→合成"这条链的起点。
      */
     @Test
-    fun `被当作入料的加工品都能做出来`() {
-        val decoded = recipes(ContentReport()).entries
-        val craftIds = decodeResourceEntries(
+    fun `每种自然基材都有产出规则`() {
+        val produced = decodeYieldRuleEntries(
+            readAsset("yield_rules.json"),
+            "yield_rules.json",
+            ContentReport(),
+        ).entries.map { it.resourceId }.toSet()
+
+        val missing = decodeResourceEntries(
             readAsset("resources.json"),
             "resources.json",
             ContentReport(),
-        ).entries.filter { it.category == ResourceCategory.CRAFT }.map { it.id }.toSet()
-        val craftOutputs = decoded.map { it.output.resourceId }.toSet()
+        ).entries
+            .filter { it.category == ResourceCategory.NATURE }
+            .map { it.id }
+            .filterNot { it in produced }
 
-        val broken = decoded
-            .flatMap { it.inputs.map { input -> input.resourceId } }
-            .filter { it in craftIds && it !in craftOutputs }
-            .toSet()
-
-        assertTrue("这些加工品既做不出来、又被拿去当入料：$broken", broken.isEmpty())
+        assertTrue("这些自然基材采不到（没有任何产出规则）：$missing", missing.isEmpty())
     }
 
     @Test

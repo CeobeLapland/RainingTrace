@@ -73,6 +73,17 @@ fun placeStyle(type: PlaceType): PlaceStyleSpec = when (type) {
     PlaceType.ORCHARD -> PlaceStyleSpec(0xFF6E9A2E.toInt(), "果")
     PlaceType.BERRY_BUSH -> PlaceStyleSpec(0xFF9C3B62.toInt(), "莓")
     PlaceType.MUSHROOM_PATCH -> PlaceStyleSpec(0xFF8A6A4A.toInt(), "菌")
+    // 户外自然：绿/土/水三系，彼此可分辨，也不和人文艺点的蓝紫系撞。
+    PlaceType.FOREST -> PlaceStyleSpec(0xFF4E7A3A.toInt(), "林")
+    PlaceType.FIELD -> PlaceStyleSpec(0xFF8A9A3B.toInt(), "田")
+    PlaceType.POND -> PlaceStyleSpec(0xFF3F8A86.toInt(), "池")
+    PlaceType.WETLAND -> PlaceStyleSpec(0xFF5F8C6B.toInt(), "泽")
+    PlaceType.SHORE -> PlaceStyleSpec(0xFF6A8CA8.toInt(), "岸")
+    PlaceType.HILL -> PlaceStyleSpec(0xFF7B8B5A.toInt(), "丘")
+    PlaceType.GREENHOUSE -> PlaceStyleSpec(0xFF5FA05A.toInt(), "棚")
+    PlaceType.STREET -> PlaceStyleSpec(0xFF7A8B99.toInt(), "街")
+    PlaceType.PATH -> PlaceStyleSpec(0xFF9A8B6A.toInt(), "径")
+    PlaceType.BRIDGE -> PlaceStyleSpec(0xFF8A7A6A.toInt(), "桥")
 }
 
 /**

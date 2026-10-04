@@ -104,4 +104,38 @@ class ContentValidatorTest {
         inputs = listOf(RecipeInput(resourceId = input, amount = 1)),
         output = RecipeOutput(resourceId = "res.known", amount = 1),
     )
+
+    /**
+     * 这一条以前是 `ShippedContentTest` 里的硬失败（构建前拦住），现在改成一条 WARN：
+     * 作者常常先写下游配方、后补上游，中途不完整是正常的；但"做不出来却看不出来"
+     * 会静默毁掉一整条链，所以必须留在设置页的诊断里。**内容一条都不能丢**。
+     */
+    @Test
+    fun `加工品没有配方产出时只记一条 WARN`() {
+        val report = ContentReport()
+        val content = WorldContent(
+            resources = listOf(craft("res.pigment"), craft("res.pencil")),
+            recipes = listOf(
+                Recipe(
+                    id = "recipe.pencil",
+                    inputs = listOf(RecipeInput(resourceId = "res.pigment", amount = 1)),
+                    output = RecipeOutput(resourceId = "res.pencil", amount = 1),
+                ),
+            ),
+        )
+
+        val cleaned = ContentValidator.validate(content, report)
+
+        assertEquals("内容不该被丢掉", 1, cleaned.recipes.size)
+        assertEquals(0, report.errorCount)
+        assertEquals(1, report.items.size)
+        assertTrue("WARN 里要点名是哪个加工品", report.items.first().message.contains("res.pigment"))
+    }
+
+    private fun craft(id: String) = ResourceDefinition(
+        id = id,
+        name = "加工品",
+        category = ResourceCategory.CRAFT,
+        rarity = Rarity.COMMON,
+    )
 }

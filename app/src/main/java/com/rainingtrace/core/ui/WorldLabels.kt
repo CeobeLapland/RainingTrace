@@ -18,6 +18,16 @@ fun PlaceType.label(): String = when (this) {
     PlaceType.ORCHARD -> "果林"
     PlaceType.BERRY_BUSH -> "浆果丛"
     PlaceType.MUSHROOM_PATCH -> "菌丛"
+    PlaceType.FOREST -> "林地"
+    PlaceType.FIELD -> "田地"
+    PlaceType.POND -> "池塘"
+    PlaceType.WETLAND -> "湿地"
+    PlaceType.SHORE -> "水边"
+    PlaceType.HILL -> "山丘"
+    PlaceType.GREENHOUSE -> "温室"
+    PlaceType.STREET -> "道路"
+    PlaceType.PATH -> "小径"
+    PlaceType.BRIDGE -> "桥"
 }
 
 /**

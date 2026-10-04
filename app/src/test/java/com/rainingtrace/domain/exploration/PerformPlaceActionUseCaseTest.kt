@@ -525,4 +525,82 @@ class PerformPlaceActionUseCaseTest {
         preview as PlaceYieldPreview.Unavailable
         assertEquals(PlaceActionRejectReason.ACTION_NOT_AVAILABLE, preview.reason)
     }
+
+    // ---- 户外自然的新动作 ----
+
+    @Test
+    fun `动作按手要怎么动分三档距离`() {
+        // 远看：站着就能做。
+        assertEquals(
+            PerformPlaceActionUseCase.OBSERVE_RANGE_METERS,
+            PerformPlaceActionUseCase.rangeMetersFor(PlaceActionType.EXPLORE),
+            0.0,
+        )
+        assertEquals(
+            PerformPlaceActionUseCase.OBSERVE_RANGE_METERS,
+            PerformPlaceActionUseCase.rangeMetersFor(PlaceActionType.WATCH),
+            0.0,
+        )
+        // 动手拿：走到跟前，和采集同一档。
+        assertEquals(
+            PerformPlaceActionUseCase.COLLECT_RANGE_METERS,
+            PerformPlaceActionUseCase.rangeMetersFor(PlaceActionType.GATHER),
+            0.0,
+        )
+        assertEquals(
+            PerformPlaceActionUseCase.COLLECT_RANGE_METERS,
+            PerformPlaceActionUseCase.rangeMetersFor(PlaceActionType.HARVEST),
+            0.0,
+        )
+        // 贴边：水边才够得着，比采集还要近。
+        assertEquals(
+            PerformPlaceActionUseCase.REACH_RANGE_METERS,
+            PerformPlaceActionUseCase.rangeMetersFor(PlaceActionType.FISH),
+            0.0,
+        )
+        assertEquals(
+            PerformPlaceActionUseCase.REACH_RANGE_METERS,
+            PerformPlaceActionUseCase.rangeMetersFor(PlaceActionType.WATER),
+            0.0,
+        )
+        assertTrue(
+            PerformPlaceActionUseCase.REACH_RANGE_METERS <
+                PerformPlaceActionUseCase.COLLECT_RANGE_METERS,
+        )
+    }
+
+    @Test
+    fun `林地拾取真的能从内置规则里拿到东西`() = runTest {
+        val forest = Place(
+            id = "place.pine_forest",
+            name = "松林",
+            type = PlaceType.FOREST,
+            coordinate = origin,
+            actions = setOf(PlaceActionType.GATHER),
+        )
+        val f = fixture()
+
+        // 内置内容里 FOREST + GATHER 有一批无条件的拾取规则，所以一次就该拿到东西。
+        val gathered = f.perform(origin, forest, PlaceActionType.GATHER)
+        gathered as PlaceActionResult.Success
+        assertTrue("拾取应发出一个真实资源", gathered.resourceId.startsWith("res."))
+        assertTrue(gathered.amount >= 1)
+        assertEquals("GATHER", f.footprint.events.last().payload["action"])
+    }
+
+    @Test
+    fun `池塘垂钓按规则给渔获`() = runTest {
+        val pond = Place(
+            id = "place.pontoon",
+            name = "荷花池",
+            type = PlaceType.POND,
+            coordinate = origin,
+            actions = setOf(PlaceActionType.FISH),
+        )
+        val f = fixture()
+
+        val caught = f.perform(origin, pond, PlaceActionType.FISH)
+        caught as PlaceActionResult.Success
+        assertEquals("res.crucian_carp", caught.resourceId)
+    }
 }

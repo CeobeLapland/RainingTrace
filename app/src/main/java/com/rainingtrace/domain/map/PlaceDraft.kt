@@ -16,13 +16,54 @@ data class PlaceDraft(
 )
 
 /**
- * 默认动作：人文地点"看"和"拿"都有，自然资源点只给采集。
+ * 默认动作：人文地点"看"和"拿"都有，自然资源点只给采集；户外自然地点按
+ * "手要怎么动"再细分，让手机现场采出来的点直接就能采到东西。
+ *
  * 与内置内容同一口径（见 `FakePlaceRepository` 的两组集合），
  * 所以自建地点和手工配的地点行为一致。
  */
-fun defaultActionsFor(type: PlaceType): Set<PlaceActionType> = when (type.category) {
-    PlaceCategory.PLACE -> setOf(PlaceActionType.OBSERVE, PlaceActionType.COLLECT)
-    PlaceCategory.RESOURCE -> setOf(PlaceActionType.COLLECT)
+fun defaultActionsFor(type: PlaceType): Set<PlaceActionType> = when (type) {
+    // 水边：能钓、能取水。
+    PlaceType.LAKE,
+    PlaceType.POND,
+    PlaceType.SHORE,
+    PlaceType.WETLAND,
+    -> setOf(
+        PlaceActionType.OBSERVE,
+        PlaceActionType.COLLECT,
+        PlaceActionType.GATHER,
+        PlaceActionType.FISH,
+        PlaceActionType.WATER,
+    )
+
+    // 地面拾取：林地 / 山丘 / 园子 / 路 / 桥，走到哪捡到哪。
+    PlaceType.FOREST,
+    PlaceType.HILL,
+    PlaceType.GARDEN,
+    PlaceType.STREET,
+    PlaceType.PATH,
+    PlaceType.BRIDGE,
+    -> setOf(
+        PlaceActionType.OBSERVE,
+        PlaceActionType.COLLECT,
+        PlaceActionType.GATHER,
+        PlaceActionType.EXPLORE,
+    )
+
+    // 田与温室：长成的要"收"。
+    PlaceType.FIELD,
+    PlaceType.GREENHOUSE,
+    -> setOf(
+        PlaceActionType.OBSERVE,
+        PlaceActionType.COLLECT,
+        PlaceActionType.HARVEST,
+        PlaceActionType.GATHER,
+    )
+
+    else -> when (type.category) {
+        PlaceCategory.PLACE -> setOf(PlaceActionType.OBSERVE, PlaceActionType.COLLECT)
+        PlaceCategory.RESOURCE -> setOf(PlaceActionType.COLLECT)
+    }
 }
 
 /**

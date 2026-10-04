@@ -37,9 +37,29 @@ class PlaceDraftTest {
     fun `人文地点默认可观察可采集，资源点默认只采集`() {
         assertEquals(
             setOf(PlaceActionType.OBSERVE, PlaceActionType.COLLECT),
-            defaultActionsFor(PlaceType.LAKE),
+            defaultActionsFor(PlaceType.LIBRARY),
         )
         assertEquals(setOf(PlaceActionType.COLLECT), defaultActionsFor(PlaceType.ORCHARD))
+    }
+
+    @Test
+    fun `自然地点按手要怎么动给默认动作`() {
+        // 水边：能钓、能取水。
+        assertEquals(
+            setOf(
+                PlaceActionType.OBSERVE,
+                PlaceActionType.COLLECT,
+                PlaceActionType.GATHER,
+                PlaceActionType.FISH,
+                PlaceActionType.WATER,
+            ),
+            defaultActionsFor(PlaceType.POND),
+        )
+        // 陆地上捡：有拾取、没有垂钓。
+        assertTrue(PlaceActionType.GATHER in defaultActionsFor(PlaceType.FOREST))
+        assertFalse(PlaceActionType.FISH in defaultActionsFor(PlaceType.FOREST))
+        // 田与温室：长成的要"收"。
+        assertTrue(PlaceActionType.HARVEST in defaultActionsFor(PlaceType.FIELD))
     }
 
     @Test

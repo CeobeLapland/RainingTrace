@@ -4013,6 +4013,104 @@
         "resourceId": "res.stranger_voice",
         "amount": 1
       }
+    },
+    {
+      "id": "recipe.pigment",
+      "inputs": [
+        {
+          "resourceId": "res.petal",
+          "amount": 3
+        },
+        {
+          "resourceId": "res.charcoal",
+          "amount": 1
+        }
+      ],
+      "output": {
+        "resourceId": "res.pigment",
+        "amount": 2
+      }
+    },
+    {
+      "id": "recipe.gelatin",
+      "inputs": [
+        {
+          "resourceId": "res.raw_hide",
+          "amount": 1
+        },
+        {
+          "resourceId": "res.fresh_water",
+          "amount": 2
+        }
+      ],
+      "output": {
+        "resourceId": "res.gelatin",
+        "amount": 2
+      }
+    },
+    {
+      "id": "recipe.syrup",
+      "inputs": [
+        {
+          "resourceId": "res.sugar",
+          "amount": 2
+        },
+        {
+          "resourceId": "res.fresh_water",
+          "amount": 1
+        }
+      ],
+      "output": {
+        "resourceId": "res.syrup",
+        "amount": 2
+      }
+    },
+    {
+      "id": "recipe.candle",
+      "inputs": [
+        {
+          "resourceId": "res.tree_sap",
+          "amount": 2
+        },
+        {
+          "resourceId": "res.linen_thread",
+          "amount": 1
+        }
+      ],
+      "output": {
+        "resourceId": "res.candle",
+        "amount": 2
+      }
+    },
+    {
+      "id": "recipe.enamel_badge",
+      "inputs": [
+        {
+          "resourceId": "res.iron_ingot",
+          "amount": 1
+        },
+        {
+          "resourceId": "res.pigment",
+          "amount": 1
+        }
+      ],
+      "output": {
+        "resourceId": "res.enamel_badge",
+        "amount": 1
+      }
+    },
+    {
+      "id": "recipe.key",
+      "inputs": [
+        {
+          "resourceId": "res.iron_ingot",
+          "amount": 1
+        }
+      ],
+      "output": {
+        "resourceId": "res.key",
+        "amount": 1
+      }
     }
   ]
 }

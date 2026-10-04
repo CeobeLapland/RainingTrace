@@ -168,9 +168,26 @@ class PerformPlaceActionUseCase(
         /** 采集要更近一些：走到跟前才算"采"，观察可以站远点看。 */
         const val COLLECT_RANGE_METERS = 60.0
 
+        /** 垂钓/取水必须站到水边：手得伸进水里，比"走到跟前"还要近一档。 */
+        const val REACH_RANGE_METERS = 30.0
+
         fun rangeMetersFor(action: PlaceActionType): Double = when (action) {
-            PlaceActionType.OBSERVE -> OBSERVE_RANGE_METERS
-            PlaceActionType.COLLECT -> COLLECT_RANGE_METERS
+            // 远看：站着就能做，不必挪脚。
+            PlaceActionType.OBSERVE,
+            PlaceActionType.WATCH,
+            PlaceActionType.EXPLORE,
+            -> OBSERVE_RANGE_METERS
+
+            // 动手拿：走到跟前。
+            PlaceActionType.COLLECT,
+            PlaceActionType.HARVEST,
+            PlaceActionType.GATHER,
+            -> COLLECT_RANGE_METERS
+
+            // 贴边：水边才够得着。
+            PlaceActionType.FISH,
+            PlaceActionType.WATER,
+            -> REACH_RANGE_METERS
         }
     }
 }

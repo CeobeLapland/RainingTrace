@@ -38,12 +38,68 @@ enum class PlaceType(val category: PlaceCategory) {
 
     /** 菌丛：雨后长得最好。 */
     MUSHROOM_PATCH(PlaceCategory.RESOURCE),
+
+    // ---- 户外自然（采集型地点）----
+    // 设计稿 `places_design.md` 的 G 区与相关自然条目都落在这一组上。
+
+    /** 林地：松针、竹、蘑菇。 */
+    FOREST(PlaceCategory.PLACE),
+
+    /** 田地：菜圃、稻田。 */
+    FIELD(PlaceCategory.PLACE),
+
+    /** 池塘：荷叶、鸭舌草。 */
+    POND(PlaceCategory.PLACE),
+
+    /** 湿地：香蒲、水藻。 */
+    WETLAND(PlaceCategory.PLACE),
+
+    /** 水边：贝壳、海草。 */
+    SHORE(PlaceCategory.PLACE),
+
+    /** 山丘：野菊、草坡。 */
+    HILL(PlaceCategory.PLACE),
+
+    /** 温室：苗、湿土。 */
+    GREENHOUSE(PlaceCategory.PLACE),
+
+    /** 道路：落叶、传单。 */
+    STREET(PlaceCategory.PLACE),
+
+    /** 小径：荒径上的旧物。 */
+    PATH(PlaceCategory.PLACE),
+
+    /** 桥：桥边的东西。 */
+    BRIDGE(PlaceCategory.PLACE),
 }
 
-/** 地点动作：观察（看）与采集（拿）是两条不同的行为，产出规则按动作分开配。 */
+/**
+ * 地点动作：观察（看）与采集（拿）是两条不同的行为，产出规则按动作分开配。
+ *
+ * 产出类动作按"手要怎么动"分开：动手拿（采集/收获/拾取）、贴水边（垂钓/取水）、
+ * 走进去看（探索/观看）。分开配规则，同一个地点在不同动作下能给出不同的东西。
+ */
 enum class PlaceActionType {
     OBSERVE,
     COLLECT,
+
+    /** 收获：果园、田里长成的。 */
+    HARVEST,
+
+    /** 拾取：地上顺手捡的。 */
+    GATHER,
+
+    /** 垂钓：要站到水边。 */
+    FISH,
+
+    /** 取水：要站到水边。 */
+    WATER,
+
+    /** 探索：走进边缘地带，顺带发现东西。 */
+    EXPLORE,
+
+    /** 观看：看人做事、旁听。 */
+    WATCH,
 }
 
 data class Place(

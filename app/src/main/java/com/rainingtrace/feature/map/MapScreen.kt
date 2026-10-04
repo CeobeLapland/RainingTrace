@@ -971,22 +971,18 @@ private fun PlaceThumbFallback(type: PlaceType, size: androidx.compose.ui.unit.D
     }
 }
 
-private fun placeTypeLabel(type: PlaceType): String = when (type) {
-    PlaceType.LAKE -> "湖泊"
-    PlaceType.LIBRARY -> "图书馆"
-    PlaceType.CANTEEN -> "食堂"
-    PlaceType.DORM -> "宿舍"
-    PlaceType.GARDEN -> "花园"
-    PlaceType.PLAZA -> "广场"
-    PlaceType.OTHER -> "地点"
-    PlaceType.ORCHARD -> "果林"
-    PlaceType.BERRY_BUSH -> "浆果丛"
-    PlaceType.MUSHROOM_PATCH -> "菌丛"
-}
+/** 中文名只留 `core/ui/WorldLabels` 一份，这里转发即可——加类型时不会两边漏改。 */
+private fun placeTypeLabel(type: PlaceType): String = type.label()
 
 private fun actionLabel(action: PlaceActionType): String = when (action) {
     PlaceActionType.OBSERVE -> "观察"
     PlaceActionType.COLLECT -> "采集"
+    PlaceActionType.HARVEST -> "收获"
+    PlaceActionType.GATHER -> "拾取"
+    PlaceActionType.FISH -> "垂钓"
+    PlaceActionType.WATER -> "取水"
+    PlaceActionType.EXPLORE -> "探索"
+    PlaceActionType.WATCH -> "观看"
 }
 
 /** 图层筛选面板：地点类型开关 + 记忆 + 时间。逻辑隐藏语义在 VM 侧保证。 */
@@ -1005,7 +1001,10 @@ private fun MapFilterPanel(
         ) {
             Text("只看这些地点", style = MaterialTheme.typography.labelMedium)
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                // 类型多了以后一行放不下，横向滚动而不是换行：面板高度不变。
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 PlaceType.entries.filter { it.category == PlaceCategory.PLACE }.forEach { type ->
@@ -1020,7 +1019,9 @@ private fun MapFilterPanel(
             // 自然资源点单独一行：它们不是"地点"，而是"什么时候有东西可采"的点。
             Text("自然采集点", style = MaterialTheme.typography.labelMedium)
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 PlaceType.entries.filter { it.category == PlaceCategory.RESOURCE }.forEach { type ->

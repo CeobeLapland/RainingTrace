@@ -365,8 +365,14 @@ class MapViewModel(
                     showToast("获得「${result.resourceName}」×${result.amount}（共 ${result.newQuantity}）")
                 is PlaceActionResult.Rejected -> showToast(
                     when (result.reason) {
-                        PlaceActionRejectReason.TOO_FAR ->
-                            if (action == PlaceActionType.COLLECT) "再走近一点才能采" else "离地点太远了"
+                        PlaceActionRejectReason.TOO_FAR -> when (action) {
+                            PlaceActionType.FISH, PlaceActionType.WATER -> "再走到水边一点"
+                            PlaceActionType.COLLECT,
+                            PlaceActionType.HARVEST,
+                            PlaceActionType.GATHER,
+                            -> "再走近一点才能拿"
+                            else -> "离地点太远了"
+                        }
                         PlaceActionRejectReason.ON_COOLDOWN -> "刚来过，让它安静一会儿"
                         PlaceActionRejectReason.ACTION_NOT_AVAILABLE -> "这里不能这么做"
                         PlaceActionRejectReason.NOTHING_HERE -> "这时候看不出什么，换个天气或时段再来"
