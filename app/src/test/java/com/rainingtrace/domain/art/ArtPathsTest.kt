@@ -20,7 +20,8 @@ class ArtPathsTest {
     @Test
     fun `方形图各自在自己的目录下`() {
         assertEquals("art/place/library.png", ArtPaths.place(PlaceType.LIBRARY))
-        assertEquals("art/npc/npc.lin.png", ArtPaths.npcAvatar("npc.lin"))
+        assertEquals("art/npc/npc.head.npc.lin.png", ArtPaths.npcAvatar("npc.lin"))
+        assertEquals("art/npc/npc.body.npc.lin.png", ArtPaths.npcPortrait("npc.lin"))
         assertEquals("art/item/res.rope.png", ArtPaths.item("res.rope"))
     }
 
@@ -33,7 +34,8 @@ class ArtPathsTest {
 
     @Test
     fun `id 里的点保持原样 不换成别的字符`() {
-        assertTrue(ArtPaths.npcAvatar("npc.lin").endsWith("npc.lin.png"))
+        assertTrue(ArtPaths.npcAvatar("npc.lin").endsWith("npc.head.npc.lin.png"))
+        assertTrue(ArtPaths.npcPortrait("npc.lin").endsWith("npc.body.npc.lin.png"))
         assertTrue(ArtPaths.item("res.lake_memory_fragment").endsWith("res.lake_memory_fragment.png"))
     }
 

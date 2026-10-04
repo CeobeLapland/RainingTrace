@@ -31,8 +31,17 @@ object ArtPaths {
     /** 地点缩略图：详情卡、附近地点列表、图层筛选面板的圆点共用。 */
     fun place(type: PlaceType): String = "$PLACE_DIR/${type.name.lowercase()}.png"
 
-    /** NPC 头像。 */
-    fun npcAvatar(npcId: String): String = "$NPC_DIR/$npcId.png"
+    /**
+     * NPC 头像（聊天、卡片、档案页）：`art/npc/npc.head.<id>.png`。
+     * `npc.head.` 前缀是为了和立绘共用同一目录时互不混淆。
+     */
+    fun npcAvatar(npcId: String): String = "$NPC_DIR/npc.head.$npcId.png"
+
+    /**
+     * NPC 立绘（档案全屏页 / 地图卡片）：`art/npc/npc.body.<id>.png`。
+     * 缺图时调用方应隐藏立绘区，回退到头像与文字。
+     */
+    fun npcPortrait(npcId: String): String = "$NPC_DIR/npc.body.$npcId.png"
 
     /** 物品图标（背包 / 仓库 / 图鉴）。 */
     fun item(resourceId: String): String = "$ITEM_DIR/$resourceId.png"

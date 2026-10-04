@@ -27,7 +27,7 @@
 新增：`OBSERVANT` 观察力强 / `SERIOUS` 认真 / `SHY` 怯场 / `EXACTING` 挑剔 / `BRIGHT` 明亮 / `CHATTY` 嘴碎 / `STUBBORN` 倔 / `LISTENER` 会听 / `SHARP` 锋利 / `GENEROUS` 讲义气 / `TIRELESS` 不歇 / `STEADY` 稳 / `MYSTERIOUS` 来路不明 / `ABSORBED` 忘我 / `MANNERED` 讲究 / `SMUG` 自得 / `GENTLE` 慢性子 / `PLAIN` 不起眼
 
 **topics 候选**
-`BOOKS` 书 / `SELF` 自己 / `FOOD` 吃的 / `RUNNING` 跑步 / `WEATHER` 天气 / `ART` 画画 / `NIGHT` 夜里 / `PLANTS` 植物 / `MUSIC` 音乐 / `SEWING` 缝纫 / `PHOTO` 拍照 / `TECH` 机器 / `SPORT` 运动 / `STUDY` 学习 / `PEOPLE` 人 / `SOUND` 声音 / `RAIN` 雨 / `MEMORY` 记忆 / `CAT` 猫 / `DRAWING` 制图 / `LAW` 规则 / `MONEY` 钱
+`BOOKS` 书 / `SELF` 自己 / `FOOD` 吃的 / `RUNNING` 跑步 / `WEATHER` 天气 / `ART` 画画 / `NIGHT` 夜里 / `PLANTS` 植物 / `MUSIC` 音乐 / `SEWING` 缝纫 / `PHOTO` 拍照 / `TECH` 机器 / `SPORT` 运动 / `STUDY` 学习 / `PEOPLE` 人 / `SOUND` 声音 / `RAIN` 雨 / `MEMORY` 记忆 / `CAT` 猫 / `DRAWING` 制图 / `LAW` 规则 / `MONEY` 钱 / `ANOMALY` 异常
 
 ---
 
@@ -647,7 +647,7 @@
 | 字段 | 约定 |
 |------|------|
 | `giftPreferences` | `{ liked: [resourceId], disliked: [resourceId] }`。liked 3–4 项、disliked 1–2 项，**必须引用 `resources.json` 中已存在的 id**（470 项，转换脚本会校验） |
-| `schedule` | `[{ startMinute, placeId, travelMinutes, activity }]`。`startMinute` 为 0–1440 的当日分钟数；`placeId` 见下方占位表；`travelMinutes` 为从上一处走到本处所需分钟 |
+| `schedule` | `[{ startMinute, placeId, travelMinutes, activity }]`。`startMinute` 为 0–1439 的当日分钟数；`placeId` 见下方占位表；`travelMinutes` 为从上一处走到本处所需分钟 |
 | 名字 | 原 5 人保留 `id` 不变（`npc.bit.lin` 等），`name` 补成全名：林砚 / 周野 / 徐晚 / 何岸 / 齐岭 |
 
 ### 7.1 地点占位表（**临时占位，待地点数据扩充后统一替换**）
@@ -901,7 +901,7 @@ liked 给"送礼加好感"，disliked 给"送礼扣好感"，每条后面标注�
 ]
 ```
 
-### 11. 罗小满 · npc.bit.music_room
+### 11. 罗小满 · npc.bit.luo_xiaoman
 
 ```json
 [
@@ -937,7 +937,6 @@ liked 给"送礼加好感"，disliked 给"送礼扣好感"，每条后面标注�
 [
   { "startMinute": 1260, "placeId": "place.bit.dorm_4", "travelMinutes": 0, "activity": "接班前在家躺一会儿" },
   { "startMinute": 1380, "placeId": "place.bit.gate_north", "travelMinutes": 25, "activity": "到岗，泡上第一壶水" },
-  { "startMinute": 1440, "placeId": "place.bit.gate_north", "travelMinutes": 0, "activity": "（跨日）上岗，登记本翻开" },
   { "startMinute": 480, "placeId": "place.bit.gate_north", "travelMinutes": 0, "activity": "凌晨巡逻，一圈十五分钟" },
   { "startMinute": 690, "placeId": "place.bit.canteen_one", "travelMinutes": 20, "activity": "去食堂打热水，替夜班的留一份" },
   { "startMinute": 720, "placeId": "place.bit.gate_north", "travelMinutes": 15, "activity": "回岗，天快亮了" },
@@ -1122,13 +1121,12 @@ liked 给"送礼加好感"，disliked 给"送礼扣好感"，每条后面标注�
 ]
 ```
 
-### 26. 老陈 · npc.bit.gym_basement
+### 26. 老陈 · npc.bit.chen_jiu
 
 ```json
 [
   { "startMinute": 1320, "placeId": "place.bit.gym_basement", "travelMinutes": 0, "activity": "接班，检查地下室的灯" },
   { "startMinute": 1380, "placeId": "place.bit.gym", "travelMinutes": 15, "activity": "绕场馆一圈，锁门" },
-  { "startMinute": 1440, "placeId": "place.bit.gym_basement", "travelMinutes": 15, "activity": "（跨日）回到地下室，登记本翻开" },
   { "startMinute": 60, "placeId": "place.bit.gym_basement", "travelMinutes": 0, "activity": "坐在那儿，听楼上的动静" },
   { "startMinute": 70, "placeId": "place.bit.gym_basement", "travelMinutes": 0, "activity": "一点十分，锁门（两响半）" },
   { "startMinute": 90, "placeId": "place.bit.campus_road", "travelMinutes": 20, "activity": "在没人的路上走一圈" },
@@ -1205,7 +1203,7 @@ liked 给"送礼加好感"，disliked 给"送礼扣好感"，每条后面标注�
 3. **头像与立绘是否要分两套风格**（如立绘改用更适合全身的三视图/白底），以便批量出图。
 4. **前 5 人新名（林砚 / 周野 / 徐晚 / 何岸 / 齐岭）是否合意**？`id` 保持原样未变，只改了 `name`。若要换，直接说。
 5. **地点占位表（第九节 7.1）需与地点数据对齐**：共 48 个 `placeId`，其中 9 个来自示例 `npcs.json`，39 个为本次占位。扩充地点数据时按此表对齐即可。
-6. **跨零点作息的处理约定**（何岸、韦禾、老陈、徐晚四人跨日）：本文用 `startMinute` 递增后回落表示"次日"，程序侧需要确认解析规则。
+6. **跨零点作息的处理约定**（何岸、韦禾、老陈、徐晚四人跨日）：作息按"天环"解析（`NpcScheduleEntry` 要求 `startMinute` ∈ 0–1439），**不写 1440 的跨日标记条目**——当天最后一条到达后，次日从 0 分起的条目自然接上（同地点的停留会被环语义延续，例如夜班保安 22:00 到岗后一路待到次日清晨）。
 7. **异常侧三人的作息逻辑特殊**，不是常规作息表：沈墨（只在雨里，`travelMinutes` 恒 0）、夏星（只在照片相关地点，日落淡出）、三更（受雨夜/ANOMALY 资源触发）。建议这三人不走 schedule 系统，另用条件触发。
 
 

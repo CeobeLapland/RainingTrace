@@ -10,27 +10,28 @@ import org.junit.Test
 /**
  * NPC 作息与地点的**交叉一致性**。
  *
- * 内容外置之后，"作息里写 `FakePlaceRepository.XXX.id` 常量"那种编译期绑定的保证
- * 没有了；这条断言就是它的替代品（对外置内容而言，`ShippedContentTest` 里
- * 也有同一件事的检查，两层都留着不嫌多——写错 placeId 只会让那个人整天不出现，
- * 是完全没有报错的坏法）。
+ * 作息指向尚未落地地点（`places_design.md` 的坐标待填）在过渡期是预期状态，
+ * 运行时 `resolveSchedule` 会逐条剔除悬空条目；但核心 5 人若任何时刻都解析不出
+ * 位置，等于"地图上没人"——那是没有任何报错的坏法，此处的断言就是它的看门人。
  */
 class FakeNpcRepositoryTest {
 
     private val npcs = FakeNpcRepository(ShippedContent.npcs)
 
+    /** 原版 5 人是既有存档与地图的锚点，任何时刻都必须解析得出位置。 */
     @Test
-    fun `every scheduled place exists in the place repository`() = runTest {
-        val placeIds = ShippedContent.places.map { it.id }.toSet()
+    fun `core five npcs resolve a position at some point of the day`() = runTest {
+        val places = ShippedContent.placeById
+        val anchors = listOf("npc.bit.lin", "npc.bit.zhou", "npc.bit.xu", "npc.bit.he", "npc.bit.qi")
+        val anchorProfiles = npcs.all().filter { it.id in anchors }
+        assertEquals("核心 5 人必须都在内容里", 5, anchorProfiles.size)
 
-        npcs.all().forEach { npc ->
-            npc.schedule.forEach { entry ->
-                assertTrue(
-                    "${npc.id} 的作息引用了不存在的地点 ${entry.placeId}",
-                    entry.placeId in placeIds,
-                )
-            }
-        }
+        val ghost = anchorProfiles.filter { profile ->
+            val schedule = resolveSchedule(profile, places)
+            (0 until 24 * 60).none { schedule.presenceAt(it) != null }
+        }.map { it.id }
+
+        assertTrue("核心 NPC 任何时刻都解析不出位置（地图上看不见）：$ghost", ghost.isEmpty())
     }
 
     @Test

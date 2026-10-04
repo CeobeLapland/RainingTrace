@@ -4,76 +4,2409 @@
   "entries": [
     {
       "id": "npc.bit.lin",
-      "name": "林",
+      "name": "林砚",
       "oneLiner": "总在图书馆靠窗那排的人，桌上永远摊着两本书。",
-      "role": "大二学生",
-      "traits": ["TACITURN", "PUNCTUAL"],
-      "topics": ["BOOKS", "SELF"],
+      "role": "建筑系大二。选课很少，作业都在图书馆三楼靠窗那张桌子完成。",
+      "traits": [
+        "OBSERVANT",
+        "TACITURN",
+        "PUNCTUAL"
+      ],
+      "topics": [
+        "BOOKS",
+        "SELF",
+        "WEATHER"
+      ],
       "favoriteTopic": "BOOKS",
-      "backstory": ["以前在图书馆丢过一次伞，后来就一直放在储物柜里。"],
+      "backstory": [
+        "大一丢过一次伞，后来一直用储物柜里那把没人认领的伞，伞柄缠了胶布。",
+        "桌上摊着两本书是刻意的——他要有一本\"不重要的书\"垫手。",
+        "正在偷偷画一张校园地图，把\"能看见三教那条路\"的位置全部标红，没人知道为什么。"
+      ],
+      "giftPreferences": {
+        "liked": [
+          "res.blueprint_book",
+          "res.mechanical_drawing",
+          "res.umbrella",
+          "res.pencil"
+        ],
+        "disliked": [
+          "res.popcorn"
+        ]
+      },
+      "enabled": true,
       "schedule": [
-        { "startMinute": 420, "placeId": "place.bit.dorm_3", "travelMinutes": 0, "activity": "刚起床，收拾书包" },
-        { "startMinute": 540, "placeId": "place.bit.library", "travelMinutes": 20, "activity": "在靠窗的位置自习" },
-        { "startMinute": 750, "placeId": "place.bit.canteen_one", "travelMinutes": 15, "activity": "排队打饭" },
-        { "startMinute": 1290, "placeId": "place.bit.dorm_3", "travelMinutes": 25, "activity": "回宿舍" }
+        {
+          "startMinute": 420,
+          "placeId": "place.bit.dorm_3",
+          "travelMinutes": 0,
+          "activity": "起床，收拾书包"
+        },
+        {
+          "startMinute": 510,
+          "placeId": "place.bit.dining_line",
+          "travelMinutes": 20,
+          "activity": "早饭，站着吃完就走"
+        },
+        {
+          "startMinute": 540,
+          "placeId": "place.bit.library",
+          "travelMinutes": 25,
+          "activity": "三楼靠窗第三排，摊开两本书"
+        },
+        {
+          "startMinute": 750,
+          "placeId": "place.bit.dining_line",
+          "travelMinutes": 20,
+          "activity": "午饭，把书留在桌上占座"
+        },
+        {
+          "startMinute": 810,
+          "placeId": "place.bit.library",
+          "travelMinutes": 15,
+          "activity": "下午继续画校园地图"
+        },
+        {
+          "startMinute": 1110,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 20,
+          "activity": "晚饭"
+        },
+        {
+          "startMinute": 1200,
+          "placeId": "place.bit.library",
+          "travelMinutes": 20,
+          "activity": "自习到闭馆"
+        },
+        {
+          "startMinute": 1320,
+          "placeId": "place.bit.dorm_3",
+          "travelMinutes": 30,
+          "activity": "回宿舍，路上绕远看雨"
+        }
       ]
     },
     {
       "id": "npc.bit.zhou",
-      "name": "周",
+      "name": "周野",
       "oneLiner": "每天绕广场跑两圈，然后去食堂帮忙收餐盘。",
-      "role": "食堂帮工",
-      "traits": ["WARM", "TALKATIVE"],
-      "topics": ["FOOD", "RUNNING", "WEATHER"],
+      "role": "食堂帮工，勤工俭学，大三在读。每天先跑两圈再去收餐盘。",
+      "traits": [
+        "WARM",
+        "TALKATIVE",
+        "STEADY"
+      ],
+      "topics": [
+        "RUNNING",
+        "FOOD",
+        "SOUND"
+      ],
       "favoriteTopic": "RUNNING",
-      "backstory": ["每天绕广场跑两圈，下雨也跑。"],
+      "backstory": [
+        "寒假不回家，在后厨做到腊月二十九，怕宿舍没人留灯。",
+        "每天跑两圈不是为了健康，是\"跑得动，就什么都能扛\"。",
+        "会把多打的饭分给晚自习结束的人，谁都欠他一顿，他从不记账。"
+      ],
+      "giftPreferences": {
+        "liked": [
+          "res.canteen_bowl",
+          "res.campus_bread",
+          "res.pickled_radish",
+          "res.egg_pancake"
+        ],
+        "disliked": [
+          "res.remedy_powder"
+        ]
+      },
+      "enabled": true,
       "schedule": [
-        { "startMinute": 360, "placeId": "place.bit.plaza", "travelMinutes": 0, "activity": "在广场上慢跑" },
-        { "startMinute": 690, "placeId": "place.bit.canteen_one", "travelMinutes": 20, "activity": "在食堂帮忙" },
-        { "startMinute": 1260, "placeId": "place.bit.dorm_3", "travelMinutes": 20, "activity": "回宿舍休息" }
+        {
+          "startMinute": 350,
+          "placeId": "place.bit.plaza",
+          "travelMinutes": 0,
+          "activity": "慢跑第一圈"
+        },
+        {
+          "startMinute": 420,
+          "placeId": "place.bit.plaza",
+          "travelMinutes": 0,
+          "activity": "慢跑第二圈，然后拉伸"
+        },
+        {
+          "startMinute": 660,
+          "placeId": "place.bit.canteen_kitchen",
+          "travelMinutes": 15,
+          "activity": "后厨备菜、切配"
+        },
+        {
+          "startMinute": 750,
+          "placeId": "place.bit.dining_line",
+          "travelMinutes": 10,
+          "activity": "打饭窗口，帮人添饭"
+        },
+        {
+          "startMinute": 900,
+          "placeId": "place.bit.canteen_kitchen",
+          "travelMinutes": 5,
+          "activity": "收餐盘、洗第一轮"
+        },
+        {
+          "startMinute": 1230,
+          "placeId": "place.bit.canteen_kitchen",
+          "travelMinutes": 0,
+          "activity": "腌一坛菜，等它慢慢发"
+        },
+        {
+          "startMinute": 1350,
+          "placeId": "place.bit.dorm_3",
+          "travelMinutes": 20,
+          "activity": "回宿舍，边走边听广播"
+        }
       ]
     },
     {
       "id": "npc.bit.xu",
-      "name": "徐",
+      "name": "徐晚",
       "oneLiner": "在湖边支着画架，一坐就是一下午。",
-      "role": "画画的人",
-      "traits": ["DREAMY", "RESERVED"],
-      "topics": ["ART", "WEATHER", "NIGHT"],
+      "role": "美术系大三。湖边支着画架，一坐一下午。",
+      "traits": [
+        "DREAMY",
+        "RESERVED",
+        "CURIOUS"
+      ],
+      "topics": [
+        "ART",
+        "WEATHER",
+        "NIGHT"
+      ],
       "favoriteTopic": "ART",
-      "backstory": ["画架是旧的，说用了很多年，一直没换。"],
+      "backstory": [
+        "画架是父亲的，缺一条腿，用铁丝绑着，站了三年。",
+        "她在画同一个湖的三十七个版本，同学以为她在重复，其实她在等一个能画完的天气。",
+        "雨天她画得最好，好到她自己害怕——那种准确不像她画的。"
+      ],
+      "giftPreferences": {
+        "liked": [
+          "res.paint_brush",
+          "res.palette",
+          "res.pigment",
+          "res.wild_chrysanthemum"
+        ],
+        "disliked": [
+          "res.mirror"
+        ]
+      },
+      "enabled": true,
       "schedule": [
-        { "startMinute": 0, "placeId": "place.bit.north_lake", "travelMinutes": 0, "activity": "在湖边画画" }
+        {
+          "startMinute": 0,
+          "placeId": "place.bit.north_lake",
+          "travelMinutes": 0,
+          "activity": "整夜在湖边，架着画架"
+        },
+        {
+          "startMinute": 540,
+          "placeId": "place.bit.lake_wood",
+          "travelMinutes": 10,
+          "activity": "沿栈道走一段，看水面"
+        },
+        {
+          "startMinute": 660,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 25,
+          "activity": "买一份饭，带回湖边吃"
+        },
+        {
+          "startMinute": 780,
+          "placeId": "place.bit.north_lake",
+          "travelMinutes": 20,
+          "activity": "继续画，一直画到天色变"
+        },
+        {
+          "startMinute": 1140,
+          "placeId": "place.bit.art_room",
+          "travelMinutes": 30,
+          "activity": "把湿画夹进板子，回画室"
+        },
+        {
+          "startMinute": 1230,
+          "placeId": "place.bit.dorm_2",
+          "travelMinutes": 25,
+          "activity": "睡觉，窗帘拉严"
+        },
+        {
+          "startMinute": 1380,
+          "placeId": "place.bit.north_lake",
+          "travelMinutes": 20,
+          "activity": "天没亮就又回湖边了"
+        }
       ]
     },
     {
       "id": "npc.bit.he",
-      "name": "何",
+      "name": "何岸",
       "oneLiner": "习惯很晚还在外面走，说夜里安静。",
-      "role": "夜里走动的人",
-      "traits": ["RESERVED", "CURIOUS"],
-      "topics": ["NIGHT", "BOOKS", "SELF"],
+      "role": "不明。没有课表、没有学籍登记，却在夜里出现在旧图书馆和花园。",
+      "traits": [
+        "OBSERVANT",
+        "RESERVED",
+        "CURIOUS"
+      ],
+      "topics": [
+        "NIGHT",
+        "BOOKS",
+        "SELF"
+      ],
       "favoriteTopic": "NIGHT",
-      "backstory": ["习惯很晚还在外面走，说夜里安静。"],
+      "backstory": [
+        "宿舍 3 楼确实有他的床位，室友说从来没人见过他睡在那儿。",
+        "他在翻旧书目卡，翻到某一张就停很久，然后放回去。",
+        "有人看见他和一个不该出现在校园里的人打招呼——那个人是夏星。"
+      ],
+      "giftPreferences": {
+        "liked": [
+          "res.flashlight",
+          "res.shelf_card",
+          "res.borrow_stub",
+          "res.archive_letter"
+        ],
+        "disliked": [
+          "res.crow_feather",
+          "res.bat_wing"
+        ]
+      },
+      "enabled": true,
       "schedule": [
-        { "startMinute": 480, "placeId": "place.bit.library", "travelMinutes": 30, "activity": "在图书馆翻旧书目卡" },
-        { "startMinute": 1380, "placeId": "place.bit.garden", "travelMinutes": 30, "activity": "在花园里散步" },
-        { "startMinute": 120, "placeId": "place.bit.dorm_3", "travelMinutes": 45, "activity": "回去睡觉" }
+        {
+          "startMinute": 60,
+          "placeId": "place.bit.dorm_3",
+          "travelMinutes": 0,
+          "activity": "回到那个没人睡的床位，坐一会儿就出门"
+        },
+        {
+          "startMinute": 180,
+          "placeId": "place.bit.garden",
+          "travelMinutes": 15,
+          "activity": "在花园长椅上待到天亮"
+        },
+        {
+          "startMinute": 300,
+          "placeId": "place.bit.stacks",
+          "travelMinutes": 20,
+          "activity": "旧馆书架通道，翻书目卡"
+        },
+        {
+          "startMinute": 600,
+          "placeId": "place.bit.campus_road",
+          "travelMinutes": 15,
+          "activity": "走在没人的路上，避开人多的那段"
+        },
+        {
+          "startMinute": 780,
+          "placeId": "place.bit.garden",
+          "travelMinutes": 15,
+          "activity": "坐在同一张长椅上"
+        },
+        {
+          "startMinute": 1140,
+          "placeId": "place.bit.stacks",
+          "travelMinutes": 20,
+          "activity": "把某张卡放回原处"
+        },
+        {
+          "startMinute": 1380,
+          "placeId": "place.bit.campus_road",
+          "travelMinutes": 15,
+          "activity": "又走到雨里也不肯打伞的地方"
+        }
       ]
     },
     {
       "id": "npc.bit.qi",
-      "name": "齐",
-      "oneLiner": "总背着布袋在花园北边转，说是在看果子熟没熟。",
-      "role": "巡林的人",
-      "traits": ["PRACTICAL", "TACITURN"],
-      "topics": ["PLANTS", "WEATHER", "FOOD"],
+      "name": "齐岭",
+      "oneLiner": "总背着布袋在果林里转，说是在看果子熟没熟。",
+      "role": "果林与林地巡护人。背布袋在果林、浆果丛、树根之间转，看果子熟没熟。",
+      "traits": [
+        "TACITURN",
+        "PRACTICAL",
+        "GENTLE"
+      ],
+      "topics": [
+        "PLANTS",
+        "WEATHER",
+        "FOOD"
+      ],
       "favoriteTopic": "PLANTS",
-      "backstory": ["总背着布袋在花园北边转，说是在看果子熟没熟。"],
+      "backstory": [
+        "园艺系毕业，别的同学去了设计院，他留在学校看林子。",
+        "布袋里的标签是他自己写的，写了十几年，字迹换过三次。",
+        "樟叔退休那年，他把果林交出去的时候说过一句\"我不行\"，那是齐第一次承认自己会老。"
+      ],
+      "giftPreferences": {
+        "liked": [
+          "res.tree_sap",
+          "res.tea_leaf",
+          "res.green_apple",
+          "res.pruning_shears"
+        ],
+        "disliked": [
+          "res.candle"
+        ]
+      },
+      "enabled": true,
       "schedule": [
-        { "startMinute": 420, "placeId": "place.bit.orchard", "travelMinutes": 60, "activity": "在果林里转" },
-        { "startMinute": 780, "placeId": "place.bit.berry_bush", "travelMinutes": 90, "activity": "在浆果丛边蹲着" },
-        { "startMinute": 1140, "placeId": "place.bit.mushroom_patch", "travelMinutes": 90, "activity": "在树根边找菌子" }
+        {
+          "startMinute": 400,
+          "placeId": "place.bit.bike_shed",
+          "travelMinutes": 0,
+          "activity": "从校门进来，先去车棚放车"
+        },
+        {
+          "startMinute": 420,
+          "placeId": "place.bit.orchard",
+          "travelMinutes": 15,
+          "activity": "果林巡一圈，看哪边熟透了"
+        },
+        {
+          "startMinute": 780,
+          "placeId": "place.bit.berry_bush",
+          "travelMinutes": 25,
+          "activity": "浆果丛边蹲着，标了号就不摘"
+        },
+        {
+          "startMinute": 1020,
+          "placeId": "place.bit.field_plot",
+          "travelMinutes": 20,
+          "activity": "菜圃，替园艺社看苗"
+        },
+        {
+          "startMinute": 1140,
+          "placeId": "place.bit.mushroom_patch",
+          "travelMinutes": 20,
+          "activity": "树根边找菌子，只找不采"
+        },
+        {
+          "startMinute": 1230,
+          "placeId": "place.bit.dining_line",
+          "travelMinutes": 25,
+          "activity": "在食堂吃自己摘的菜"
+        },
+        {
+          "startMinute": 1320,
+          "placeId": "place.bit.dorm_2",
+          "travelMinutes": 25,
+          "activity": "回宿舍，把布袋里的标签整理好"
+        }
+      ]
+    },
+    {
+      "id": "npc.bit.shen_yan",
+      "name": "沈砚",
+      "oneLiner": "修东西的时候会跟机器说话，修完就走。",
+      "role": "物理系大三。实验楼 415 常年有他，负责把坏掉的仪器修好。",
+      "traits": [
+        "PUNCTUAL",
+        "SERIOUS",
+        "STEADY"
+      ],
+      "topics": [
+        "TECH",
+        "NIGHT",
+        "STUDY"
+      ],
+      "favoriteTopic": "TECH",
+      "backstory": [
+        "家里开修理铺，从小听工具的声音长大，能凭一声\"嗡\"判断哪里要坏。",
+        "大二那年实验楼半夜跳闸，整层漆黑，他一个人把应急回路接通了，天亮才被人发现。",
+        "他给每台修好的机器都贴了一小条胶带写日期，没人知道为什么。"
+      ],
+      "giftPreferences": {
+        "liked": [
+          "res.copper_wire",
+          "res.solder_iron",
+          "res.repair_manual",
+          "res.led_bulb"
+        ],
+        "disliked": [
+          "res.paper_star"
+        ]
+      },
+      "enabled": true,
+      "schedule": [
+        {
+          "startMinute": 420,
+          "placeId": "place.bit.dorm_3",
+          "travelMinutes": 0,
+          "activity": "起床，先在宿舍听两分钟电流声"
+        },
+        {
+          "startMinute": 510,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 20,
+          "activity": "早饭"
+        },
+        {
+          "startMinute": 570,
+          "placeId": "place.bit.lab_415",
+          "travelMinutes": 25,
+          "activity": "开工位，先处理昨天报修的三台"
+        },
+        {
+          "startMinute": 750,
+          "placeId": "place.bit.dining_line",
+          "travelMinutes": 20,
+          "activity": "午饭，端着盒饭回工位边吃边焊"
+        },
+        {
+          "startMinute": 780,
+          "placeId": "place.bit.lab_415",
+          "travelMinutes": 5,
+          "activity": "继续"
+        },
+        {
+          "startMinute": 1080,
+          "placeId": "place.bit.workshop",
+          "travelMinutes": 15,
+          "activity": "去机工房领零件，顺路修台风扇"
+        },
+        {
+          "startMinute": 1230,
+          "placeId": "place.bit.lab_415",
+          "travelMinutes": 15,
+          "activity": "贴今天的日期胶带"
+        },
+        {
+          "startMinute": 1350,
+          "placeId": "place.bit.dorm_3",
+          "travelMinutes": 20,
+          "activity": "回宿舍，路上还在听机器的声音"
+        }
+      ]
+    },
+    {
+      "id": "npc.bit.su_li",
+      "name": "苏黎",
+      "oneLiner": "图书馆四楼最靠里的座位，一坐一整天。",
+      "role": "大一新生。转学三次。习惯坐在图书馆四楼最靠里的角落。",
+      "traits": [
+        "OBSERVANT",
+        "SHY",
+        "CHATTY"
+      ],
+      "topics": [
+        "BOOKS",
+        "PEOPLE",
+        "SELF"
+      ],
+      "favoriteTopic": "BOOKS",
+      "backstory": [
+        "有一个本子记\"今天有人跟我说话了\"，到第九十七天的时候写满了。",
+        "她能背出常坐对面那人的所有借阅记录，自己一条都不敢借。",
+        "她收集的贴纸按颜色排，排到最后发现少了一张，贴在图书馆窗框上——就是现在还在那儿。"
+      ],
+      "giftPreferences": {
+        "liked": [
+          "res.sticker_sheet",
+          "res.notebook",
+          "res.paper_sheet",
+          "res.borrow_stub"
+        ],
+        "disliked": [
+          "res.firecracker_ash"
+        ]
+      },
+      "enabled": true,
+      "schedule": [
+        {
+          "startMinute": 450,
+          "placeId": "place.bit.dorm_1",
+          "travelMinutes": 0,
+          "activity": "起床，先在阳台站一会儿"
+        },
+        {
+          "startMinute": 540,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 20,
+          "activity": "早饭，一个人坐角落"
+        },
+        {
+          "startMinute": 600,
+          "placeId": "place.bit.library_four",
+          "travelMinutes": 25,
+          "activity": "四楼最靠里的座位，摊开手账"
+        },
+        {
+          "startMinute": 780,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 20,
+          "activity": "午饭，避开人最多的那阵"
+        },
+        {
+          "startMinute": 840,
+          "placeId": "place.bit.library_four",
+          "travelMinutes": 20,
+          "activity": "下午继续写"
+        },
+        {
+          "startMinute": 1140,
+          "placeId": "place.bit.dorm_1",
+          "travelMinutes": 25,
+          "activity": "回宿舍，翻窗框上那张贴纸"
+        },
+        {
+          "startMinute": 1320,
+          "placeId": "place.bit.club_center",
+          "travelMinutes": 20,
+          "activity": "在活动中心门口站着看别人排练"
+        }
+      ]
+    },
+    {
+      "id": "npc.bit.chen_qiu",
+      "name": "陈秋",
+      "oneLiner": "戴白手套取照片的人，说话很慢，从不打断别人。",
+      "role": "校史馆管理员。教过三代学生，在校时间比大多数教职工都长。",
+      "traits": [
+        "WARM",
+        "GENTLE",
+        "MANNERED"
+      ],
+      "topics": [
+        "MEMORY",
+        "PEOPLE",
+        "FOOD"
+      ],
+      "favoriteTopic": "MEMORY",
+      "backstory": [
+        "她手上有历届学生名册，能指着照片说出每个人的名字，包括后来不来的那几个。",
+        "每年有毕业生回来找不到当年合照，她会从抽屉最底层抽出一张没洗出来的。",
+        "2008 年那批照片里，有一张她记得有八个人，档案上只写了七个。"
+      ],
+      "giftPreferences": {
+        "liked": [
+          "res.old_photo",
+          "res.yearbook_page",
+          "res.tea_leaf",
+          "res.monument_rubbing"
+        ],
+        "disliked": [
+          "res.speaker"
+        ]
+      },
+      "enabled": true,
+      "schedule": [
+        {
+          "startMinute": 480,
+          "placeId": "place.bit.dorm_4",
+          "travelMinutes": 0,
+          "activity": "起床，先泡第一壶茶"
+        },
+        {
+          "startMinute": 570,
+          "placeId": "place.bit.photo_wall",
+          "travelMinutes": 25,
+          "activity": "开馆，戴上手套，取下今天要修的相框"
+        },
+        {
+          "startMinute": 720,
+          "placeId": "place.bit.history_museum",
+          "travelMinutes": 5,
+          "activity": "查名册，核对第 2008 届那一页"
+        },
+        {
+          "startMinute": 810,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 25,
+          "activity": "午饭，同事留的一份"
+        },
+        {
+          "startMinute": 870,
+          "placeId": "place.bit.history_museum",
+          "travelMinutes": 20,
+          "activity": "下午整理捐赠文件"
+        },
+        {
+          "startMinute": 1110,
+          "placeId": "place.bit.history_museum",
+          "travelMinutes": 0,
+          "activity": "闭馆前再把所有照片看一遍"
+        },
+        {
+          "startMinute": 1230,
+          "placeId": "place.bit.dorm_4",
+          "travelMinutes": 25,
+          "activity": "回宿舍，收音机开着当背景"
+        }
+      ]
+    },
+    {
+      "id": "npc.bit.gao_jian",
+      "name": "高见",
+      "oneLiner": "一开口就是在分配任务，听的人才发现自己已经答应了。",
+      "role": "学生会与社团联合会。什么事都要过一遍他的手。",
+      "traits": [
+        "GENEROUS",
+        "SHARP",
+        "TIRELESS"
+      ],
+      "topics": [
+        "PEOPLE",
+        "MONEY",
+        "SOUND"
+      ],
+      "favoriteTopic": "PEOPLE",
+      "backstory": [
+        "竞选输过两次，第三次拿到全部票，他说\"我赢的不是选举，是你们终于怕我了\"。",
+        "他偷偷筹备过一场演出，办完才发现全校只有六个人来看，还下着雨。",
+        "那六个人他一个都没忘，每年演出都还留着那六个空位。"
+      ],
+      "giftPreferences": {
+        "liked": [
+          "res.club_flyer",
+          "res.plaza_flyer",
+          "res.badge_ribbon",
+          "res.poster_paint"
+        ],
+        "disliked": [
+          "res.torn_letter"
+        ]
+      },
+      "enabled": true,
+      "schedule": [
+        {
+          "startMinute": 420,
+          "placeId": "place.bit.dorm_3",
+          "travelMinutes": 0,
+          "activity": "起床，边刷牙边回消息"
+        },
+        {
+          "startMinute": 510,
+          "placeId": "place.bit.dining_line",
+          "travelMinutes": 20,
+          "activity": "早饭，边吃边派活"
+        },
+        {
+          "startMinute": 570,
+          "placeId": "place.bit.club_center",
+          "travelMinutes": 20,
+          "activity": "社团联合会开会，先过一遍本周经费"
+        },
+        {
+          "startMinute": 750,
+          "placeId": "place.bit.dining_line",
+          "travelMinutes": 15,
+          "activity": "午饭，速战速决"
+        },
+        {
+          "startMinute": 810,
+          "placeId": "place.bit.lecture_hall",
+          "travelMinutes": 20,
+          "activity": "礼堂那边盯场地布置"
+        },
+        {
+          "startMinute": 1080,
+          "placeId": "place.bit.club_center",
+          "travelMinutes": 15,
+          "activity": "回办公室改海报文案"
+        },
+        {
+          "startMinute": 1230,
+          "placeId": "place.bit.dining_line",
+          "travelMinutes": 15,
+          "activity": "晚饭，请客（他请得起的时候）"
+        },
+        {
+          "startMinute": 1320,
+          "placeId": "place.bit.lecture_hall",
+          "travelMinutes": 20,
+          "activity": "散场后一个人搬椅子"
+        }
+      ]
+    },
+    {
+      "id": "npc.bit.bai_yi",
+      "name": "白依",
+      "oneLiner": "改过一百多件外套，理由都是\"袖子太长了\"。",
+      "role": "设计系大二。缝纫社社长，把综合楼 B1 一间堆布的房间收拾成全社的天堂。",
+      "traits": [
+        "WARM",
+        "SERIOUS",
+        "EXACTING"
+      ],
+      "topics": [
+        "SEWING",
+        "ART",
+        "PEOPLE"
+      ],
+      "favoriteTopic": "SEWING",
+      "backstory": [
+        "社办墙上钉着历届社员的尺寸表，最早一张纸已经泛黄。",
+        "她改过一百多件外套，理由都是\"袖子太长了，遮住手腕写字会冷\"。",
+        "有一件改完没交还的校服外套挂在最里面，她说是\"等一个人回来拿\"。"
+      ],
+      "giftPreferences": {
+        "liked": [
+          "res.linen_thread",
+          "res.needle",
+          "res.dyed_fabric",
+          "res.felt"
+        ],
+        "disliked": [
+          "res.glue"
+        ]
+      },
+      "enabled": true,
+      "schedule": [
+        {
+          "startMinute": 450,
+          "placeId": "place.bit.dorm_2",
+          "travelMinutes": 0,
+          "activity": "起床，量一下自己的袖长（职业病）"
+        },
+        {
+          "startMinute": 540,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 20,
+          "activity": "早饭"
+        },
+        {
+          "startMinute": 600,
+          "placeId": "place.bit.sewing_room",
+          "travelMinutes": 25,
+          "activity": "开门，先检查昨天的绷布还紧不紧"
+        },
+        {
+          "startMinute": 750,
+          "placeId": "place.bit.sewing_room",
+          "travelMinutes": 10,
+          "activity": "午饭在缝纫机边吃"
+        },
+        {
+          "startMinute": 810,
+          "placeId": "place.bit.sewing_room",
+          "travelMinutes": 0,
+          "activity": "接单，量尺寸"
+        },
+        {
+          "startMinute": 1080,
+          "placeId": "place.bit.laundry",
+          "travelMinutes": 15,
+          "activity": "去洗衣房取洗好的衬里布"
+        },
+        {
+          "startMinute": 1170,
+          "placeId": "place.bit.sewing_room",
+          "travelMinutes": 15,
+          "activity": "锁边、钉扣子"
+        },
+        {
+          "startMinute": 1320,
+          "placeId": "place.bit.dorm_2",
+          "travelMinutes": 25,
+          "activity": "回宿舍，手上还别着针"
+        }
+      ]
+    },
+    {
+      "id": "npc.bit.luo_xiaoman",
+      "name": "罗小满",
+      "oneLiner": "社团只有她一个人，但她坚持按期排练。",
+      "role": "音乐系大三。打击乐方向。社团只有她一个人，但她坚持按期排练。",
+      "traits": [
+        "CHATTY",
+        "GENEROUS",
+        "BRIGHT"
+      ],
+      "topics": [
+        "SOUND",
+        "MUSIC",
+        "NIGHT"
+      ],
+      "favoriteTopic": "SOUND",
+      "backstory": [
+        "坚持给一个人少的社团办演出，自己垫了三场才凑够人。",
+        "她有个本子记校园里的声音：编号 001 是图书馆闭馆前的椅子响，编号 188 是深夜教学楼的门。",
+        "编号 233 她记了\"会响两次的门\"，但她说自己没敢再听。"
+      ],
+      "giftPreferences": {
+        "liked": [
+          "res.drum_stick",
+          "res.tambourine",
+          "res.small_bell",
+          "res.music_score_fragment"
+        ],
+        "disliked": [
+          "res.lost_bell"
+        ]
+      },
+      "enabled": true,
+      "schedule": [
+        {
+          "startMinute": 540,
+          "placeId": "place.bit.dorm_4",
+          "travelMinutes": 0,
+          "activity": "起床，先敲两下床板当节拍器"
+        },
+        {
+          "startMinute": 630,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 20,
+          "activity": "早饭"
+        },
+        {
+          "startMinute": 690,
+          "placeId": "place.bit.music_room",
+          "travelMinutes": 20,
+          "activity": "一个人排练，回路弹了四十分钟"
+        },
+        {
+          "startMinute": 750,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 15,
+          "activity": "午饭"
+        },
+        {
+          "startMinute": 810,
+          "placeId": "place.bit.playground",
+          "travelMinutes": 15,
+          "activity": "看台台阶，录操场上所有声音"
+        },
+        {
+          "startMinute": 1020,
+          "placeId": "place.bit.music_room",
+          "travelMinutes": 15,
+          "activity": "整理编号本"
+        },
+        {
+          "startMinute": 1140,
+          "placeId": "place.bit.canteen_kitchen",
+          "travelMinutes": 20,
+          "activity": "去后厨借一口锅，敲"
+        },
+        {
+          "startMinute": 1290,
+          "placeId": "place.bit.dorm_4",
+          "travelMinutes": 20,
+          "activity": "回宿舍，路上还在哼"
+        }
+      ]
+    },
+    {
+      "id": "npc.bit.jiang_chengyi",
+      "name": "蒋成一",
+      "oneLiner": "蹲在苗边记编号，问的问题追着人跑不掉。",
+      "role": "园艺社大二。齐的果林助手。农学院转专业过来的。",
+      "traits": [
+        "CURIOUS",
+        "PRACTICAL",
+        "CHATTY"
+      ],
+      "topics": [
+        "PLANTS",
+        "WEATHER",
+        "FOOD"
+      ],
+      "favoriteTopic": "PLANTS",
+      "backstory": [
+        "从农学院转来，因为\"想学怎么把东西种得好看，而不是怎么种得活\"。",
+        "宿舍阳台种满了苗，被室友投诉过一次，从此改到楼道窗台。",
+        "他偷偷给每棵树建了档案，记录开花与结果日期，写到第三年还没人看。"
+      ],
+      "giftPreferences": {
+        "liked": [
+          "res.seed_saving_note",
+          "res.watering_can",
+          "res.farm_cabbage",
+          "res.wheat_ear"
+        ],
+        "disliked": [
+          "res.clock"
+        ]
+      },
+      "enabled": true,
+      "schedule": [
+        {
+          "startMinute": 400,
+          "placeId": "place.bit.dorm_1",
+          "travelMinutes": 0,
+          "activity": "起床，先去楼道窗台看苗"
+        },
+        {
+          "startMinute": 480,
+          "placeId": "place.bit.field_plot",
+          "travelMinutes": 15,
+          "activity": "菜圃，浇水"
+        },
+        {
+          "startMinute": 570,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 20,
+          "activity": "早饭，边吃边翻种植笔记"
+        },
+        {
+          "startMinute": 630,
+          "placeId": "place.bit.orchard",
+          "travelMinutes": 20,
+          "activity": "果林找齐岭，听他讲这周该采什么"
+        },
+        {
+          "startMinute": 750,
+          "placeId": "place.bit.dining_line",
+          "travelMinutes": 20,
+          "activity": "午饭"
+        },
+        {
+          "startMinute": 810,
+          "placeId": "place.bit.field_plot",
+          "travelMinutes": 20,
+          "activity": "搭架子，记第 43 号苗的位置"
+        },
+        {
+          "startMinute": 1080,
+          "placeId": "place.bit.orchard",
+          "travelMinutes": 20,
+          "activity": "果林收工，顺手捡落叶做覆盖"
+        },
+        {
+          "startMinute": 1290,
+          "placeId": "place.bit.dorm_1",
+          "travelMinutes": 25,
+          "activity": "回宿舍写观察日记"
+        }
+      ]
+    },
+    {
+      "id": "npc.bit.wei_he",
+      "name": "韦禾",
+      "oneLiner": "夜班保温杯永远是满的，见人会先转过身子。",
+      "role": "校园保安，夜班。值班室在北门。",
+      "traits": [
+        "PUNCTUAL",
+        "WARM",
+        "PLAIN"
+      ],
+      "topics": [
+        "PEOPLE",
+        "WEATHER",
+        "NIGHT"
+      ],
+      "favoriteTopic": "PEOPLE",
+      "backstory": [
+        "值夜第七年，认得每一个翻墙进来的学生，也认得每一个没翻墙进来的。",
+        "值班室抽屉里有一本记名字的本子，写满了不认识的字。",
+        "有一个学生他从没在名册上见过，却每个夜班都来跟他打招呼。"
+      ],
+      "giftPreferences": {
+        "liked": [
+          "res.thermos",
+          "res.coffee",
+          "res.umbrella",
+          "res.wrist_band"
+        ],
+        "disliked": [
+          "res.firecracker_ash"
+        ]
+      },
+      "enabled": true,
+      "schedule": [
+        {
+          "startMinute": 1260,
+          "placeId": "place.bit.dorm_4",
+          "travelMinutes": 0,
+          "activity": "接班前在家躺一会儿"
+        },
+        {
+          "startMinute": 1380,
+          "placeId": "place.bit.gate_north",
+          "travelMinutes": 25,
+          "activity": "到岗，泡上第一壶水"
+        },
+        {
+          "startMinute": 480,
+          "placeId": "place.bit.gate_north",
+          "travelMinutes": 0,
+          "activity": "凌晨巡逻，一圈十五分钟"
+        },
+        {
+          "startMinute": 690,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 20,
+          "activity": "去食堂打热水，替夜班的留一份"
+        },
+        {
+          "startMinute": 720,
+          "placeId": "place.bit.gate_north",
+          "travelMinutes": 15,
+          "activity": "回岗，天快亮了"
+        },
+        {
+          "startMinute": 840,
+          "placeId": "place.bit.laundry",
+          "travelMinutes": 20,
+          "activity": "把值班室床单送洗"
+        },
+        {
+          "startMinute": 900,
+          "placeId": "place.bit.gate_north",
+          "travelMinutes": 15,
+          "activity": "交班，签字"
+        }
+      ]
+    },
+    {
+      "id": "npc.bit.miao_xiaodie",
+      "name": "苗小蝶",
+      "oneLiner": "同一棵树她拍了一年，编号排到了三百多。",
+      "role": "摄影社大一。旧图书馆三层暗房的常驻。",
+      "traits": [
+        "OBSERVANT",
+        "RESERVED",
+        "CURIOUS"
+      ],
+      "topics": [
+        "PHOTO",
+        "ART",
+        "NIGHT"
+      ],
+      "favoriteTopic": "PHOTO",
+      "backstory": [
+        "社费不够买第二个显影罐，她用饮料桶自己改了一个。",
+        "她拍了同一棵树整整一年，从芽到落叶，照片编号 001 到 366。",
+        "第 182 张多了一个不该在画面里的人，她洗出来了，没给任何人看过。"
+      ],
+      "giftPreferences": {
+        "liked": [
+          "res.film_roll",
+          "res.photo_paper",
+          "res.photo_print",
+          "res.developer"
+        ],
+        "disliked": [
+          "res.flashlight"
+        ]
+      },
+      "enabled": true,
+      "schedule": [
+        {
+          "startMinute": 480,
+          "placeId": "place.bit.dorm_2",
+          "travelMinutes": 0,
+          "activity": "起床，先在窗台晾一张没洗的底片"
+        },
+        {
+          "startMinute": 570,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 20,
+          "activity": "早饭"
+        },
+        {
+          "startMinute": 630,
+          "placeId": "place.bit.darkroom",
+          "travelMinutes": 25,
+          "activity": "暗房，红灯下看今天该洗哪几张"
+        },
+        {
+          "startMinute": 750,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 20,
+          "activity": "午饭，一个人在楼梯上吃完"
+        },
+        {
+          "startMinute": 810,
+          "placeId": "place.bit.lake_wood",
+          "travelMinutes": 20,
+          "activity": "去拍那棵树，第 217 天"
+        },
+        {
+          "startMinute": 1020,
+          "placeId": "place.bit.darkroom",
+          "travelMinutes": 20,
+          "activity": "回暗房显影"
+        },
+        {
+          "startMinute": 1200,
+          "placeId": "place.bit.photo_wall",
+          "travelMinutes": 20,
+          "activity": "去校史馆比对 2008 年的照片"
+        },
+        {
+          "startMinute": 1320,
+          "placeId": "place.bit.dorm_2",
+          "travelMinutes": 25,
+          "activity": "回宿舍，底片夹在书里"
+        }
+      ]
+    },
+    {
+      "id": "npc.bit.ouyang_rang",
+      "name": "欧阳让",
+      "oneLiner": "能把\"现在几点\"答成\"数据还没稳定\"。",
+      "role": "物理系研究生。低温实验方向。长期泡在实验楼地下。",
+      "traits": [
+        "TACITURN",
+        "TIRELESS",
+        "ABSORBED"
+      ],
+      "topics": [
+        "TECH",
+        "NIGHT",
+        "STUDY"
+      ],
+      "favoriteTopic": "TECH",
+      "backstory": [
+        "论文卡在第十一个月，不是因为做不出来，是因为实验结果每次都不一样。",
+        "他把食堂饭卡和实验服口袋里的东西混在一起，丢过三把钥匙。",
+        "地下室的温度记录本上有一行被划掉的字：`12:40 有人进过`。"
+      ],
+      "giftPreferences": {
+        "liked": [
+          "res.mica_flake",
+          "res.iron_ingot",
+          "res.repair_manual",
+          "res.clock"
+        ],
+        "disliked": [
+          "res.crow_feather"
+        ]
+      },
+      "enabled": true,
+      "schedule": [
+        {
+          "startMinute": 0,
+          "placeId": "place.bit.lab_basement",
+          "travelMinutes": 0,
+          "activity": "已经在低温室，第三次读数"
+        },
+        {
+          "startMinute": 360,
+          "placeId": "place.bit.lab_basement",
+          "travelMinutes": 0,
+          "activity": "换液，等下一轮降温"
+        },
+        {
+          "startMinute": 540,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 20,
+          "activity": "上来吃饭，筷子拿反了两次"
+        },
+        {
+          "startMinute": 600,
+          "placeId": "place.bit.lab_basement",
+          "travelMinutes": 20,
+          "activity": "下去，忘了吃晚饭"
+        },
+        {
+          "startMinute": 1140,
+          "placeId": "place.bit.lab_415",
+          "travelMinutes": 15,
+          "activity": "上去查仪器记录"
+        },
+        {
+          "startMinute": 1200,
+          "placeId": "place.bit.lab_basement",
+          "travelMinutes": 15,
+          "activity": "又下去"
+        },
+        {
+          "startMinute": 1320,
+          "placeId": "place.bit.dorm_3",
+          "travelMinutes": 20,
+          "activity": "回宿舍躺两小时（等于没睡）"
+        }
+      ]
+    },
+    {
+      "id": "npc.bit.tang_tang",
+      "name": "唐糖",
+      "oneLiner": "做出来的东西永远先分给旁边的人。",
+      "role": "大二。食堂甜品组帮工，正式课表排得满，甜品是中午之后的事。",
+      "traits": [
+        "WARM",
+        "CHATTY",
+        "BRIGHT"
+      ],
+      "topics": [
+        "FOOD",
+        "PLANTS",
+        "WEATHER"
+      ],
+      "favoriteTopic": "FOOD",
+      "backstory": [
+        "学做甜品是因为高中时家里开过一家小面包房，冬天最难卖出去的是红豆的那款。",
+        "她记得每个师兄的口味偏好，谁不吃香草她都记着。",
+        "后厨冰箱里有一盒做坏了的曲奇，标签写着一个人名，已经放了四个月。"
+      ],
+      "giftPreferences": {
+        "liked": [
+          "res.candy_grain",
+          "res.flour",
+          "res.honey",
+          "res.campus_bread"
+        ],
+        "disliked": [
+          "res.vegetable_oil"
+        ]
+      },
+      "enabled": true,
+      "schedule": [
+        {
+          "startMinute": 420,
+          "placeId": "place.bit.dorm_2",
+          "travelMinutes": 0,
+          "activity": "起床，边化妆边看食谱"
+        },
+        {
+          "startMinute": 540,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 20,
+          "activity": "早饭，兼看今天有什么剩料"
+        },
+        {
+          "startMinute": 630,
+          "placeId": "place.bit.canteen_kitchen",
+          "travelMinutes": 15,
+          "activity": "后厨开工，先称黄油"
+        },
+        {
+          "startMinute": 900,
+          "placeId": "place.bit.canteen_kitchen",
+          "travelMinutes": 0,
+          "activity": "烤第一炉，给师兄们留一盘"
+        },
+        {
+          "startMinute": 1050,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 5,
+          "activity": "看甜品被拿走，记谁没来"
+        },
+        {
+          "startMinute": 1140,
+          "placeId": "place.bit.canteen_kitchen",
+          "travelMinutes": 5,
+          "activity": "洗模、整理冷柜"
+        },
+        {
+          "startMinute": 1290,
+          "placeId": "place.bit.dorm_2",
+          "travelMinutes": 20,
+          "activity": "回宿舍，围裙挂在门后"
+        }
+      ]
+    },
+    {
+      "id": "npc.bit.jiang_yu",
+      "name": "江予",
+      "oneLiner": "先拆对方的前提，再回答问题，从不提高音量。",
+      "role": "法学院大三。辩论队主力。说话快，刀子准。",
+      "traits": [
+        "SERIOUS",
+        "SHARP",
+        "STUBBORN"
+      ],
+      "topics": [
+        "LAW",
+        "PEOPLE",
+        "STUDY"
+      ],
+      "favoriteTopic": "LAW",
+      "backstory": [
+        "队里没人愿意跟她搭档第三轮，她自己写完了二辩稿。",
+        "她有一个本子记身边人说话的口头禅，攒了两年，共 431 条。",
+        "她赢过一场决定校规的辩论，然后第一个去申请\"条款有歧义\"的复核。"
+      ],
+      "giftPreferences": {
+        "liked": [
+          "res.transcript",
+          "res.register_ledger",
+          "res.blackboard_photo",
+          "res.paperweight"
+        ],
+        "disliked": [
+          "res.lucky_knot"
+        ]
+      },
+      "enabled": true,
+      "schedule": [
+        {
+          "startMinute": 420,
+          "placeId": "place.bit.dorm_3",
+          "travelMinutes": 0,
+          "activity": "起床，把要背的稿子读一遍"
+        },
+        {
+          "startMinute": 540,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 20,
+          "activity": "早饭，边吃边听播客"
+        },
+        {
+          "startMinute": 600,
+          "placeId": "place.bit.moot_court",
+          "travelMinutes": 25,
+          "activity": "模拟法庭，占最好的位子"
+        },
+        {
+          "startMinute": 750,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 20,
+          "activity": "午饭"
+        },
+        {
+          "startMinute": 810,
+          "placeId": "place.bit.library_four",
+          "travelMinutes": 20,
+          "activity": "查判例，抄别人说话的口头禅"
+        },
+        {
+          "startMinute": 1110,
+          "placeId": "place.bit.moot_court",
+          "travelMinutes": 20,
+          "activity": "辩论队训练"
+        },
+        {
+          "startMinute": 1290,
+          "placeId": "place.bit.dorm_3",
+          "travelMinutes": 20,
+          "activity": "回宿舍，还在改稿"
+        }
+      ]
+    },
+    {
+      "id": "npc.bit.a_wu",
+      "name": "阿武",
+      "oneLiner": "球场上永远最后一个走，答应的事一定做到。",
+      "role": "篮球队队长，大三。球场上永远最后一个走。",
+      "traits": [
+        "PRACTICAL",
+        "GENEROUS",
+        "BRIGHT"
+      ],
+      "topics": [
+        "SPORT",
+        "PEOPLE",
+        "NIGHT"
+      ],
+      "favoriteTopic": "SPORT",
+      "backstory": [
+        "左手腕有旧伤，医生说少打，他改成左手发球、右手护腕。",
+        "球队只剩七个人，他一个一个劝回来的，劝人的方式是先陪对方打半场。",
+        "学校要砍球队经费那一年，他把训练时间改到清晨五点，硬撑了一年。"
+      ],
+      "giftPreferences": {
+        "liked": [
+          "res.wrist_band",
+          "res.cheer_megaphone",
+          "res.club_pin",
+          "res.paper_star"
+        ],
+        "disliked": [
+          "res.sleeping_bag"
+        ]
+      },
+      "enabled": true,
+      "schedule": [
+        {
+          "startMinute": 300,
+          "placeId": "place.bit.gym",
+          "travelMinutes": 0,
+          "activity": "清晨训练，全队最早到"
+        },
+        {
+          "startMinute": 540,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 20,
+          "activity": "早饭，吃到能吃两碗"
+        },
+        {
+          "startMinute": 600,
+          "placeId": "place.bit.gym",
+          "travelMinutes": 20,
+          "activity": "战术课，带新来的"
+        },
+        {
+          "startMinute": 750,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 20,
+          "activity": "午饭"
+        },
+        {
+          "startMinute": 810,
+          "placeId": "place.bit.gym",
+          "travelMinutes": 20,
+          "activity": "下午加练投篮"
+        },
+        {
+          "startMinute": 1080,
+          "placeId": "place.bit.gym",
+          "travelMinutes": 0,
+          "activity": "清场，一个人擦篮板"
+        },
+        {
+          "startMinute": 1260,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 20,
+          "activity": "请队员吃饭"
+        },
+        {
+          "startMinute": 1350,
+          "placeId": "place.bit.dorm_3",
+          "travelMinutes": 20,
+          "activity": "回宿舍，护腕没摘"
+        }
+      ]
+    },
+    {
+      "id": "npc.bit.wen_ning",
+      "name": "温宁",
+      "oneLiner": "只帮你把话说完，从不给建议。",
+      "role": "大二。心理社团值班学姐。旧楼 204 那间小屋子。",
+      "traits": [
+        "WARM",
+        "STEADY",
+        "LISTENER"
+      ],
+      "topics": [
+        "PEOPLE",
+        "RAIN",
+        "NIGHT"
+      ],
+      "favoriteTopic": "PEOPLE",
+      "backstory": [
+        "她只记得来找她的人那天天气，不记谈话内容——她说是保护别人。",
+        "值守 204 一年，最常来的人其实不难过，只是没地方坐。",
+        "204 的门牌号在她来之前是 206，某个晚上换了，她没问。"
+      ],
+      "giftPreferences": {
+        "liked": [
+          "res.tea_egg",
+          "res.small_table",
+          "res.cushion",
+          "res.sticker_sheet"
+        ],
+        "disliked": [
+          "res.extra_lamp"
+        ]
+      },
+      "enabled": true,
+      "schedule": [
+        {
+          "startMinute": 540,
+          "placeId": "place.bit.dorm_4",
+          "travelMinutes": 0,
+          "activity": "起床，把 204 的窗开一指宽"
+        },
+        {
+          "startMinute": 630,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 20,
+          "activity": "早饭"
+        },
+        {
+          "startMinute": 690,
+          "placeId": "place.bit.room_204",
+          "travelMinutes": 20,
+          "activity": "开门，烧水，摆两个杯子"
+        },
+        {
+          "startMinute": 780,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 20,
+          "activity": "午饭"
+        },
+        {
+          "startMinute": 840,
+          "placeId": "place.bit.room_204",
+          "travelMinutes": 20,
+          "activity": "下午值班，听"
+        },
+        {
+          "startMinute": 1080,
+          "placeId": "place.bit.garden",
+          "travelMinutes": 15,
+          "activity": "去花园坐十分钟（她自己的时间）"
+        },
+        {
+          "startMinute": 1140,
+          "placeId": "place.bit.room_204",
+          "travelMinutes": 15,
+          "activity": "回 204，天黑前把灯调暗"
+        },
+        {
+          "startMinute": 1290,
+          "placeId": "place.bit.dorm_4",
+          "travelMinutes": 20,
+          "activity": "回宿舍"
+        }
+      ]
+    },
+    {
+      "id": "npc.bit.gu_qing",
+      "name": "顾青",
+      "oneLiner": "声音给全校听，人却很少被谁看见。",
+      "role": "大三。校园广播站播音。全校唯一用\"我们\"自称的人。",
+      "traits": [
+        "OBSERVANT",
+        "RESERVED",
+        "SERIOUS"
+      ],
+      "topics": [
+        "SOUND",
+        "WEATHER",
+        "NIGHT"
+      ],
+      "favoriteTopic": "SOUND",
+      "backstory": [
+        "她录的黄昏播报被很多人当成背景音，她说那也算一种收听。",
+        "每逢下雨她主动申请加播，因为\"雨天路上的人需要一个声音陪着\"。",
+        "广播站旧档案里有她父亲的声音，他以前也在这个岗位。"
+      ],
+      "giftPreferences": {
+        "liked": [
+          "res.headphones",
+          "res.radio",
+          "res.speaker",
+          "res.music_score_fragment"
+        ],
+        "disliked": [
+          "res.river_snail"
+        ]
+      },
+      "enabled": true,
+      "schedule": [
+        {
+          "startMinute": 570,
+          "placeId": "place.bit.dorm_2",
+          "travelMinutes": 0,
+          "activity": "起床，含着润喉糖试音"
+        },
+        {
+          "startMinute": 660,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 20,
+          "activity": "早饭"
+        },
+        {
+          "startMinute": 720,
+          "placeId": "place.bit.radio_studio",
+          "travelMinutes": 20,
+          "activity": "早间播报，念天气和早安"
+        },
+        {
+          "startMinute": 810,
+          "placeId": "place.bit.radio_studio",
+          "travelMinutes": 0,
+          "activity": "剪播音垫乐"
+        },
+        {
+          "startMinute": 900,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 20,
+          "activity": "午饭，耳机不摘"
+        },
+        {
+          "startMinute": 960,
+          "placeId": "place.bit.library",
+          "travelMinutes": 20,
+          "activity": "还书，顺路在四楼待一会儿"
+        },
+        {
+          "startMinute": 1140,
+          "placeId": "place.bit.radio_studio",
+          "travelMinutes": 20,
+          "activity": "黄昏播报（雨天必加播）"
+        },
+        {
+          "startMinute": 1230,
+          "placeId": "place.bit.radio_studio",
+          "travelMinutes": 0,
+          "activity": "把今天的播音稿归档"
+        },
+        {
+          "startMinute": 1320,
+          "placeId": "place.bit.dorm_2",
+          "travelMinutes": 20,
+          "activity": "回宿舍，走很慢"
+        }
+      ]
+    },
+    {
+      "id": "npc.bit.liao_yi",
+      "name": "廖一",
+      "oneLiner": "自习室第三个座位，刻着字，搬了三次还在。",
+      "role": "大四。考研。占自习室第三个座位已经两年。",
+      "traits": [
+        "SERIOUS",
+        "TIRELESS",
+        "STUBBORN"
+      ],
+      "topics": [
+        "STUDY",
+        "BOOKS",
+        "NIGHT"
+      ],
+      "favoriteTopic": "STUDY",
+      "backstory": [
+        "第一次考研差 18 分，第二年他把自己的作息表从 16 小时压到 20 小时。",
+        "自习室那个座位上刻着一个\"廖\"字，深度两毫米，第三次搬宿舍时他还在。",
+        "他给学弟写过一份资料清单，列了四页，自己一次都没用过。"
+      ],
+      "giftPreferences": {
+        "liked": [
+          "res.exam_notes",
+          "res.math_formula_note",
+          "res.coffee",
+          "res.alarm_clock"
+        ],
+        "disliked": [
+          "res.plaza_flyer"
+        ]
+      },
+      "enabled": true,
+      "schedule": [
+        {
+          "startMinute": 360,
+          "placeId": "place.bit.study_room",
+          "travelMinutes": 0,
+          "activity": "第三个座位，永远是这个座位"
+        },
+        {
+          "startMinute": 720,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 20,
+          "activity": "午饭，20 分钟"
+        },
+        {
+          "startMinute": 780,
+          "placeId": "place.bit.study_room",
+          "travelMinutes": 20,
+          "activity": "下午，泡掉第三杯咖啡"
+        },
+        {
+          "startMinute": 1110,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 20,
+          "activity": "晚饭"
+        },
+        {
+          "startMinute": 1170,
+          "placeId": "place.bit.study_room",
+          "travelMinutes": 20,
+          "activity": "晚自习，看表算还能学几小时"
+        },
+        {
+          "startMinute": 1320,
+          "placeId": "place.bit.study_room",
+          "travelMinutes": 0,
+          "activity": "闭馆前最后一段"
+        },
+        {
+          "startMinute": 1350,
+          "placeId": "place.bit.dorm_3",
+          "travelMinutes": 20,
+          "activity": "回宿舍路上买一个包子"
+        }
+      ]
+    },
+    {
+      "id": "npc.bit.mi_ya",
+      "name": "米娅",
+      "oneLiner": "把不会的词写在袖子上，录音记下每天听到的声音。",
+      "role": "交换生。学中文一年。语言学院旁听。",
+      "traits": [
+        "CURIOUS",
+        "CHATTY",
+        "BRIGHT"
+      ],
+      "topics": [
+        "FOOD",
+        "PEOPLE",
+        "STUDY"
+      ],
+      "favoriteTopic": "FOOD",
+      "backstory": [
+        "她的中文名字是给自己取的，理由是\"听起来像我在食堂常点的那道菜\"。",
+        "第一个月她把\"多少\"听成\"桌布\"，从此记住了多音字。",
+        "她在本子上画了一整页校门口的早餐摊，说这是她来这里的第一个早晨。"
+      ],
+      "giftPreferences": {
+        "liked": [
+          "res.instant_noodle",
+          "res.milk_bottle",
+          "res.canteen_bowl",
+          "res.popcorn"
+        ],
+        "disliked": [
+          "res.remedy_powder"
+        ]
+      },
+      "enabled": true,
+      "schedule": [
+        {
+          "startMinute": 480,
+          "placeId": "place.bit.dorm_2",
+          "travelMinutes": 0,
+          "activity": "起床，把不会的词写在袖子上"
+        },
+        {
+          "startMinute": 570,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 20,
+          "activity": "早饭，第一个到窗口"
+        },
+        {
+          "startMinute": 630,
+          "placeId": "place.bit.library",
+          "travelMinutes": 20,
+          "activity": "旁听语言学院的课，笔记写满两页"
+        },
+        {
+          "startMinute": 750,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 20,
+          "activity": "午饭，学会了点三道菜"
+        },
+        {
+          "startMinute": 810,
+          "placeId": "place.bit.campus_road",
+          "travelMinutes": 0,
+          "activity": "在主干道上练发音，路人回头她就改小声"
+        },
+        {
+          "startMinute": 1020,
+          "placeId": "place.bit.library",
+          "travelMinutes": 15,
+          "activity": "泡在借还处，看每个人怎么用中文"
+        },
+        {
+          "startMinute": 1230,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 20,
+          "activity": "晚饭"
+        },
+        {
+          "startMinute": 1320,
+          "placeId": "place.bit.dorm_2",
+          "travelMinutes": 20,
+          "activity": "回宿舍，录一段今天听到的声音"
+        }
+      ]
+    },
+    {
+      "id": "npc.bit.luo_shifu",
+      "name": "骆师傅",
+      "oneLiner": "工具车上有把永远借不出去的扳手。",
+      "role": "校园水电维修。工龄二十年。三轮车上工具按大小排。",
+      "traits": [
+        "WARM",
+        "PRACTICAL",
+        "PLAIN"
+      ],
+      "topics": [
+        "MONEY",
+        "WEATHER",
+        "TECH"
+      ],
+      "favoriteTopic": "MONEY",
+      "backstory": [
+        "学校哪条水管是他装的，他都记得，包括三十年前那段没有图纸的。",
+        "工具车里有一样东西永远用不上：一把崭新的、只用来挂着的扳手。",
+        "他声称见过这栋楼每一个闭馆后的夜晚，但从不说明是哪一栋。"
+      ],
+      "giftPreferences": {
+        "liked": [
+          "res.key",
+          "res.wood_tag",
+          "res.hand_hammer",
+          "res.gloves"
+        ],
+        "disliked": [
+          "res.canvas_bag"
+        ]
+      },
+      "enabled": true,
+      "schedule": [
+        {
+          "startMinute": 390,
+          "placeId": "place.bit.bike_shed",
+          "travelMinutes": 0,
+          "activity": "出车前先把工具按大小排一遍"
+        },
+        {
+          "startMinute": 420,
+          "placeId": "place.bit.dorm_2",
+          "travelMinutes": 20,
+          "activity": "报修：四号楼水阀"
+        },
+        {
+          "startMinute": 540,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 20,
+          "activity": "吃面，站着"
+        },
+        {
+          "startMinute": 570,
+          "placeId": "place.bit.lab_building",
+          "travelMinutes": 20,
+          "activity": "实验室换灯管，边换边讲原理"
+        },
+        {
+          "startMinute": 750,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 20,
+          "activity": "午饭"
+        },
+        {
+          "startMinute": 810,
+          "placeId": "place.bit.laundry",
+          "travelMinutes": 15,
+          "activity": "洗衣房，水管又漏"
+        },
+        {
+          "startMinute": 960,
+          "placeId": "place.bit.dorm_3",
+          "travelMinutes": 20,
+          "activity": "宿舍楼逐间查线路"
+        },
+        {
+          "startMinute": 1230,
+          "placeId": "place.bit.bike_shed",
+          "travelMinutes": 25,
+          "activity": "收工回车棚，搪瓷缸泡上茶"
+        }
+      ]
+    },
+    {
+      "id": "npc.bit.jiang_xiaoyu",
+      "name": "姜小渔",
+      "oneLiner": "能一动不动站四十分钟，等一只鸟落下来。",
+      "role": "大三。湿地与鸟类观察。小湖观测点的常驻。",
+      "traits": [
+        "RESERVED",
+        "CURIOUS",
+        "STEADY"
+      ],
+      "topics": [
+        "PLANTS",
+        "WEATHER",
+        "NIGHT"
+      ],
+      "favoriteTopic": "PLANTS",
+      "backstory": [
+        "她的记录本里有 61 种鸟，其中 3 种是老师没见过的，她坚持自己的判断。",
+        "她钓到的鱼全部放回去，只为了确认\"今年的鱼比去年早了两周\"。",
+        "有一年冬天她在观测点等到一只从南方飞回来的鸟，比记录早了一天，那一页她写了又划，最后还是留着了。"
+      ],
+      "giftPreferences": {
+        "liked": [
+          "res.bird_watch_sheet",
+          "res.field_manual",
+          "res.tide_note",
+          "res.fishing_rod"
+        ],
+        "disliked": [
+          "res.crow_feather"
+        ]
+      },
+      "enabled": true,
+      "schedule": [
+        {
+          "startMinute": 300,
+          "placeId": "place.bit.wetland_board",
+          "travelMinutes": 0,
+          "activity": "天没亮就位，等第一拨鸟"
+        },
+        {
+          "startMinute": 480,
+          "placeId": "place.bit.lake_wood",
+          "travelMinutes": 15,
+          "activity": "沿栈道记录，铅笔别在绳上防丢"
+        },
+        {
+          "startMinute": 570,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 20,
+          "activity": "早饭，边吃边核对时间"
+        },
+        {
+          "startMinute": 630,
+          "placeId": "place.bit.wetland_board",
+          "travelMinutes": 20,
+          "activity": "继续蹲守，一动不动"
+        },
+        {
+          "startMinute": 750,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 20,
+          "activity": "午饭"
+        },
+        {
+          "startMinute": 810,
+          "placeId": "place.bit.library",
+          "travelMinutes": 25,
+          "activity": "查鸟类图鉴"
+        },
+        {
+          "startMinute": 1080,
+          "placeId": "place.bit.wetland_board",
+          "travelMinutes": 25,
+          "activity": "黄昏那一班，钓到的鱼放回去"
+        },
+        {
+          "startMinute": 1290,
+          "placeId": "place.bit.dorm_2",
+          "travelMinutes": 25,
+          "activity": "回宿舍整理记录本"
+        }
+      ]
+    },
+    {
+      "id": "npc.bit.zhang_shu",
+      "name": "樟叔",
+      "oneLiner": "修车收费随心情，说话时一直看着你的鞋。",
+      "role": "退休园林工。退休后在校门口修自行车，收费随心情。",
+      "traits": [
+        "TACITURN",
+        "CURIOUS",
+        "GENTLE"
+      ],
+      "topics": [
+        "PLANTS",
+        "MEMORY",
+        "NIGHT"
+      ],
+      "favoriteTopic": "PLANTS",
+      "backstory": [
+        "校园里现存最老的一棵樟树是他 1980 年手种的，种的时候他还是临时工。",
+        "他能说出这栋楼拆之前的样子，也知道原来那儿有棵什么树。",
+        "有人问他为什么不再干了，他说\"树不认得我了，我留着也是添乱\"，但他每天还是来看一次。"
+      ],
+      "giftPreferences": {
+        "liked": [
+          "res.ginkgo_leaf",
+          "res.tea_leaf",
+          "res.bamboo_strip",
+          "res.wind_chime"
+        ],
+        "disliked": [
+          "res.frost_flower"
+        ]
+      },
+      "enabled": true,
+      "schedule": [
+        {
+          "startMinute": 450,
+          "placeId": "place.bit.dorm_4",
+          "travelMinutes": 0,
+          "activity": "起床，烧水，泡搪瓷缸里的隔夜茶"
+        },
+        {
+          "startMinute": 570,
+          "placeId": "place.bit.bike_shed",
+          "travelMinutes": 30,
+          "activity": "推车出摊，修车兼补胎"
+        },
+        {
+          "startMinute": 750,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 20,
+          "activity": "午饭，听人讲学校的事"
+        },
+        {
+          "startMinute": 840,
+          "placeId": "place.bit.bike_shed",
+          "travelMinutes": 20,
+          "activity": "回到摊子，对着老樟树发一会儿呆"
+        },
+        {
+          "startMinute": 1080,
+          "placeId": "place.bit.orchard",
+          "travelMinutes": 30,
+          "activity": "去果林看当年他种的那几棵"
+        },
+        {
+          "startMinute": 1200,
+          "placeId": "place.bit.bike_shed",
+          "travelMinutes": 25,
+          "activity": "收摊，把工具箱锁好"
+        },
+        {
+          "startMinute": 1290,
+          "placeId": "place.bit.dorm_4",
+          "travelMinutes": 20,
+          "activity": "回宿舍，路上跟树说话"
+        }
+      ]
+    },
+    {
+      "id": "npc.bit.chen_jiu",
+      "name": "老陈",
+      "oneLiner": "旧体育馆地下室的看夜人，锁门是\"两响半\"。",
+      "role": "旧体育馆地下看夜人。在这所学校的时间比任何人都长——包括校史馆的记录。",
+      "traits": [
+        "STEADY",
+        "PLAIN",
+        "MYSTERIOUS"
+      ],
+      "topics": [
+        "NIGHT",
+        "MEMORY",
+        "LAW"
+      ],
+      "favoriteTopic": "NIGHT",
+      "backstory": [
+        "有人说他是 1952 年建校时的工人，有人说他那时还没出生。",
+        "地下室的钥匙只有他有一把，开门声是\"两响半\"——罗小满的编号 233 就是这个。",
+        "他每晚 1:10 会锁地下室的门，从不提前。有人在那之后进去过，门是开着的。"
+      ],
+      "giftPreferences": {
+        "liked": [
+          "res.patrol_log",
+          "res.lantern_riddle",
+          "res.small_bell",
+          "res.wind_chime"
+        ],
+        "disliked": [
+          "res.same_bird"
+        ]
+      },
+      "enabled": true,
+      "schedule": [
+        {
+          "startMinute": 1320,
+          "placeId": "place.bit.gym_basement",
+          "travelMinutes": 0,
+          "activity": "接班，检查地下室的灯"
+        },
+        {
+          "startMinute": 1380,
+          "placeId": "place.bit.gym",
+          "travelMinutes": 15,
+          "activity": "绕场馆一圈，锁门"
+        },
+        {
+          "startMinute": 60,
+          "placeId": "place.bit.gym_basement",
+          "travelMinutes": 0,
+          "activity": "坐在那儿，听楼上的动静"
+        },
+        {
+          "startMinute": 70,
+          "placeId": "place.bit.gym_basement",
+          "travelMinutes": 0,
+          "activity": "一点十分，锁门（两响半）"
+        },
+        {
+          "startMinute": 90,
+          "placeId": "place.bit.campus_road",
+          "travelMinutes": 20,
+          "activity": "在没人的路上走一圈"
+        },
+        {
+          "startMinute": 180,
+          "placeId": "place.bit.gym_basement",
+          "travelMinutes": 20,
+          "activity": "回地下室，天快亮时最安静"
+        }
+      ]
+    },
+    {
+      "id": "npc.bit.san_geng",
+      "name": "三更",
+      "oneLiner": "只在雨夜出现的乌鸦，会用人的语气说话。",
+      "role": "会说话的乌鸦。只在雨夜出现，落在礼堂屋脊、异常工位附近。",
+      "traits": [
+        "CURIOUS",
+        "SHARP",
+        "EXACTING"
+      ],
+      "topics": [
+        "NIGHT",
+        "ANOMALY",
+        "MEMORY"
+      ],
+      "favoriteTopic": "NIGHT",
+      "backstory": [
+        "它会重复人说过的话，但只重复它觉得\"重要\"的那一句。",
+        "它的铜环和旧体育馆地下室某把锁上的刻字是同一套笔画。",
+        "有人见过它衔着一张 2008 年的合照，照片上没有它。"
+      ],
+      "giftPreferences": {
+        "liked": [
+          "res.small_bell",
+          "res.glass_lamp",
+          "res.rain_droplet",
+          "res.writing_pen"
+        ],
+        "disliked": [
+          "res.wood_tag"
+        ]
+      },
+      "enabled": false,
+      "schedule": [
+        {
+          "startMinute": 0,
+          "placeId": "place.bit.hall_roof",
+          "travelMinutes": 0,
+          "activity": "蹲在礼堂屋脊，抖羽毛"
+        },
+        {
+          "startMinute": 60,
+          "placeId": "place.bit.orchard",
+          "travelMinutes": 25,
+          "activity": "飞进果林，啄两口青苹果就走"
+        },
+        {
+          "startMinute": 90,
+          "placeId": "place.bit.library",
+          "travelMinutes": 20,
+          "activity": "落在图书馆窗沿，看里面的人"
+        },
+        {
+          "startMinute": 300,
+          "placeId": "place.bit.gym_basement",
+          "travelMinutes": 20,
+          "activity": "到地下室门口，啄两下铜环"
+        },
+        {
+          "startMinute": 330,
+          "placeId": "place.bit.gym_basement",
+          "travelMinutes": 0,
+          "activity": "（天亮前必须离开）"
+        },
+        {
+          "startMinute": 1380,
+          "placeId": "place.bit.hall_roof",
+          "travelMinutes": 30,
+          "activity": "雨来了，回屋脊"
+        }
+      ]
+    },
+    {
+      "id": "npc.bit.shen_mo",
+      "name": "沈墨",
+      "oneLiner": "只在真正下雨时出现，伞总偏向别人那侧。",
+      "role": "雨天才出现的人。不是学生，教职工名册里没有，访客记录里也不全。",
+      "traits": [
+        "WARM",
+        "RESERVED",
+        "MYSTERIOUS"
+      ],
+      "topics": [
+        "RAIN",
+        "NIGHT",
+        "SELF"
+      ],
+      "favoriteTopic": "RAIN",
+      "backstory": [
+        "校园里所有人都见过他，但没人能说清他的名字——他自我介绍时说的是\"沈\"。",
+        "他只在雨真正落下来的时候出现，太阳一出就不见了，连影子都不留。",
+        "他认识夏星，也认识何；三个人的线索交叉在\"2008 年那张合照\"上。"
+      ],
+      "giftPreferences": {
+        "liked": [
+          "res.umbrella",
+          "res.rain_droplet",
+          "res.raincoat",
+          "res.tea_drink"
+        ],
+        "disliked": [
+          "res.summer_heat"
+        ]
+      },
+      "enabled": false,
+      "schedule": [
+        {
+          "startMinute": 0,
+          "placeId": "place.bit.rain_road",
+          "travelMinutes": 0,
+          "activity": "在雨里走，伞偏向别人那侧"
+        },
+        {
+          "startMinute": 480,
+          "placeId": "place.bit.rain_road",
+          "travelMinutes": 0,
+          "activity": "雨最大的时段，站在路中间也不躲"
+        },
+        {
+          "startMinute": 720,
+          "placeId": "place.bit.rain_road",
+          "travelMinutes": 0,
+          "activity": "在图书馆外的台阶下避一会儿"
+        },
+        {
+          "startMinute": 900,
+          "placeId": "place.bit.rain_road",
+          "travelMinutes": 0,
+          "activity": "在主干道上走，很慢"
+        },
+        {
+          "startMinute": 1140,
+          "placeId": "place.bit.rain_road",
+          "travelMinutes": 0,
+          "activity": "雨小下来的时候开始变得模糊"
+        },
+        {
+          "startMinute": 1200,
+          "placeId": "place.bit.rain_road",
+          "travelMinutes": 0,
+          "activity": "雨停即消失，不留任何掉落物"
+        }
+      ]
+    },
+    {
+      "id": "npc.bit.xia_xing",
+      "name": "夏星",
+      "oneLiner": "出现在 2008 年那张合照里，但没人记得她。",
+      "role": "出现在 2008 年那张合照里的人。她会背出照片上每个人的名字，但没人记得她的。",
+      "traits": [
+        "OBSERVANT",
+        "RESERVED",
+        "BRIGHT"
+      ],
+      "topics": [
+        "MEMORY",
+        "ART",
+        "WEATHER"
+      ],
+      "favoriteTopic": "MEMORY",
+      "backstory": [
+        "她是校史馆那张 2008 年合照里第八个孩子，陈秋记得有八个人，档案只写了七个。",
+        "苗小蝶第 182 张底片里多出来的那个背影，衣服和她今天穿的一样。",
+        "她自己记得所有事，也知道所有人都会忘记她——她说\"这样反而比较轻松\"。"
+      ],
+      "giftPreferences": {
+        "liked": [
+          "res.founding_photo",
+          "res.group_photo",
+          "res.photo_strip",
+          "res.polaroid"
+        ],
+        "disliked": [
+          "res.campus_calendar"
+        ]
+      },
+      "enabled": false,
+      "schedule": [
+        {
+          "startMinute": 540,
+          "placeId": "place.bit.old_ground",
+          "travelMinutes": 0,
+          "activity": "在停用的旧操场上，逆着光站着"
+        },
+        {
+          "startMinute": 660,
+          "placeId": "place.bit.photo_wall",
+          "travelMinutes": 30,
+          "activity": "在照片墙前，挨张看过去"
+        },
+        {
+          "startMinute": 840,
+          "placeId": "place.bit.history_museum",
+          "travelMinutes": 10,
+          "activity": "看 2008 年那张，手指停在第 8 个位置"
+        },
+        {
+          "startMinute": 1020,
+          "placeId": "place.bit.north_lake",
+          "travelMinutes": 30,
+          "activity": "回到湖边，坐在徐晚常坐的那张长椅上"
+        },
+        {
+          "startMinute": 1200,
+          "placeId": "place.bit.old_ground",
+          "travelMinutes": 30,
+          "activity": "太阳偏西，她开始变得不太清楚"
+        },
+        {
+          "startMinute": 1290,
+          "placeId": "place.bit.old_ground",
+          "travelMinutes": 0,
+          "activity": "日落前淡出"
+        }
+      ]
+    },
+    {
+      "id": "npc.bit.lou_qi",
+      "name": "娄七",
+      "oneLiner": "失物招领处的东西都记得回家的路，她也是。",
+      "role": "失物招领处管理员。房间不在任何一张图纸上——旧体育馆地下室往里走到底。",
+      "traits": [
+        "STEADY",
+        "GENEROUS",
+        "MYSTERIOUS"
+      ],
+      "topics": [
+        "MEMORY",
+        "ANOMALY",
+        "PEOPLE"
+      ],
+      "favoriteTopic": "MEMORY",
+      "backstory": [
+        "失物招领处登记本上有些东西领走了，签名是空的——东西确实不见了。",
+        "她知道每一件东西\"为什么被丢下\"，但只说给愿意听的人听。",
+        "她和夏星是旧识，夏星说她\"从一开始就在这儿了\"。"
+      ],
+      "giftPreferences": {
+        "liked": [
+          "res.lost_and_found_record",
+          "res.anomaly_key",
+          "res.old_uniform",
+          "res.keychain"
+        ],
+        "disliked": [
+          "res.diary_page"
+        ]
+      },
+      "enabled": false,
+      "schedule": [
+        {
+          "startMinute": 540,
+          "placeId": "place.bit.lost_and_found",
+          "travelMinutes": 0,
+          "activity": "开门，把昨晚收进来的东西摆一遍"
+        },
+        {
+          "startMinute": 660,
+          "placeId": "place.bit.canteen_one",
+          "travelMinutes": 20,
+          "activity": "早饭，听人说丢了什么"
+        },
+        {
+          "startMinute": 720,
+          "placeId": "place.bit.lost_and_found",
+          "travelMinutes": 20,
+          "activity": "回房间，等人上门"
+        },
+        {
+          "startMinute": 780,
+          "placeId": "place.bit.gym",
+          "travelMinutes": 20,
+          "activity": "收体育馆的队服和哨子"
+        },
+        {
+          "startMinute": 960,
+          "placeId": "place.bit.lost_and_found",
+          "travelMinutes": 20,
+          "activity": "登记本上补记录"
+        },
+        {
+          "startMinute": 1080,
+          "placeId": "place.bit.laundry",
+          "travelMinutes": 15,
+          "activity": "去要一件没人认领的、已经洗干净的外套"
+        },
+        {
+          "startMinute": 1170,
+          "placeId": "place.bit.lost_and_found",
+          "travelMinutes": 15,
+          "activity": "回房间，泡茶"
+        },
+        {
+          "startMinute": 1320,
+          "placeId": "place.bit.lost_and_found",
+          "travelMinutes": 0,
+          "activity": "夜里不关灯——她说这样丢东西的人找得到路"
+        }
       ]
     }
   ]

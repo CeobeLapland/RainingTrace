@@ -122,27 +122,20 @@ object ContentValidator {
     }
 
     /**
-     * NPC 作息里的地点必须存在。
+     * NPC 作息里指向不存在地点的**单条条目**被剔除，NPC 本身保留。
      *
-     * 一条作息悬空就**丢掉整位 NPC**（而不是丢掉那一条作息）：半截作息的 NPC
-     * 会瞬移或永远不离开上一处，那是"静默说谎"，比缺席糟得多。
-     * 缺席是响亮的——日志、诊断面板、ShippedContentTest 三处都会说。
+     * 曾经的策略是"一条悬空就丢掉整位 NPC + ERROR"（防止半截作息让他瞬移）。现在放开：
+     * 地点数据是渐进补齐的（`places_design.md` 有 139 处待填坐标），悬空作息是**过渡期的
+     * 正常状态**而不是内容错误。逐条剔除后，他只在"能解析的地点"上出现，其余时段不出现；
+     * `resolveSchedule` 与它同口径，所以运行时与校验语义一致。
+     *
+     * 代价：真正写错 placeId 的笔误不再响铃，会静默少一处出现。兜底由 `ShippedContentTest`
+     * 的"启用 NPC 至少 1 条作息可解析"钉住，防止系统性全灭。
      */
     private fun validNpcs(content: WorldContent, report: ContentReport): List<NpcProfile> {
         val placeIds = content.places.map { it.id }.toSet()
-        return content.npcs.filter { npc ->
-            val dangling = npc.schedule.filterNot { it.placeId in placeIds }
-            if (dangling.isEmpty()) {
-                true
-            } else {
-                report.error(
-                    MERGED,
-                    npc.id,
-                    "作息指向不存在的地点（${dangling.joinToString { it.placeId }}），" +
-                        "整位 NPC 被剔除——半截作息会让他瞬移，那比不出现更容易骗到人",
-                )
-                false
-            }
+        return content.npcs.map { npc ->
+            npc.copy(schedule = npc.schedule.filter { it.placeId in placeIds })
         }
     }
 

@@ -11,6 +11,7 @@ import com.rainingtrace.domain.map.Place
 import com.rainingtrace.domain.map.PlaceActionType
 import com.rainingtrace.domain.map.PlaceType
 import com.rainingtrace.domain.map.WorldCoordinate
+import com.rainingtrace.domain.npc.GiftPreferences
 import com.rainingtrace.domain.npc.NpcProfile
 import com.rainingtrace.domain.npc.NpcProactiveRule
 import com.rainingtrace.domain.npc.NpcKeywordRules
@@ -519,6 +520,12 @@ internal data class NpcScheduleEntryDto(
 )
 
 @Serializable
+internal data class NpcGiftPreferencesDto(
+    val liked: List<String> = emptyList(),
+    val disliked: List<String> = emptyList(),
+)
+
+@Serializable
 internal data class NpcProfileDto(
     val id: String = "",
     val name: String = "",
@@ -528,6 +535,9 @@ internal data class NpcProfileDto(
     val topics: List<String> = emptyList(),
     val favoriteTopic: String? = null,
     val backstory: List<String> = emptyList(),
+    val giftPreferences: NpcGiftPreferencesDto? = null,
+    val homePlaceId: String? = null,
+    val enabled: Boolean? = null,
     val schedule: List<NpcScheduleEntryDto> = emptyList(),
 )
 
@@ -609,6 +619,11 @@ internal fun decodeNpc(
             topics = topics,
             favoriteTopic = favoriteTopic,
             backstory = dto.backstory,
+            giftPreferences = dto.giftPreferences?.let {
+                GiftPreferences(liked = it.liked, disliked = it.disliked)
+            } ?: GiftPreferences(),
+            homePlaceId = dto.homePlaceId,
+            enabled = dto.enabled ?: true,
         )
     }.getOrElse {
         report.error(file, dto.id, "NPC 不合法：${it.message}")

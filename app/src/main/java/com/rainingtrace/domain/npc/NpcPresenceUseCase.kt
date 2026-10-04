@@ -24,19 +24,22 @@ class NpcPresenceUseCase(
     private val commitments: NpcCommitmentRepository? = null,
 ) {
 
-    /** 全部有有效作息的 NPC 此刻的状态；内容写坏（地点不存在）的人会被跳过。 */
+    /** 全部启用且有有效作息的 NPC 此刻的状态；内容写坏（地点不存在）的人会被跳过。 */
     suspend fun presencesAt(state: WorldState): List<NpcPresence> {
         val places = placeRepository.all().associateBy { it.id }
         val overrides = openOverrides(state)
         val minute = minuteOfDayFor(state)
-        return npcRepository.all().mapNotNull { profile ->
-            resolveSchedule(profile, places, overrides[profile.id].orEmpty()).presenceAt(minute)
-        }
+        return npcRepository.all()
+            .filter { it.enabled }
+            .mapNotNull { profile ->
+                resolveSchedule(profile, places, overrides[profile.id].orEmpty()).presenceAt(minute)
+            }
     }
 
-    /** 单个 NPC 此刻的状态；id 不存在或无有效作息时返回 null。 */
+    /** 单个 NPC 此刻的状态；id 不存在、未启用或无有效作息时返回 null。 */
     suspend fun presenceOf(npcId: String, state: WorldState): NpcPresence? {
         val profile = npcRepository.byId(npcId) ?: return null
+        if (!profile.enabled) return null
         val places = placeRepository.all().associateBy { it.id }
         return resolveSchedule(profile, places, openOverrides(state)[npcId].orEmpty())
             .presenceAt(minuteOfDayFor(state))

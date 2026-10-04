@@ -16,7 +16,7 @@ data class NpcProfile(
     val schedule: List<NpcScheduleEntry>,
     /** 身份，例如"大二学生""食堂帮工"；主动消息与第三人称指代会用到。 */
     val role: String = "",
-    /** 性格标签：驱动语气与偏好。 */
+    /** 性格标签：驱动语气与偏好（`npcs_design.md` 第一节的枚举）。 */
     val traits: Set<NpcTrait> = emptySet(),
     /** 愿意聊的话题。 */
     val topics: Set<NpcTopic> = emptySet(),
@@ -24,16 +24,35 @@ data class NpcProfile(
     val favoriteTopic: NpcTopic? = null,
     /** 他自己的经历片段（1~3 条），作为"自述"素材池。 */
     val backstory: List<String> = emptyList(),
+    /**
+     * 礼物偏好（`{ liked: [resourceId], disliked: [resourceId] }`）。
+     * N1 只入库不做玩法；送礼与对话反应在 N5。
+     */
+    val giftPreferences: GiftPreferences = GiftPreferences(),
+    /** 显式的"家"地点（通常作息里已有夜间回寝的条目，这里是语义别名）；N1 只入库。 */
+    val homePlaceId: String? = null,
+    /**
+     * 是否按作息在地图上出现。`false` 用于特殊角色（沈墨/夏星/三更/娄七）：
+     * 他们正常入档（可对话、可送礼），但出场由条件控制（N5），默认不上地图。
+     */
+    val enabled: Boolean = true,
 ) {
     init {
         require(id.isNotBlank()) { "npc id must not be blank" }
         require(name.isNotBlank()) { "npc name must not be blank" }
-        // 内容写错时不该静默失效（专属台词会永远不出现），直接拦在构造期。
         require(favoriteTopic == null || favoriteTopic in topics) {
             "favoriteTopic must be one of topics: $favoriteTopic not in $topics"
         }
+        require(giftPreferences.liked.none { it.isBlank() }) { "gift like must not be blank" }
+        require(giftPreferences.disliked.none { it.isBlank() }) { "gift dislike must not be blank" }
     }
 }
+
+/** 礼物偏好：引用 `resources.json` 中的资源 id（转换脚本已校验零悬空）。 */
+data class GiftPreferences(
+    val liked: List<String> = emptyList(),
+    val disliked: List<String> = emptyList(),
+)
 
 /**
  * 一条作息：**[startMinute] 是"到达 [placeId]"的时刻**。

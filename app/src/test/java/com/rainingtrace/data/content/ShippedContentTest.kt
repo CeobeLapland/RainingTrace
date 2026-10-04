@@ -252,18 +252,44 @@ class ShippedContentTest {
     }
 
     /**
-     * 这条原来靠"作息里写 `FakePlaceRepository.XXX.id` 常量"在编译期保证。
-     * 现在内容全是字符串，所以必须有人替编译器盯着——否则写错只会让那个人
-     * 整天不出现，而地图上完全看不出哪里不对。
+     * 地点数据是渐进补齐的（`places_design.md` 有 139 处占位坐标待填），作息指向
+     * 尚未落地地点是**过渡期的正常状态**，所以其他启用 NPC 允许暂时休眠（例如老陈
+     * 全部活动在旧体育馆一带）。但原版 5 人（既有存档与地图的锚点）必须始终可见——
+     * 他们全灭等于"地图上一个人都没有"，那是没有任何报错的坏法，必须由测试拦住。
      */
     @Test
-    fun `每条作息的 placeId 都指向真实存在的地点`() {
+    fun `核心五人至少有一条作息能落地`() {
         val placeIds = places(ContentReport()).entries.map { it.id }.toSet()
-        val dangling = npcs(ContentReport()).entries
-            .flatMap { npc -> npc.schedule.map { npc.id to it.placeId } }
-            .filterNot { (_, placeId) -> placeId in placeIds }
+        val anchors = listOf("npc.bit.lin", "npc.bit.zhou", "npc.bit.xu", "npc.bit.he", "npc.bit.qi")
 
-        assertTrue("npcs.json 的作息指向不存在的地点：$dangling", dangling.isEmpty())
+        val ghosts = npcs(ContentReport()).entries
+            .filter { it.id in anchors }
+            .filter { npc -> npc.schedule.none { it.placeId in placeIds } }
+            .map { it.id }
+
+        assertTrue("核心 NPC 的作息一条都落不到现有地点（地图上看不见他们）：$ghosts", ghosts.isEmpty())
+    }
+
+    /**
+     * N2/N5 送礼玩法会用到 `giftPreferences`，引用悬空会在送礼时静默落空，
+     * 所以钉住："喜欢/不喜欢"的物品必须真实存在。
+     */
+    @Test
+    fun `每个 NPC 的礼物偏好都引用真实存在的资源`() {
+        val resourceIds = decodeResourceEntries(
+            readAsset("resources.json"),
+            "resources.json",
+            ContentReport(),
+        ).entries.map { it.id }.toSet()
+
+        val dangling = npcs(ContentReport()).entries
+            .flatMap { npc ->
+                (npc.giftPreferences.liked + npc.giftPreferences.disliked)
+                    .filterNot { it in resourceIds }
+                    .map { npc.id to it }
+            }
+
+        assertTrue("礼物偏好引用了不存在的资源：$dangling", dangling.isEmpty())
     }
 
     @Test

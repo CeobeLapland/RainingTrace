@@ -10,6 +10,8 @@ import com.rainingtrace.domain.map.Place
 import com.rainingtrace.domain.map.PlaceActionType
 import com.rainingtrace.domain.map.PlaceType
 import com.rainingtrace.domain.map.WorldCoordinate
+import com.rainingtrace.domain.npc.NpcProfile
+import com.rainingtrace.domain.npc.NpcScheduleEntry
 import com.rainingtrace.domain.spawn.SpawnRule
 import com.rainingtrace.domain.spawn.SpawnSpot
 import com.rainingtrace.domain.world.ResourceYieldRule
@@ -106,6 +108,35 @@ class ContentValidatorTest {
         inputs = listOf(RecipeInput(resourceId = input, amount = 1)),
         output = RecipeOutput(resourceId = "res.known", amount = 1),
     )
+
+    /**
+     * 地点数据渐进补齐期间，作息指向未落地地点是预期状态：只丢那一条，NPC 保留。
+     * 曾经的"整位剔除 + ERROR"在过渡期会把所有 NPC 一起清掉。
+     */
+    @Test
+    fun `NPC 作息悬空只丢那一条 人不丢`() {
+        val report = ContentReport()
+        val npc = NpcProfile(
+            id = "npc.x",
+            name = "某人",
+            oneLiner = "",
+            schedule = listOf(
+                NpcScheduleEntry(startMinute = 0, placeId = "a"),
+                NpcScheduleEntry(startMinute = 60, placeId = "missing"),
+            ),
+        )
+        val content = WorldContent(places = listOf(place("a")), npcs = listOf(npc))
+
+        val cleaned = ContentValidator.validate(content, report)
+
+        assertEquals("过渡期的悬空作息不该是错误", 0, report.errorCount)
+        assertEquals("NPC 不该被整位剔除", listOf("npc.x"), cleaned.npcs.map { it.id })
+        assertEquals(
+            "悬空条目被剔除，保留可解析的",
+            listOf("a"),
+            cleaned.npcs.single().schedule.map { it.placeId },
+        )
+    }
 
     /**
      * 这一条以前是 `ShippedContentTest` 里的硬失败（构建前拦住），现在改成一条 WARN：
