@@ -30,6 +30,8 @@ data class ResolvedEntry(
     val placeId: String,
     val placeName: String,
     val activity: String,
+    /** 停留时是否允许小范围走动（承诺覆盖期间为 false：他说"在这儿等你"就真的站定）。 */
+    val wander: Boolean = true,
 )
 
 /**
@@ -37,6 +39,7 @@ data class ResolvedEntry(
  *
  * [overrides] 是当天生效的**承诺覆盖**（片 3）：窗口内的基础作息条目会被替换掉，
  * 于是他那天真的会出现在约定的地方——这是"答应的事一定做"的实现方式。
+ * [variant] 是当下生效的**作息变体**（N3）：整体替换基础作息，但承诺仍在最上层。
  *
  * 两个修正：
  * - **引用了不存在地点的条目直接剔除**（内容写错了不该崩，只是这个人不会出现）；
@@ -46,9 +49,11 @@ fun resolveSchedule(
     profile: NpcProfile,
     places: Map<String, Place>,
     overrides: List<NpcScheduleOverride> = emptyList(),
+    variant: NpcScheduleVariant? = null,
 ): ResolvedSchedule {
+    val baseSchedule = variant?.schedule ?: profile.schedule
     // 承诺覆盖：窗口内的基础条目让位给约定（覆盖条目可以带行走时长，于是他"走过去"）。
-    val baseEntries = profile.schedule.filterNot { entry ->
+    val baseEntries = baseSchedule.filterNot { entry ->
         overrides.any { entry.startMinute in it.startMinute until it.endMinute }
     }
     val overrideEntries = overrides.map {
@@ -70,6 +75,8 @@ fun resolveSchedule(
                 placeId = place.id,
                 placeName = place.name,
                 activity = entry.activity,
+                // 约定地点站定等待；普通停留允许在附近溜达。
+                wander = entry !in overrideEntries,
             )
         }
         .sortedBy { it.startMinute }
@@ -106,8 +113,11 @@ class ResolvedSchedule(
      * 作息按**天环**处理：找"最后一条已到达的条目"作为当前位置，
      * 再看下一条的行走窗口是否正在发生（窗口跨零点也成立）。
      * 无有效作息时返回 null（这个人不出现）。
+     *
+     * [dateKey] 非空时，**停留期间**会叠加 [NpcWander] 的确定性小偏移（看起来在附近踱步）；
+     * 传 null 则严格站在地点坐标上（旧测试与"只要地点"的场景用这个）。
      */
-    fun presenceAt(minuteOfDay: Int): NpcPresence? {
+    fun presenceAt(minuteOfDay: Int, dateKey: String? = null): NpcPresence? {
         if (entries.isEmpty()) return null
 
         val n = entries.size
@@ -122,10 +132,21 @@ class ResolvedSchedule(
 
         if (!walking) {
             val here = entries[hereIndex]
+            val coordinate = if (here.wander && dateKey != null) {
+                NpcWander.coordinateAt(
+                    base = here.coordinate,
+                    npcId = npcId,
+                    dateKey = dateKey,
+                    anchorMinute = here.startMinute,
+                    minuteOfDay = minuteOfDay,
+                )
+            } else {
+                here.coordinate
+            }
             return NpcPresence(
                 npcId = npcId,
                 npcName = npcName,
-                coordinate = here.coordinate,
+                coordinate = coordinate,
                 placeId = here.placeId,
                 placeName = here.placeName,
                 activity = here.activity,

@@ -135,7 +135,12 @@ object ContentValidator {
     private fun validNpcs(content: WorldContent, report: ContentReport): List<NpcProfile> {
         val placeIds = content.places.map { it.id }.toSet()
         return content.npcs.map { npc ->
-            npc.copy(schedule = npc.schedule.filter { it.placeId in placeIds })
+            npc.copy(
+                schedule = npc.schedule.filter { it.placeId in placeIds },
+                scheduleVariants = npc.scheduleVariants.map { variant ->
+                    variant.copy(schedule = variant.schedule.filter { it.placeId in placeIds })
+                },
+            )
         }
     }
 

@@ -303,6 +303,27 @@ class ShippedContentTest {
         }
     }
 
+    /**
+     * 作息变体是 N3 的"生病/旅游/出行"底座。字段写错会被静默忽略，
+     * 所以这里钉住"内置内容里至少有一条变体能解析成领域对象"。
+     */
+    @Test
+    fun `内置作息变体读得出来`() {
+        val report = ContentReport()
+        val decoded = npcs(report)
+
+        assertEquals("内置 NPC（含变体）有错误：${report.items}", 0, report.errorCount)
+        val withVariants = decoded.entries.filter { it.scheduleVariants.isNotEmpty() }.map { it.id }
+        assertTrue("内置内容里应至少有一个作息变体作为示例", withVariants.isNotEmpty())
+
+        val rain = decoded.entries
+            .first { it.id == "npc.bit.zhou" }
+            .scheduleVariants
+            .first { it.id == "zhou.rain" }
+        assertEquals("雨天变体的作息段数不对", 3, rain.schedule.size)
+        assertTrue("雨天变体必须带天气门控", rain.conditions.isNotEmpty())
+    }
+
     @Test
     fun `内置主动消息规则没有错误诊断且引用的 NPC 都存在`() {
         val report = ContentReport()

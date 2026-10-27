@@ -14,6 +14,11 @@ data class NpcProfile(
     val oneLiner: String,
     /** 作息表；可以只有一条（整天待在同一个地方）。 */
     val schedule: List<NpcScheduleEntry>,
+    /**
+     * 作息变体（N3）：雨天 / 周末 / 旅游 / 生病等"另一版一天"。
+     * 生效时**整体替换** [schedule]，承诺覆盖仍在其上（见 [resolveSchedule]）。
+     */
+    val scheduleVariants: List<NpcScheduleVariant> = emptyList(),
     /** 身份，例如"大二学生""食堂帮工"；主动消息与第三人称指代会用到。 */
     val role: String = "",
     /** 性格标签：驱动语气与偏好（`npcs_design.md` 第一节的枚举）。 */

@@ -47,9 +47,11 @@ import com.rainingtrace.domain.npc.NpcPresence
 import com.rainingtrace.domain.npc.NpcPresenceUseCase
 import com.rainingtrace.domain.npc.NpcProfile
 import com.rainingtrace.domain.npc.NpcRepository
+import com.rainingtrace.domain.npc.NpcScheduleVariant
 import com.rainingtrace.domain.npc.NpcState
 import com.rainingtrace.domain.npc.NpcStateRepository
 import com.rainingtrace.domain.npc.RecordNpcEncounterUseCase
+import com.rainingtrace.domain.npc.selectScheduleVariant
 import com.rainingtrace.domain.settings.AppSettingsRepository
 import com.rainingtrace.domain.settings.LocationMode
 import com.rainingtrace.domain.settings.MapFilterSettings
@@ -92,6 +94,8 @@ data class MapUiState(
     val selectedNpcState: NpcState? = null,
     /** 选中 NPC 今日作息轨迹预览（时间升序，只保留能解析的地点）。 */
     val selectedNpcSchedule: List<NpcSchedulePreviewRow> = emptyList(),
+    /** 今日生效的作息变体标签（"雨天""外出"）；null = 用基础作息。 */
+    val selectedNpcVariantLabel: String? = null,
     /** 选中 NPC 记住的事；档案页"他还记得"区块，可编辑。 */
     val selectedNpcMemories: List<NpcMemoryFact> = emptyList(),
     /** 日记「在地图查看」跳过来的记忆 → 聚焦卡 + 高亮环。 */
@@ -510,13 +514,17 @@ class MapViewModel(
             return
         }
         viewModelScope.launch {
-            val presence = npcPresence.presenceOf(npcId, worldState.current()) ?: return@launch
+            val world = worldState.current()
+            val presence = npcPresence.presenceOf(npcId, world) ?: return@launch
             val profile = npcRepository.byId(npcId)
+            val places = placeRepository.all().associateBy { it.id }
+            val variant = profile?.let { selectScheduleVariant(it, world) }
             _uiState.value = _uiState.value.copy(
                 selectedNpc = presence,
                 selectedNpcProfile = profile,
                 selectedNpcState = npcStateRepository.stateOf(npcId),
-                selectedNpcSchedule = schedulePreview(profile, placeRepository.all().associateBy { it.id }),
+                selectedNpcSchedule = schedulePreview(profile, places, variant),
+                selectedNpcVariantLabel = variant?.label,
                 selectedNpcMemories = npcMemoryEditor.factsFor(npcId),
                 selectedPlace = null,
                 actionPreviews = emptyMap(),
@@ -530,6 +538,7 @@ class MapViewModel(
             selectedNpcProfile = null,
             selectedNpcState = null,
             selectedNpcSchedule = emptyList(),
+            selectedNpcVariantLabel = null,
             selectedNpcMemories = emptyList(),
         )
     }
@@ -571,9 +580,14 @@ class MapViewModel(
      * 档案页"今天他会去哪"：作息按可解析地点过滤后升序排列。
      * 与 `resolveSchedule` 同一过滤口径（地点不存在就剔除），所以预览就是他真的会走的路线。
      */
-    private suspend fun schedulePreview(profile: NpcProfile?, places: Map<String, Place>): List<NpcSchedulePreviewRow> {
+    private suspend fun schedulePreview(
+        profile: NpcProfile?,
+        places: Map<String, Place>,
+        variant: NpcScheduleVariant? = null,
+    ): List<NpcSchedulePreviewRow> {
         if (profile == null) return emptyList()
-        return profile.schedule
+        // 变体生效时预览的就是"今天这一版"，不再显示基础作息。
+        return (variant?.schedule ?: profile.schedule)
             .mapNotNull { entry ->
                 val place = places[entry.placeId] ?: return@mapNotNull null
                 NpcSchedulePreviewRow(

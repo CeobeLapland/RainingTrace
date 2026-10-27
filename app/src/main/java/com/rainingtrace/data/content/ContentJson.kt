@@ -16,6 +16,7 @@ import com.rainingtrace.domain.npc.NpcProfile
 import com.rainingtrace.domain.npc.NpcProactiveRule
 import com.rainingtrace.domain.npc.NpcKeywordRules
 import com.rainingtrace.domain.npc.NpcScheduleEntry
+import com.rainingtrace.domain.npc.NpcScheduleVariant
 import com.rainingtrace.domain.npc.NpcTopic
 import com.rainingtrace.domain.npc.NpcTrait
 import com.rainingtrace.domain.npc.NpcTriggerCondition
@@ -525,6 +526,26 @@ internal data class NpcGiftPreferencesDto(
     val disliked: List<String> = emptyList(),
 )
 
+/**
+ * 作息变体（N3）：雨天 / 周末 / 旅游 / 生病等"另一版一天"。
+ *
+ * 条件与产出规则共用 `WorldConditionDto`（world/timeOfDay/season/betweenMinutes/not/all），
+ * 额外多了日期区间与星期——它们不属于"世界状态条件"，但同样是门控。
+ */
+@Serializable
+internal data class NpcScheduleVariantDto(
+    val id: String = "",
+    val label: String = "",
+    val fromDateKey: String? = null,
+    val toDateKey: String? = null,
+    /** MONDAY..SUNDAY；空 = 不限。 */
+    val weekdays: List<String> = emptyList(),
+    val conditions: List<WorldConditionDto> = emptyList(),
+    val priority: Int = 0,
+    /** 空 = 这段时间他不在（旅游/住院），地图上不出现。 */
+    val schedule: List<NpcScheduleEntryDto> = emptyList(),
+)
+
 @Serializable
 internal data class NpcProfileDto(
     val id: String = "",
@@ -540,6 +561,7 @@ internal data class NpcProfileDto(
     val enabled: Boolean? = null,
     val personaPrompt: String? = null,
     val schedule: List<NpcScheduleEntryDto> = emptyList(),
+    val scheduleVariants: List<NpcScheduleVariantDto> = emptyList(),
 )
 
 internal fun decodeNpcEntries(
@@ -610,11 +632,50 @@ internal fun decodeNpc(
                 activity = entry.activity,
             )
         }
+        // 变体是"加法的内容"：某一条写坏只丢那一条变体，不能让整位 NPC 消失。
+        val variants = dto.scheduleVariants.mapNotNull { vdto ->
+            runCatching {
+                NpcScheduleVariant(
+                    id = vdto.id,
+                    label = vdto.label,
+                    schedule = vdto.schedule.map { entry ->
+                        NpcScheduleEntry(
+                            startMinute = entry.startMinute,
+                            placeId = entry.placeId,
+                            travelMinutes = entry.travelMinutes,
+                            activity = entry.activity,
+                        )
+                    },
+                    fromDateKey = vdto.fromDateKey,
+                    toDateKey = vdto.toDateKey,
+                    weekdays = vdto.weekdays.mapNotNull { raw ->
+                        parseEnum(raw, java.time.DayOfWeek.entries) ?: run {
+                            // 变体是加法内容：写错星期只丢这个词，不升级成整份内容的 ERROR。
+                            report.warn(
+                                file,
+                                dto.id,
+                                "作息变体「${vdto.id}」里有未知的星期「${raw.trim()}」，已忽略；" +
+                                    "合法值：MONDAY..SUNDAY",
+                            )
+                            null
+                        }
+                    }.toSet(),
+                    conditions = vdto.conditions.mapNotNull {
+                        decodeWorldCondition(it, file, dto.id, report)
+                    },
+                    priority = vdto.priority,
+                )
+            }.getOrElse {
+                report.warn(file, dto.id, "作息变体「${vdto.id}」不合法，已忽略：${it.message}")
+                null
+            }
+        }
         NpcProfile(
             id = dto.id,
             name = dto.name,
             oneLiner = dto.oneLiner,
             schedule = schedule,
+            scheduleVariants = variants,
             role = dto.role,
             traits = traits,
             topics = topics,

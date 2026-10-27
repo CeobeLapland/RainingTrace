@@ -29,10 +29,14 @@ class NpcPresenceUseCase(
         val places = placeRepository.all().associateBy { it.id }
         val overrides = openOverrides(state)
         val minute = minuteOfDayFor(state)
+        val dateKey = state.localDate.toString()
         return npcRepository.all()
             .filter { it.enabled }
             .mapNotNull { profile ->
-                resolveSchedule(profile, places, overrides[profile.id].orEmpty()).presenceAt(minute)
+                // N3：雨天/周末/外出等变体在这里生效；没有匹配就用基础作息。
+                val variant = selectScheduleVariant(profile, state)
+                resolveSchedule(profile, places, overrides[profile.id].orEmpty(), variant)
+                    .presenceAt(minute, dateKey)
             }
     }
 
@@ -41,8 +45,9 @@ class NpcPresenceUseCase(
         val profile = npcRepository.byId(npcId) ?: return null
         if (!profile.enabled) return null
         val places = placeRepository.all().associateBy { it.id }
-        return resolveSchedule(profile, places, openOverrides(state)[npcId].orEmpty())
-            .presenceAt(minuteOfDayFor(state))
+        val variant = selectScheduleVariant(profile, state)
+        return resolveSchedule(profile, places, openOverrides(state)[npcId].orEmpty(), variant)
+            .presenceAt(minuteOfDayFor(state), state.localDate.toString())
     }
 
     /**

@@ -10,13 +10,7 @@
 
 ## Read First
 
-开始任何任务前，按顺序读取：
-
-1. `README.md`
-2. `00_Vibe_Coding_总纲.md`
-3. `01_技术栈_架构与ADR.md`
-4. 本任务相关专项文档
-5. 本任务的 Feature Spec / Issue
+开始任何任务前，按顺序读取相关文档
 
 ## Golden Rules
 

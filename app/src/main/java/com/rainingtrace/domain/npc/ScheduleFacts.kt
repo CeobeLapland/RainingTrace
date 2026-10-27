@@ -1,6 +1,7 @@
 package com.rainingtrace.domain.npc
 
 import com.rainingtrace.domain.map.Place
+import com.rainingtrace.domain.world.WorldState
 import java.time.LocalDate
 
 /**
@@ -51,15 +52,22 @@ data class ScheduleFacts(
 /**
  * 求"某个时间提示下他在哪"。作息无效（无有效条目）时返回 null，
  * 此时叙事层不会硬编一句，而是换个说法。
+ *
+ * [state] 非空时按**目标日期**选作息变体（旅游/生病/周末都能如实回答）；
+ * 天气条件只能用当前天气近似——明天的天气没人知道，这是现实限制，不做假。
  */
 fun scheduleFacts(
     profile: NpcProfile,
     places: Map<String, Place>,
     timeHint: TimeHint,
     nowMinuteOfDay: Int,
+    state: WorldState? = null,
 ): ScheduleFacts? {
     val target = timeHint.resolveMinuteOfDay(nowMinuteOfDay)
-    val presence = resolveSchedule(profile, places).presenceAt(target) ?: return null
+    val variant = state?.let {
+        selectScheduleVariant(profile, it.copy(localDate = it.localDate.plusDays(timeHint.daysAhead.toLong())))
+    }
+    val presence = resolveSchedule(profile, places, variant = variant).presenceAt(target) ?: return null
     return ScheduleFacts(
         targetMinuteOfDay = target,
         timeLabel = timeHint.label,

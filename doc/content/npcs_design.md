@@ -1198,7 +1198,75 @@ liked 给"送礼加好感"，disliked 给"送礼扣好感"，每条后面标注�
 
 ---
 
-## 十、待确认事项
+## 十、作息变体 scheduleVariants（N3）
+
+同一套作息在不同日子/天气下的"另一版一天"。这是**生病、旅游、出行、放假**的通用底座：
+不需要为每种情况单独写系统，只写一条变体 + 一个门控。
+
+| 字段 | 约定 |
+|------|------|
+| `id` | 建议 `<角色短名>.<用途>`，全局唯一 |
+| `label` | 玩家能看懂的短标签（"雨天""外出"），档案页作息预览会显示 |
+| `fromDateKey` / `toDateKey` | 生效日期区间（yyyy-MM-dd，**含端点**）；不写 = 不限 |
+| `weekdays` | `MONDAY`..`SUNDAY`；不写 = 不限 |
+| `conditions` | 与产出规则同一套世界条件（`weatherIn` / `seasonIn` / `timeOfDayIn` / `betweenMinutes` / `not` / `all`），**全部满足**才生效 |
+| `priority` | 越大越优先；并列按 id 字典序取大者（确定性，不会每次刷新换一版） |
+| `schedule` | 这一版作息；**空数组 = 这段时间他不在**（旅游/住院），地图上不出现 |
+
+> 三条口径：① 世界状态只做门控、不参与随机挑选；② 同一天同一时刻结果唯一；
+> ③ 变体整体替换基础作息，但**承诺覆盖仍在最上层**（答应的事高于一切日程）。
+
+### 1. 周野 · npc.bit.zhou
+
+```json
+[
+  {
+    "id": "zhou.rain",
+    "label": "雨天",
+    "conditions": [
+      { "type": "weatherIn", "kinds": ["RAINY"] }
+    ],
+    "priority": 10,
+    "schedule": [
+      { "startMinute": 360, "placeId": "place.bit.canteen_one", "travelMinutes": 0, "activity": "下雨不跑广场，改在食堂屋檐下看雨" },
+      { "startMinute": 690, "placeId": "place.bit.canteen_one", "travelMinutes": 0, "activity": "提前进后厨帮忙，把门口的水拖干净" },
+      { "startMinute": 1260, "placeId": "place.bit.dorm_3", "travelMinutes": 15, "activity": "回宿舍，跑鞋今天没湿" }
+    ]
+  }
+]
+```
+
+### 2. 廖一 · npc.bit.liao_yi
+
+```json
+[
+  {
+    "id": "liao.exam_trip",
+    "label": "外出考试",
+    "fromDateKey": "2026-12-20",
+    "toDateKey": "2026-12-22",
+    "priority": 100,
+    "schedule": []
+  },
+  {
+    "id": "liao.sick",
+    "label": "病了",
+    "conditions": [
+      { "type": "weatherIn", "kinds": ["HEAVY_RAIN"] }
+    ],
+    "priority": 20,
+    "schedule": [
+      { "startMinute": 0, "placeId": "place.bit.dorm_3", "travelMinutes": 0, "activity": "今天没去自习室，躺着，书摊在枕边" },
+      { "startMinute": 720, "placeId": "place.bit.canteen_one", "travelMinutes": 20, "activity": "勉强下楼喝碗粥，又回去" },
+      { "startMinute": 780, "placeId": "place.bit.dorm_3", "travelMinutes": 15, "activity": "回宿舍，第三次量体温" }
+    ]
+  }
+]
+```
+
+---
+
+## 十一、待确认事项
 
 1. **30 人是否够**？目前日常侧 24 人、异常侧 6 人。若后续想扩，建议按"每个工位至少 1 人"再补 6–10 人。
 2. ~~是否需要 `giftPreferences`~~ → **本轮已加**，见第八节，liked 3–4 项、disliked 1–2 项，全部指向 `resources.json` 现有 470 项中的 id。

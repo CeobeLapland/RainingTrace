@@ -64,17 +64,22 @@ private fun NpcAvatarFallback(npcId: String, name: String, size: Dp) {
  *
  * 立绘是全身像，通常比头像大、带背景；缺图时画一块淡淡的占位底板，
  * 不崩、不显示破图，让布局始终稳定。
+ *
+ * [targetPx] 必须**明显大于头像**：默认 96px 的缩略图铺满整块区域会糊成一坨，
+ * 真机上看起来就像"图没加载出来"。
  */
 @Composable
 fun NpcPortrait(
     npcId: String,
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Fit,
+    targetPx: Int = PORTRAIT_TARGET_PX,
 ) {
     ArtIcon(
         path = ArtPaths.npcPortrait(npcId),
         contentDescription = null,
         modifier = modifier,
+        targetPx = targetPx,
         contentScale = contentScale,
         fallback = {
             Box(
@@ -85,3 +90,6 @@ fun NpcPortrait(
         },
     )
 }
+
+/** 立绘解码上限：够 3x 屏满屏显示，又不至于 OOM。 */
+private const val PORTRAIT_TARGET_PX = 720

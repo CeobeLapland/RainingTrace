@@ -12,6 +12,7 @@ import com.rainingtrace.domain.map.PlaceType
 import com.rainingtrace.domain.map.WorldCoordinate
 import com.rainingtrace.domain.npc.NpcProfile
 import com.rainingtrace.domain.npc.NpcScheduleEntry
+import com.rainingtrace.domain.npc.NpcScheduleVariant
 import com.rainingtrace.domain.spawn.SpawnRule
 import com.rainingtrace.domain.spawn.SpawnSpot
 import com.rainingtrace.domain.world.ResourceYieldRule
@@ -124,6 +125,16 @@ class ContentValidatorTest {
                 NpcScheduleEntry(startMinute = 0, placeId = "a"),
                 NpcScheduleEntry(startMinute = 60, placeId = "missing"),
             ),
+            scheduleVariants = listOf(
+                NpcScheduleVariant(
+                    id = "x.rain",
+                    label = "雨天",
+                    schedule = listOf(
+                        NpcScheduleEntry(startMinute = 0, placeId = "a"),
+                        NpcScheduleEntry(startMinute = 30, placeId = "missing"),
+                    ),
+                ),
+            ),
         )
         val content = WorldContent(places = listOf(place("a")), npcs = listOf(npc))
 
@@ -135,6 +146,11 @@ class ContentValidatorTest {
             "悬空条目被剔除，保留可解析的",
             listOf("a"),
             cleaned.npcs.single().schedule.map { it.placeId },
+        )
+        assertEquals(
+            "变体里的悬空条目同样逐条剔除",
+            listOf("a"),
+            cleaned.npcs.single().scheduleVariants.single().schedule.map { it.placeId },
         )
     }
 

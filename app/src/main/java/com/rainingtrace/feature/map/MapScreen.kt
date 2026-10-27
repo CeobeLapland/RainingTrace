@@ -420,6 +420,7 @@ fun MapScreen(
                 profile = profileData,
                 state = uiState.selectedNpcState,
                 schedule = uiState.selectedNpcSchedule,
+                variantLabel = uiState.selectedNpcVariantLabel,
                 memories = uiState.selectedNpcMemories,
                 onChat = { onOpenChat(profileTarget.npcId) },
                 onEditMemory = viewModel::editNpcMemory,
@@ -989,6 +990,8 @@ private fun NpcProfileSheet(
     profile: NpcProfile,
     state: NpcState?,
     schedule: List<NpcSchedulePreviewRow>,
+    /** 今日生效的作息变体（"雨天""外出"）；null = 基础作息。 */
+    variantLabel: String?,
     memories: List<NpcMemoryFact>,
     onChat: () -> Unit,
     onEditMemory: (NpcMemoryFact, String, Int) -> Unit,
@@ -1037,7 +1040,9 @@ private fun NpcProfileSheet(
                 NpcPortrait(
                     npcId = profile.id,
                     contentScale = ContentScale.Fit,
-                    modifier = Modifier.fillMaxHeight(),
+                    // 必须同时约束宽高：只给 fillMaxHeight 的话宽度由 96px 缩略图决定，
+                    // 整张立绘会缩成一小块（真机上看起来就是"没显示"）。
+                    modifier = Modifier.fillMaxSize(),
                 )
             }
 
@@ -1064,7 +1069,10 @@ private fun NpcProfileSheet(
                 }
 
                 if (schedule.isNotEmpty()) {
-                    Text("今天他会去：", style = MaterialTheme.typography.labelLarge)
+                    Text(
+                        text = if (variantLabel != null) "今天他会去（$variantLabel）：" else "今天他会去：",
+                        style = MaterialTheme.typography.labelLarge,
+                    )
                     schedule.forEach { row ->
                         Row(modifier = Modifier.fillMaxWidth()) {
                             Text(
@@ -1085,6 +1093,15 @@ private fun NpcProfileSheet(
                             }
                         }
                     }
+                }
+
+                if (schedule.isEmpty() && variantLabel != null) {
+                    // 变体作息为空 = 今天不在校（旅游/住院），如实告诉玩家。
+                    Text(
+                        text = "今天不在（$variantLabel），这一版没有安排。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
 
                 // "他还记得"：NPC 记住的事。玩家/开发者都能改（世界年鉴是自己写的）。

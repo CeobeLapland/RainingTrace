@@ -163,6 +163,41 @@
           "travelMinutes": 20,
           "activity": "回宿舍，边走边听广播"
         }
+      ],
+      "scheduleVariants": [
+        {
+          "id": "zhou.rain",
+          "label": "雨天",
+          "conditions": [
+            {
+              "type": "weatherIn",
+              "kinds": [
+                "RAINY"
+              ]
+            }
+          ],
+          "priority": 10,
+          "schedule": [
+            {
+              "startMinute": 360,
+              "placeId": "place.bit.canteen_one",
+              "travelMinutes": 0,
+              "activity": "下雨不跑广场，改在食堂屋檐下看雨"
+            },
+            {
+              "startMinute": 690,
+              "placeId": "place.bit.canteen_one",
+              "travelMinutes": 0,
+              "activity": "提前进后厨帮忙，把门口的水拖干净"
+            },
+            {
+              "startMinute": 1260,
+              "placeId": "place.bit.dorm_3",
+              "travelMinutes": 15,
+              "activity": "回宿舍，跑鞋今天没湿"
+            }
+          ]
+        }
       ]
     },
     {
@@ -1705,6 +1740,49 @@
           "placeId": "place.bit.dorm_3",
           "travelMinutes": 20,
           "activity": "回宿舍路上买一个包子"
+        }
+      ],
+      "scheduleVariants": [
+        {
+          "id": "liao.exam_trip",
+          "label": "外出考试",
+          "fromDateKey": "2026-12-20",
+          "toDateKey": "2026-12-22",
+          "priority": 100,
+          "schedule": []
+        },
+        {
+          "id": "liao.sick",
+          "label": "病了",
+          "conditions": [
+            {
+              "type": "weatherIn",
+              "kinds": [
+                "HEAVY_RAIN"
+              ]
+            }
+          ],
+          "priority": 20,
+          "schedule": [
+            {
+              "startMinute": 0,
+              "placeId": "place.bit.dorm_3",
+              "travelMinutes": 0,
+              "activity": "今天没去自习室，躺着，书摊在枕边"
+            },
+            {
+              "startMinute": 720,
+              "placeId": "place.bit.canteen_one",
+              "travelMinutes": 20,
+              "activity": "勉强下楼喝碗粥，又回去"
+            },
+            {
+              "startMinute": 780,
+              "placeId": "place.bit.dorm_3",
+              "travelMinutes": 15,
+              "activity": "回宿舍，第三次量体温"
+            }
+          ]
         }
       ]
     },

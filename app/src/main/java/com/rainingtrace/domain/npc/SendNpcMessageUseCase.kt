@@ -96,7 +96,7 @@ class SendNpcMessageUseCase(
         // ⑤ 拼上下文并生成文本。
         val recent = messageRepository.recent(npcId, RECENT_LIMIT)
         val facts = if (parsed.timeHint != null && (parsed.asksAboutSchedule || parsed.wantsToMeet)) {
-            scheduleFacts(profile, placesById, parsed.timeHint, world.minuteOfDay)
+            scheduleFacts(profile, placesById, parsed.timeHint, world.minuteOfDay, world)
         } else {
             null
         }
