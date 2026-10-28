@@ -63,6 +63,8 @@ import java.time.format.DateTimeFormatter
 fun SettingsRoute(
     container: AppContainer,
     onBack: () -> Unit,
+    /** 打开 NPC 内容工作台（开发者模式里的可视化编辑）。 */
+    onOpenNpcEditor: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BackHandler { onBack() }
@@ -456,6 +458,11 @@ fun SettingsRoute(
                         title = "重新读取内容",
                         hint = "改完 files/content/*.json 之后点这里",
                         onClick = viewModel::reloadContent,
+                    )
+                    ActionRow(
+                        title = "NPC 工作台",
+                        hint = "可视化改人物：下拉选 id、实时校验、写完即时生效",
+                        onClick = onOpenNpcEditor,
                     )
                 }
             }

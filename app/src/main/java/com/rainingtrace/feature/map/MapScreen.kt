@@ -1030,18 +1030,19 @@ private fun NpcProfileSheet(
                 }
             }
 
-            // 立绘区：有图显示全身像，缺图显示占位底板
+            // 立绘区：有图显示全身像，缺图显示占位底板。
+            // **必须和下半区各占一份 weight**：下半区是 verticalScroll（内容可无限高），
+            // 若它没有 weight，会把整屏剩余高度吃光，weight(1f) 的立绘区被压成 0 高
+            // ——真机上表现就是"立绘完全没显示"。
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f),
+                    .weight(1.1f),
                 contentAlignment = Alignment.Center,
             ) {
                 NpcPortrait(
                     npcId = profile.id,
                     contentScale = ContentScale.Fit,
-                    // 必须同时约束宽高：只给 fillMaxHeight 的话宽度由 96px 缩略图决定，
-                    // 整张立绘会缩成一小块（真机上看起来就是"没显示"）。
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -1050,6 +1051,7 @@ private fun NpcProfileSheet(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .weight(1f)
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),

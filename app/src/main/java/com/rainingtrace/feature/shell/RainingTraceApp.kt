@@ -46,6 +46,7 @@ import com.rainingtrace.feature.crafting.CraftRoute
 import com.rainingtrace.feature.home.HomeScreen
 import com.rainingtrace.feature.inventory.InventoryRoute
 import com.rainingtrace.feature.journal.JournalRoute
+import com.rainingtrace.feature.editor.NpcEditorRoute
 import com.rainingtrace.feature.map.MapScreen
 import com.rainingtrace.feature.map.MapViewModel
 import com.rainingtrace.feature.map.WorldStatusViewModel
@@ -216,6 +217,14 @@ fun RainingTraceApp(container: AppContainer) {
 
             composable(Routes.SETTINGS) {
                 SettingsRoute(
+                    container = container,
+                    onBack = { navController.popBackStack() },
+                    onOpenNpcEditor = { navController.navigate(Routes.NPC_EDITOR) },
+                )
+            }
+
+            composable(Routes.NPC_EDITOR) {
+                NpcEditorRoute(
                     container = container,
                     onBack = { navController.popBackStack() },
                 )

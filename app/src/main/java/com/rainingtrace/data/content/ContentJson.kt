@@ -31,6 +31,11 @@ import com.rainingtrace.domain.world.WorldCondition
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 /**
  * 内容 JSON 的读写（GDD §21 的数据形态）。
@@ -692,6 +697,102 @@ internal fun decodeNpc(
         report.error(file, dto.id, "NPC 不合法：${it.message}")
         null
     }
+}
+
+// ---------------------------------------------------------------------------
+// NPC 编辑（内容工作台）：domain → DTO，写覆盖层用
+// ---------------------------------------------------------------------------
+
+/**
+ * 编辑保存时的编码：**必须把整条 NPC 写全**（含作息变体）。
+ * 覆盖层是按 id 整条替换的，少写一个字段就等于把它清空。
+ */
+internal fun NpcProfile.toDto(): NpcProfileDto = NpcProfileDto(
+    id = id,
+    name = name,
+    oneLiner = oneLiner,
+    role = role,
+    traits = traits.map { it.name },
+    topics = topics.map { it.name },
+    favoriteTopic = favoriteTopic?.name,
+    backstory = backstory,
+    giftPreferences = NpcGiftPreferencesDto(
+        liked = giftPreferences.liked,
+        disliked = giftPreferences.disliked,
+    ),
+    homePlaceId = homePlaceId,
+    enabled = enabled,
+    personaPrompt = personaPrompt,
+    schedule = schedule.map { it.toDto() },
+    scheduleVariants = scheduleVariants.map { it.toDto() },
+)
+
+private fun NpcScheduleEntry.toDto(): NpcScheduleEntryDto = NpcScheduleEntryDto(
+    startMinute = startMinute,
+    placeId = placeId,
+    travelMinutes = travelMinutes,
+    activity = activity,
+)
+
+private fun NpcScheduleVariant.toDto(): NpcScheduleVariantDto = NpcScheduleVariantDto(
+    id = id,
+    label = label,
+    fromDateKey = fromDateKey,
+    toDateKey = toDateKey,
+    weekdays = weekdays.map { it.name },
+    conditions = conditions.map { it.toDto() },
+    priority = priority,
+    schedule = schedule.map { it.toDto() },
+)
+
+private fun WorldCondition.toDto(): WorldConditionDto = when (this) {
+    is WorldCondition.WeatherIn -> WorldConditionDto(
+        type = "weatherIn",
+        kinds = kinds.map { it.name },
+    )
+
+    is WorldCondition.TimeOfDayIn -> WorldConditionDto(
+        type = "timeOfDayIn",
+        times = times.map { it.name },
+    )
+
+    is WorldCondition.SeasonIn -> WorldConditionDto(
+        type = "seasonIn",
+        seasons = seasons.map { it.name },
+    )
+
+    is WorldCondition.BetweenMinutes -> WorldConditionDto(
+        type = "betweenMinutes",
+        start = startMinuteOfDay,
+        end = endMinuteOfDay,
+    )
+
+    is WorldCondition.Not -> WorldConditionDto(
+        type = "not",
+        condition = condition.toDto(),
+    )
+
+    is WorldCondition.All -> WorldConditionDto(
+        type = "all",
+        conditions = conditions.map { it.toDto() },
+    )
+}
+
+/** 把一组 NPC 编成一份完整的覆盖层文件（`{schemaVersion, removedIds, entries}`）。 */
+internal fun encodeNpcOverlay(profiles: List<NpcProfile>): String {
+    val root = buildJsonObject {
+        put("schemaVersion", 1)
+        put("removedIds", buildJsonArray { })
+        put(
+            "entries",
+            buildJsonArray {
+                profiles.forEach { profile ->
+                    add(ContentJsonFormat.encodeToJsonElement(NpcProfileDto.serializer(), profile.toDto()))
+                }
+            },
+        )
+    }
+    return ContentJsonFormat.encodeToString(JsonObject.serializer(), root)
 }
 
 // ---------------------------------------------------------------------------

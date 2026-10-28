@@ -7,6 +7,7 @@ import com.rainingtrace.core.time.SystemWorldClock
 import com.rainingtrace.core.time.WorldClock
 import com.rainingtrace.data.local.RainingTraceDatabase
 import com.rainingtrace.data.content.ContentStore
+import com.rainingtrace.data.content.OverlayNpcContentWriter
 import com.rainingtrace.data.content.JsonPlaceWriter
 import com.rainingtrace.data.repository.ContentNpcProactiveRuleCatalog
 import com.rainingtrace.data.repository.ContentNpcRepository
@@ -58,6 +59,7 @@ import com.rainingtrace.domain.npc.LlmNarrativeService
 import com.rainingtrace.domain.npc.NarrativeService
 import com.rainingtrace.domain.npc.NpcCommitmentRepository
 import com.rainingtrace.domain.npc.NpcCommitmentUseCase
+import com.rainingtrace.domain.npc.NpcContentWriter
 import com.rainingtrace.domain.npc.NpcMemoryEditor
 import com.rainingtrace.domain.npc.NpcMemoryRepository
 import com.rainingtrace.domain.npc.NpcMemoryWriter
@@ -367,6 +369,14 @@ class AppContainer(
     /** 记忆编辑入口（玩家/开发者共用）：档案页的"他还记得"区块。 */
     val npcMemoryEditor: NpcMemoryEditor by lazy {
         NpcMemoryEditor(repository = npcMemoryRepository, writer = npcMemoryWriter)
+    }
+
+    /**
+     * 内容工作台（NPC）的保存通道：只写被编辑的那一位到覆盖层，写完重载内容。
+     * 放在 data 层，domain 只认 `NpcContentWriter` 接口。
+     */
+    val npcContentWriter: NpcContentWriter by lazy {
+        OverlayNpcContentWriter(appContext, contentStore)
     }
 
     /**

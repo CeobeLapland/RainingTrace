@@ -19,6 +19,9 @@ object Routes {
     const val WAREHOUSE = "warehouse"
     const val SETTINGS = "settings"
 
+    /** 内容工作台（开发者模式）：可视化编辑 NPC。 */
+    const val NPC_EDITOR = "npc_editor"
+
     /**
      * 与某个 NPC 的聊天页（消息 Tab 的子路由）。
      *

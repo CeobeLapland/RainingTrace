@@ -227,10 +227,14 @@ class ContentStore(private val context: Context) : ContentPanel {
 
         /** 地点覆盖层的文件名；采点写入方复用同一份常量，避免两处拼错。 */
         internal const val PLACES_FILE = "places.json"
+
+        /** NPC 覆盖层的文件名；内容工作台写入方复用（覆盖层按 id 合并）。 */
+        const val NPCS_FILE = "npcs.json"
+
         private const val RESOURCES = "resources.json"
         private const val YIELD_RULES = "yield_rules.json"
         private const val RECIPES = "recipes.json"
-        private const val NPCS = "npcs.json"
+        private const val NPCS = NPCS_FILE
         private const val NPC_PROACTIVE_RULES = "npc_proactive_rules.json"
         private const val NPC_LINES = "npc_lines.json"
         private const val PLACE_ALIASES = "place_aliases.json"

@@ -33,6 +33,8 @@ fun NpcAvatar(
     ArtIcon(
         path = ArtPaths.npcAvatar(npcId),
         contentDescription = null,
+        // 头像在 3x 屏上需要约 3 倍 dp 的像素；默认 96 会略糊。
+        targetPx = (size.value * 3).toInt().coerceAtLeast(96),
         modifier = modifier
             .size(size)
             .clip(RoundedCornerShape(size / 4)),
