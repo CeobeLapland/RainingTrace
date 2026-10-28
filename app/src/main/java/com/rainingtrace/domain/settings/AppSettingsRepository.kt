@@ -47,4 +47,9 @@ interface AppSettingsRepository {
     val npcMessages: Flow<NpcMessageSettings>
     suspend fun currentNpcMessages(): NpcMessageSettings
     suspend fun setNpcMessages(settings: NpcMessageSettings)
+
+    /** LLM 对话配置（OpenAI 兼容）；关闭或未配置时 NPC 自动回退模板。 */
+    val llm: Flow<LlmSettings>
+    suspend fun currentLlm(): LlmSettings
+    suspend fun setLlm(settings: LlmSettings)
 }

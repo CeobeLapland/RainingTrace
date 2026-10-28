@@ -32,16 +32,20 @@ class LlmNarrativeService(
                 .map { if (it.fromNpc) "${context.profile.name}：${it.text}" else "玩家：${it.text}" },
         )
 
-        // 用过的记忆刷一下新鲜度（下次挑选时"最近被想起"算数）
-        if (topFacts.isNotEmpty() && memoryRepository != null) {
-            memoryRepository.touch(context.profile.id, topFacts.map { it.id }, nowEpochMs())
+        // 只有真正塞进 prompt 的那几条才算"被想起"：涨引用计数、刷新新鲜度。
+        val usedFacts = topFacts.take(trimmed.memory.size)
+        if (usedFacts.isNotEmpty() && memoryRepository != null) {
+            memoryRepository.touch(context.profile.id, usedFacts.map { it.id }, nowEpochMs())
         }
 
         val system = buildString {
             append(trimmed.persona).append("\n\n")
             append(stateBlock(context))
             if (trimmed.memory.isNotEmpty()) append("\n").append(trimmed.memory.joinToString("\n"))
-            append("\n\n你正在和玩家聊天。请用一句话以内的中文回答，符合你的人设，不要说破自己是 AI。")
+            append(
+                "\n\n你正在和玩家聊天。只说你说的话，像随手打字，1 到 3 句；" +
+                    "不要动作描写、不要括号注释、不要说破自己是 AI。",
+            )
             if (context.commitmentFacts?.agreed == true) {
                 append("你们约好${context.commitmentFacts.timeLabel}在「${context.commitmentFacts.placeName}」见面，可以说准。")
             }

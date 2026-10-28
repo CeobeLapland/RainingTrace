@@ -9,6 +9,7 @@ import com.rainingtrace.domain.map.HexCellId
 import com.rainingtrace.domain.map.LocationSource
 import com.rainingtrace.domain.map.WorldCoordinate
 import com.rainingtrace.domain.settings.AppSettingsRepository
+import com.rainingtrace.domain.settings.LlmSettings
 import com.rainingtrace.domain.settings.LocationMode
 import com.rainingtrace.domain.settings.MapFilterSettings
 import com.rainingtrace.domain.settings.NpcClockOffset
@@ -58,6 +59,9 @@ class ChangeGridLevelUseCaseTest {
         override val npcMessages: Flow<NpcMessageSettings> = flowOf(NpcMessageSettings())
         override suspend fun currentNpcMessages() = NpcMessageSettings()
         override suspend fun setNpcMessages(settings: NpcMessageSettings) = Unit
+        override val llm: Flow<LlmSettings> = flowOf(LlmSettings())
+        override suspend fun currentLlm() = LlmSettings()
+        override suspend fun setLlm(settings: LlmSettings) = Unit
     }
 
     private class FakeExploration : ExplorationRepository {

@@ -175,7 +175,7 @@ private fun NpcRow(npc: NpcProfile, overridden: Boolean, onClick: () -> Unit) {
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(npc.name, style = MaterialTheme.typography.titleMedium)
+                Text(npc.name.ifBlank { npc.id }, style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.width(8.dp))
                 if (overridden) {
                     Text(
@@ -206,11 +206,13 @@ private fun NpcRow(npc: NpcProfile, overridden: Boolean, onClick: () -> Unit) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Text(
-                text = npc.oneLiner,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            if (npc.oneLiner.isNotBlank()) {
+                Text(
+                    text = npc.oneLiner,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
@@ -239,7 +241,7 @@ private fun NpcEditPage(
                 title = draft.name.ifBlank { draft.id },
                 onBack = onBack,
                 action = {
-                    TextButton(onClick = onSave, enabled = issues.isEmpty()) { Text("保存") }
+                    TextButton(onClick = onSave) { Text("保存") }
                 },
             )
             Column(
@@ -447,7 +449,7 @@ private fun IssueCard(issues: List<NpcEditIssue>) {
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
-                text = "有 ${issues.size} 处问题（修完才能保存）",
+                text = "提示（${issues.size} 处，不影响保存）",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onErrorContainer,
             )

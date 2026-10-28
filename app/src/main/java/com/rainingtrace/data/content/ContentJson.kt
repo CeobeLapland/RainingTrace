@@ -593,7 +593,7 @@ internal fun decodeNpc(
     report: ContentReport,
 ): NpcProfile? {
     val traits = mutableSetOf<NpcTrait>()
-    dto.traits.forEach { raw ->
+    dto.traits.filter { it.isNotBlank() }.forEach { raw ->
         val parsed = parseEnum(raw, NpcTrait.entries)
         if (parsed == null) {
             report.warn(file, dto.id, "未知的性格「${raw.trim()}」，已忽略；合法值：${legalValues(NpcTrait.entries)}")
@@ -603,7 +603,7 @@ internal fun decodeNpc(
     }
 
     val topics = mutableSetOf<NpcTopic>()
-    dto.topics.forEach { raw ->
+    dto.topics.filter { it.isNotBlank() }.forEach { raw ->
         val parsed = parseEnum(raw, NpcTopic.entries)
         if (parsed == null) {
             report.warn(file, dto.id, "未知的话题「${raw.trim()}」，已忽略；合法值：${legalValues(NpcTopic.entries)}")
@@ -613,7 +613,8 @@ internal fun decodeNpc(
     }
 
     var favoriteTopic: NpcTopic? = null
-    if (dto.favoriteTopic != null) {
+    // 空字符串 = 还没填：不诊断、不生效。内容半成品阶段这是正常状态。
+    if (!dto.favoriteTopic.isNullOrBlank()) {
         favoriteTopic = parseEnum(dto.favoriteTopic, NpcTopic.entries)
         if (favoriteTopic == null) {
             report.warn(
@@ -622,6 +623,17 @@ internal fun decodeNpc(
                 "未知的 favoriteTopic「${dto.favoriteTopic}」，已忽略；合法值：${legalValues(NpcTopic.entries)}",
             )
         }
+    }
+
+    // 内容半成品阶段：favoriteTopic 填了但 topics 还没填，是常见状态。
+    // 只清掉 favorite，**不丢整位 NPC**（否则"慢慢填"会被一个字段卡死）。
+    if (favoriteTopic != null && favoriteTopic !in topics) {
+        report.warn(
+            file,
+            dto.id,
+            "favoriteTopic「${favoriteTopic.name}」不在 topics 里，已忽略（人物保留）",
+        )
+        favoriteTopic = null
     }
 
     // favoriteTopic ∉ topics 会被 NpcProfile 的 require 拦下（那正是我们要的：

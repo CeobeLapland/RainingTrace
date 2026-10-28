@@ -51,7 +51,7 @@ data class NpcProfile(
 ) {
     init {
         require(id.isNotBlank()) { "npc id must not be blank" }
-        require(name.isNotBlank()) { "npc name must not be blank" }
+        // name 允许为空：内容还在逐步填，名字没想好时先用 id 显示（见 ResolvedSchedule）。
         require(favoriteTopic == null || favoriteTopic in topics) {
             "favoriteTopic must be one of topics: $favoriteTopic not in $topics"
         }

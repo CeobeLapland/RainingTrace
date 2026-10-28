@@ -73,7 +73,7 @@ fun ChatScreen(
                 if (uiState.messages.isEmpty()) {
                     item {
                         EmptyChat(
-                            name = uiState.profile?.name.orEmpty(),
+                            name = uiState.profile?.name?.ifBlank { uiState.profile?.id }.orEmpty().ifBlank { "对方" },
                             stage = uiState.stage,
                         )
                     }

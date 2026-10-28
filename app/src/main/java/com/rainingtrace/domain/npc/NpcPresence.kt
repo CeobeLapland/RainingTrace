@@ -81,7 +81,7 @@ fun resolveSchedule(
         }
         .sortedBy { it.startMinute }
 
-    if (resolved.isEmpty()) return ResolvedSchedule(profile.id, profile.name, emptyList())
+    if (resolved.isEmpty()) return ResolvedSchedule(profile.id, profile.name.ifBlank { profile.id }, emptyList())
 
     val n = resolved.size
     val clamped = resolved.mapIndexed { index, entry ->
@@ -94,7 +94,7 @@ fun resolveSchedule(
         }
         entry.copy(travelMinutes = travel)
     }
-    return ResolvedSchedule(profile.id, profile.name, clamped)
+    return ResolvedSchedule(profile.id, profile.name.ifBlank { profile.id }, clamped)
 }
 
 /**

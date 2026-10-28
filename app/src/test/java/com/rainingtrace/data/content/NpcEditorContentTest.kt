@@ -56,15 +56,30 @@ class NpcEditorContentTest {
         assertNotNull("合法草稿应能转回领域对象", draft().toProfile())
     }
 
+    /** 名字/一句话为空只是"还没填"，不是错误，也不能拦保存。 */
+    @Test
+    fun `空名字与空一句话不拦保存`() {
+        val empty = draft(name = "").copy(oneLiner = "")
+
+        val issues = validateNpcDraft(empty, placeIds, resourceIds)
+        val profile = empty.toProfile()
+
+        assertTrue("空名字不该产生提示：$issues", issues.none { it.field == "name" })
+        assertNotNull("空名字也必须能保存", profile)
+        assertEquals("", profile!!.name)
+    }
+
     /** 编辑中途（取消话题勾选后 favorite 悬空）必须能被草稿态容纳，而不是崩。 */
     @Test
-    fun `favorite 不在 topics 时草稿仍可存在 但校验会报`() {
+    fun `favorite 不在 topics 时草稿仍可存在 保存会自动清空`() {
         val invalid = draft(topics = setOf(NpcTopic.WEATHER), favorite = NpcTopic.BOOKS)
 
         val issues = validateNpcDraft(invalid, placeIds, resourceIds)
 
         assertTrue(issues.any { it.field == "favoriteTopic" })
-        assertNull("转回领域对象会失败，保存前必须拦住", invalid.toProfile())
+        val profile = invalid.toProfile()
+        assertNotNull("半成品也必须能保存（不因一个字段卡死）", profile)
+        assertNull("保存时自动清掉非法的 favorite", profile!!.favoriteTopic)
     }
 
     @Test
@@ -95,11 +110,12 @@ class NpcEditorContentTest {
 
     /**
      * 覆盖层是按 id 整条替换的：编辑器只改基础字段时，作息变体也必须原样写回，
-     * 否则一次保存就会把「雨天」「外出」清空。
+     * 否则一次保存就会把已有的「雨天」「外出」清空。
+     * **不绑定具体角色**：内容会换，取当前内置的第一位即可。
      */
     @Test
     fun `覆盖层编码往返是无损的`() {
-        val original = ShippedContent.npc("npc.bit.zhou")
+        val original = ShippedContent.npcs.first { it.scheduleVariants.isNotEmpty() || it.personaPrompt != null }
 
         val encoded = encodeNpcOverlay(listOf(original))
         val decoded = decodeNpcEntries(encoded, "npcs.json（覆盖）", ContentReport()).entries.single()
@@ -115,13 +131,20 @@ class NpcEditorContentTest {
     }
 
     @Test
-    fun `编码后的覆盖层能被正常解析且没有诊断`() {
+    fun `编码后的覆盖层能被正常解析且没有错误`() {
         val report = ContentReport()
-        val npcs = ShippedContent.npcs
 
-        val decoded = decodeNpcEntries(encodeNpcOverlay(npcs), "npcs.json（覆盖）", report)
+        val decoded = decodeNpcEntries(
+            encodeNpcOverlay(ShippedContent.npcs),
+            "npcs.json（覆盖）",
+            report,
+        )
 
-        assertEquals("编码再解码不该产生诊断：${report.items}", 0, report.items.size)
-        assertEquals(npcs.size, decoded.entries.size)
+        assertEquals(
+            "编码再解码不该产生 ERROR：${report.items.filter { it.isError }}",
+            0,
+            report.errorCount,
+        )
+        assertEquals(ShippedContent.npcs.size, decoded.entries.size)
     }
 }

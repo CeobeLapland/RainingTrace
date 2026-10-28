@@ -11,6 +11,7 @@ import com.rainingtrace.domain.map.PlaceRepository
 import com.rainingtrace.domain.map.PlaceType
 import com.rainingtrace.domain.map.WorldCoordinate
 import com.rainingtrace.domain.settings.AppSettingsRepository
+import com.rainingtrace.domain.settings.LlmSettings
 import com.rainingtrace.domain.settings.LocationMode
 import com.rainingtrace.domain.settings.MapFilterSettings
 import com.rainingtrace.domain.settings.NpcClockOffset
@@ -113,6 +114,9 @@ class NpcProactiveMessageUseCaseTest {
         override suspend fun setNpcMessages(settings: NpcMessageSettings) {
             messageSettings = settings
         }
+        override val llm: Flow<LlmSettings> = flowOf(LlmSettings())
+        override suspend fun currentLlm() = LlmSettings()
+        override suspend fun setLlm(settings: LlmSettings) = Unit
     }
 
     private class RuleCatalog(override val rules: List<NpcProactiveRule>) : NpcProactiveRuleCatalog

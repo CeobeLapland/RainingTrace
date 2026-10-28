@@ -5,9 +5,12 @@ import androidx.lifecycle.viewModelScope
 import com.rainingtrace.domain.content.ContentIndex
 import com.rainingtrace.domain.content.ContentPanel
 import com.rainingtrace.domain.map.GridLevel
+import com.rainingtrace.domain.npc.LlmClient
+import com.rainingtrace.domain.npc.LlmRequest
 import com.rainingtrace.domain.settings.AppSettingsRepository
 import com.rainingtrace.domain.settings.BackgroundInterval
 import com.rainingtrace.domain.settings.DayWindow
+import com.rainingtrace.domain.settings.LlmSettings
 import com.rainingtrace.domain.settings.LocationMode
 import com.rainingtrace.domain.settings.NpcClockOffset
 import com.rainingtrace.domain.settings.NpcMessageSettings
@@ -39,6 +42,8 @@ class SettingsViewModel(
     private val timeOfDaySource: TimeOfDaySource? = null,
     /** 内容源（开发者模式）：传空则整个「内容」分区隐藏。 */
     private val contentPanel: ContentPanel? = null,
+    /** LLM 客户端：设置页「测试连接」用；传空则测试按钮不可用。 */
+    private val llmClient: LlmClient? = null,
 ) : ViewModel() {
 
     val gridLevel = settings.gridLevel
@@ -57,6 +62,43 @@ class SettingsViewModel(
     /** 消息偏好：主动程度 + 是否显示好感数值。 */
     val npcMessages = settings.npcMessages
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), NpcMessageSettings())
+
+    /** LLM 对话配置（OpenAI 兼容）；关闭/未配置时 NPC 回退模板。 */
+    val llm = settings.llm
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LlmSettings())
+
+    private val _llmTestResult = MutableStateFlow<String?>(null)
+
+    /** 「测试连接」的结果；null = 还没测过。 */
+    val llmTestResult: StateFlow<String?> = _llmTestResult
+
+    fun saveLlm(settingsToSave: LlmSettings) {
+        viewModelScope.launch { settings.setLlm(settingsToSave) }
+    }
+
+    /** 先保存再发一条最小请求；成功/失败都明确告诉用户。 */
+    fun testLlm(settingsToSave: LlmSettings) {
+        viewModelScope.launch {
+            settings.setLlm(settingsToSave)
+            val client = llmClient
+            if (client == null) {
+                _llmTestResult.value = "没有可用的 LLM 客户端"
+                return@launch
+            }
+            _llmTestResult.value = "正在连接…"
+            val reply = client.complete(
+                LlmRequest(
+                    system = "你是一个连通性测试。只回复四个字：连接正常。",
+                    turns = emptyList(),
+                ),
+            )
+            _llmTestResult.value = if (reply != null) {
+                "连接成功：${reply.take(40)}"
+            } else {
+                "连接失败。检查地址（要含 /v1）、密钥、模型名与网络。"
+            }
+        }
+    }
 
     val canSetWeather: Boolean get() = weatherSource != null
 

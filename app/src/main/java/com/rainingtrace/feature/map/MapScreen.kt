@@ -886,7 +886,7 @@ private fun NpcDetailCard(
                 }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = profile?.name ?: presence.npcName,
+                        text = profile?.name?.ifBlank { profile.id } ?: presence.npcName,
                         style = MaterialTheme.typography.titleMedium,
                     )
                     Text(
@@ -1021,7 +1021,7 @@ private fun NpcProfileSheet(
                     )
                 }
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(profile.name, style = MaterialTheme.typography.titleLarge)
+                    Text(profile.name.ifBlank { profile.id }, style = MaterialTheme.typography.titleLarge)
                     Text(
                         text = state?.stage?.label ?: RelationshipStage.STRANGER.label,
                         style = MaterialTheme.typography.labelMedium,

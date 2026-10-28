@@ -98,13 +98,11 @@ class NpcEditorViewModel(
 
     fun save() {
         val draft = _uiState.value.editing ?: return
-        if (_uiState.value.issues.isNotEmpty()) {
-            _uiState.update { it.copy(message = "还有 ${_uiState.value.issues.size} 处问题，改完再保存。") }
-            return
-        }
+        // 校验只做提示，**不阻止保存**：内容可以半成品，空字段/悬空引用以后再填。
+        // 唯一真正拦人的是"连领域对象都构造不出来"（例如 id 丢失）。
         val profile = draft.toProfile()
         if (profile == null) {
-            _uiState.update { it.copy(message = "内容还不完整，没法保存（检查名字/一句话/话题）。") }
+            _uiState.update { it.copy(message = "内容不完整到无法构造，检查 id 是否为空。") }
             return
         }
         viewModelScope.launch {

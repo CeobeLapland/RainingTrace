@@ -59,7 +59,7 @@ data class NpcEditDraft(
     val schedule: List<NpcScheduleEntry>,
     val scheduleVariants: List<NpcScheduleVariant>,
 ) {
-    /** 转回领域对象；不合法时返回 null（由 [validateNpcDraft] 说明原因）。 */
+    /** 转回领域对象；会顺手清掉"半成品"导致的非法组合（favorite 不在 topics）。 */
     fun toProfile(): NpcProfile? = runCatching {
         NpcProfile(
             id = id,
@@ -70,7 +70,8 @@ data class NpcEditDraft(
             role = role,
             traits = traits,
             topics = topics,
-            favoriteTopic = favoriteTopic,
+            // 填了 favorite 但没填 topics 是半成品常态：保存时清掉这个字段，不阻止保存。
+            favoriteTopic = favoriteTopic?.takeIf { it in topics },
             backstory = backstory,
             giftPreferences = GiftPreferences(liked = giftLiked, disliked = giftDisliked),
             homePlaceId = homePlaceId,
@@ -110,12 +111,12 @@ fun validateNpcDraft(
     placeIds: Set<String>,
     resourceIds: Set<String>,
 ): List<NpcEditIssue> = buildList {
-    if (draft.name.isBlank()) add(NpcEditIssue("name", "名字不能为空"))
-    if (draft.oneLiner.isBlank()) add(NpcEditIssue("oneLiner", "一句话人设不能为空（卡片会显示它）"))
+    // name / oneLiner 为空**不算问题**：名字没想好时 UI 会用 id 显示。
+    // 这里只提示"会静默失效"的引用问题，不拦保存。
 
     val favorite = draft.favoriteTopic
     if (favorite != null && favorite !in draft.topics) {
-        add(NpcEditIssue("favoriteTopic", "最喜欢的话题「${favorite.label}」不在他愿意聊的话题里"))
+        add(NpcEditIssue("favoriteTopic", "最喜欢的话题「${favorite.label}」不在话题里（保存时会自动清空）"))
     }
 
     draft.schedule.forEachIndexed { index, entry ->

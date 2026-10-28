@@ -2,6 +2,7 @@ package com.rainingtrace.data.settings
 
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -12,6 +13,7 @@ import com.rainingtrace.domain.map.PlaceType
 import com.rainingtrace.domain.settings.AppSettingsRepository
 import com.rainingtrace.domain.settings.BackgroundInterval
 import com.rainingtrace.domain.settings.DayWindow
+import com.rainingtrace.domain.settings.LlmSettings
 import com.rainingtrace.domain.settings.LocationMode
 import com.rainingtrace.domain.settings.MapFilterSettings
 import com.rainingtrace.domain.settings.MemoryTimeFilter
@@ -156,6 +158,29 @@ class DataStoreSettingsRepository(
         }
     }
 
+    override val llm: Flow<LlmSettings> =
+        context.settingsDataStore.data.map { prefs ->
+            LlmSettings(
+                enabled = prefs[KEY_LLM_ENABLED] ?: false,
+                baseUrl = prefs[KEY_LLM_BASE_URL] ?: LlmSettings.DEFAULT_BASE_URL,
+                apiKey = prefs[KEY_LLM_API_KEY] ?: "",
+                model = prefs[KEY_LLM_MODEL] ?: LlmSettings.DEFAULT_MODEL,
+                temperature = prefs[KEY_LLM_TEMPERATURE] ?: 0.8,
+            )
+        }
+
+    override suspend fun currentLlm(): LlmSettings = llm.first()
+
+    override suspend fun setLlm(settings: LlmSettings) {
+        context.settingsDataStore.edit { prefs ->
+            prefs[KEY_LLM_ENABLED] = settings.enabled
+            prefs[KEY_LLM_BASE_URL] = settings.baseUrl
+            prefs[KEY_LLM_API_KEY] = settings.apiKey
+            prefs[KEY_LLM_MODEL] = settings.model
+            prefs[KEY_LLM_TEMPERATURE] = settings.temperature
+        }
+    }
+
     private companion object {
         val KEY_GRID_LEVEL = stringPreferencesKey("grid_level")
         val KEY_LOCATION_MODE = stringPreferencesKey("location_mode")
@@ -173,5 +198,10 @@ class DataStoreSettingsRepository(
         val KEY_NPC_CLOCK_OFFSET = stringPreferencesKey("npc_clock_offset")
         val KEY_NPC_PROACTIVE_LEVEL = stringPreferencesKey("npc_proactive_level")
         val KEY_NPC_SHOW_AFFECTION = booleanPreferencesKey("npc_show_affection")
+        val KEY_LLM_ENABLED = booleanPreferencesKey("llm_enabled")
+        val KEY_LLM_BASE_URL = stringPreferencesKey("llm_base_url")
+        val KEY_LLM_API_KEY = stringPreferencesKey("llm_api_key")
+        val KEY_LLM_MODEL = stringPreferencesKey("llm_model")
+        val KEY_LLM_TEMPERATURE = doublePreferencesKey("llm_temperature")
     }
 }

@@ -85,7 +85,7 @@ fun ChatRoute(
                 }
                 Spacer(Modifier.width(4.dp))
                 Text(
-                    text = uiState.profile?.name ?: "消息",
+                    text = uiState.profile?.name?.ifBlank { uiState.profile?.id }.orEmpty().ifBlank { "消息" },
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onBackground,
                 )

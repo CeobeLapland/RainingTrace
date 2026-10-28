@@ -101,6 +101,7 @@ import com.rainingtrace.domain.world.WeatherSource
 import com.rainingtrace.domain.world.WorldStateProvider
 import com.rainingtrace.platform.ar.ArCoreController
 import com.rainingtrace.platform.art.AssetArtSource
+import com.rainingtrace.platform.llm.OpenAiCompatibleLlmClient
 import com.rainingtrace.platform.audio.AndroidAudioNoteController
 import com.rainingtrace.platform.camera.CameraXController
 import com.rainingtrace.platform.location.AndroidTrackingController
@@ -380,10 +381,25 @@ class AppContainer(
     }
 
     /**
-     * 真实 LLM 插槽（N4）。当前为 null = 关闭，叙事回退到模板。
-     * 接 API 时实现 [LlmClient] 并在这里替换即可——换厂商不改任何玩法代码。
+     * LLM 通道（N4）：OpenAI 兼容接口，配置来自设置页，**每次请求现读**。
+     * 关闭/未配置/网络失败时返回 null，叙事自动回退模板。
      */
-    private val llmClient: LlmClient? = null
+    private val llmHttpClient: HttpClient by lazy {
+        HttpClient(OkHttp) {
+            install(HttpTimeout) {
+                // LLM 首 token 慢是常态：别用天气接口的 8s 去卡它。
+                requestTimeoutMillis = 30_000
+                connectTimeoutMillis = 8_000
+            }
+        }
+    }
+
+    private val llmClient: LlmClient by lazy {
+        OpenAiCompatibleLlmClient(client = llmHttpClient, settings = settingsRepository)
+    }
+
+    /** 设置页「测试连接」用；不暴露完整配置，只暴露客户端能力。 */
+    val llmTester: LlmClient get() = llmClient
 
     /** 片 2 与片 3 共用的"写消息 + 留足迹"。 */
     private val npcMessageWriter: NpcMessageWriter by lazy {

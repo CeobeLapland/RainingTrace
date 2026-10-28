@@ -25,6 +25,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Surface
@@ -32,12 +34,16 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -48,6 +54,7 @@ import com.rainingtrace.domain.content.ContentIndex
 import com.rainingtrace.domain.map.GridLevel
 import com.rainingtrace.domain.settings.BackgroundInterval
 import com.rainingtrace.domain.settings.DayWindow
+import com.rainingtrace.domain.settings.LlmSettings
 import com.rainingtrace.domain.settings.LocationMode
 import com.rainingtrace.domain.settings.NpcClockOffset
 import com.rainingtrace.domain.settings.ProactiveLevel
@@ -77,6 +84,7 @@ fun SettingsRoute(
             seasonSource = container.seasonSource,
             timeOfDaySource = container.timeOfDaySource,
             contentPanel = container.contentStore,
+            llmClient = container.llmTester,
         )
     }
     val gridLevel by viewModel.gridLevel.collectAsStateWithLifecycle()
@@ -89,6 +97,8 @@ fun SettingsRoute(
     val weatherOverride by viewModel.weatherOverride.collectAsStateWithLifecycle()
     val weatherStatus by viewModel.weatherStatus.collectAsStateWithLifecycle()
     val npcMessages by viewModel.npcMessages.collectAsStateWithLifecycle()
+    val llm by viewModel.llm.collectAsStateWithLifecycle()
+    val llmTestResult by viewModel.llmTestResult.collectAsStateWithLifecycle()
     val timeOfDayOverride by viewModel.timeOfDayOverride.collectAsStateWithLifecycle()
     val contentIndex by viewModel.contentIndex.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -277,6 +287,13 @@ fun SettingsRoute(
                     hint = "关掉后聊天页只显示关系阶段，不显示数字",
                     checked = npcMessages.showAffection,
                     onCheckedChange = viewModel::setShowAffection,
+                )
+
+                LlmSettingsSection(
+                    saved = llm,
+                    testResult = llmTestResult,
+                    onSave = viewModel::saveLlm,
+                    onTest = viewModel::testLlm,
                 )
 
                 // 真实天气已接；这里既能切手动覆盖验证"世界状态影响产出"，也能点回"自动"。
@@ -660,6 +677,111 @@ private fun ActionRow(
             text = hint,
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/**
+ * AI 对话配置（OpenAI 兼容）。
+ *
+ * 编辑中的值留在 Compose 本地状态，点「保存」才写 DataStore——
+ * 否则每敲一个字都会落盘，并触发一堆重建。
+ * 密钥只存本机应用私有目录，界面上做密码遮罩。
+ */
+@Composable
+private fun LlmSettingsSection(
+    saved: LlmSettings,
+    testResult: String?,
+    onSave: (LlmSettings) -> Unit,
+    onTest: (LlmSettings) -> Unit,
+) {
+    var enabled by remember(saved) { mutableStateOf(saved.enabled) }
+    var baseUrl by remember(saved) { mutableStateOf(saved.baseUrl) }
+    var apiKey by remember(saved) { mutableStateOf(saved.apiKey) }
+    var model by remember(saved) { mutableStateOf(saved.model) }
+
+    val current = LlmSettings(
+        enabled = enabled,
+        baseUrl = baseUrl.trim(),
+        apiKey = apiKey.trim(),
+        model = model.trim(),
+        temperature = saved.temperature,
+    )
+
+    SectionLabel("AI 对话（OpenAI 兼容）")
+    Text(
+        text = "接上之后，NPC 会按自己的人设提示词说话；关闭或连接失败时自动回退到本地模板，" +
+            "不会装懂、也不会把承诺说成假的。密钥只保存在这台手机上。",
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 20.dp),
+    )
+    Spacer(Modifier.height(6.dp))
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("启用 AI 对话", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.weight(1f))
+        Switch(checked = enabled, onCheckedChange = { enabled = it })
+    }
+
+    OutlinedTextField(
+        value = baseUrl,
+        onValueChange = { baseUrl = it },
+        label = { Text("接口地址（要含 /v1，如 https://api.openai.com/v1）") },
+        singleLine = true,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 4.dp),
+    )
+    OutlinedTextField(
+        value = apiKey,
+        onValueChange = { apiKey = it },
+        label = { Text("API Key") },
+        singleLine = true,
+        visualTransformation = PasswordVisualTransformation(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 4.dp),
+    )
+    OutlinedTextField(
+        value = model,
+        onValueChange = { model = it },
+        label = { Text("模型名（如 gpt-4o-mini / deepseek-chat / qwen-plus）") },
+        singleLine = true,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 4.dp),
+    )
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 4.dp),
+    ) {
+        OutlinedButton(onClick = { onSave(current) }, modifier = Modifier.weight(1f)) {
+            Text("保存")
+        }
+        Spacer(Modifier.width(8.dp))
+        OutlinedButton(onClick = { onTest(current) }, modifier = Modifier.weight(1f)) {
+            Text("测试连接")
+        }
+    }
+
+    testResult?.let { result ->
+        Text(
+            text = result,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (result.startsWith("连接成功")) {
+                MaterialTheme.colorScheme.secondary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
         )
     }
 }

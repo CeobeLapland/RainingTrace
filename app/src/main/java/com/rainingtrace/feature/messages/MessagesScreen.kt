@@ -78,12 +78,12 @@ private fun ConversationItem(
             .padding(horizontal = 18.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        NpcAvatar(npcId = row.profile.id, name = row.profile.name)
+        NpcAvatar(npcId = row.profile.id, name = row.profile.name.ifBlank { row.profile.id })
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = row.profile.name,
+                    text = row.profile.name.ifBlank { row.profile.id },
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onBackground,
                 )

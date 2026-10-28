@@ -54,8 +54,8 @@ data class GeneratedDialogue(
  */
 object DialogueValidator {
 
-    /** 一条消息的上限；再长就不像聊天了。 */
-    const val MAX_LENGTH = 120
+    /** 一条消息的上限；再长就不像聊天了。LLM 偶尔会写长，给 1–3 句留够余量。 */
+    const val MAX_LENGTH = 180
 
     /** 承诺词：只有在 [validate] 的 allowPromises 为真时才允许出现。 */
     private val PROMISE_WORDS = listOf("等你", "我一定", "答应你", "说好了", "不见不散", "保证")

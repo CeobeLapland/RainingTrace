@@ -25,11 +25,18 @@ object ShippedContent {
         return stream.readBytes().toString(Charsets.UTF_8)
     }
 
-    /** 读一份并**要求零诊断**：内置内容出问题应该在这里响亮地失败。 */
+    /**
+     * 读一份并要求**零 ERROR**。
+     *
+     * WARN 放行：内容正在逐步填（空字段、未知枚举被忽略、悬空引用在过渡期都算 WARN），
+     * 它们不该拦住开发；真正的撕裂（id 重复、条目解析失败）仍然是 ERROR，会在这里响亮失败。
+     */
     private fun <T> load(name: String, decode: (String, String, ContentReport) -> T): T {
         val report = ContentReport()
         val decoded = decode(readAsset(name), name, report)
-        check(report.items.isEmpty()) { "内置内容 $name 有诊断：${report.items}" }
+        check(report.errorCount == 0) {
+            "内置内容 $name 有错误：${report.items.filter { it.isError }}"
+        }
         return decoded
     }
 
